@@ -1,134 +1,71 @@
+# Desktop Frames + (台灣繁體中文版)
+
 <h1 align="center">Desktop Frames +</h1>
-<p align="center"><i>Organize your desktop like magic!</i></p>
+<p align="center"><i>像魔法般整理你的 Windows 桌面！ / Organize your desktop like magic!</i></p>
 <p align="center">
-<img src="https://img.shields.io/github/downloads/limbo666/DesktopFramesPlus/total?style=flat-square" alt="Total Downloads"/>
-<img src="https://img.shields.io/github/stars/limbo666/DesktopFramesPlus?style=flat-square" alt="Stars"/>
-  <img src="https://img.shields.io/github/forks/limbo666/DesktopFramesPlus?style=flat-square" alt="Forks"/>
-  <img src="https://img.shields.io/github/issues/limbo666/DesktopFramesPlus?style=flat-square" alt="Issues"/>
-   <img src="https://img.shields.io/github/last-commit/limbo666/DesktopFramesPlus?style=flat-square" alt="Last Commit"/>
+  <img src="https://img.shields.io/badge/.NET-8.0--windows-512bd4?style=flat-square&logo=dotnet" alt=".NET 8" />
+  <img src="https://img.shields.io/badge/Language-繁體中文%20%7C%20English-blue?style=flat-square" alt="Language" />
+  <img src="https://img.shields.io/badge/Platform-Windows%2010%20%2F%2011-0078d4?style=flat-square&logo=windows" alt="Windows 10/11" />
+  <img src="https://img.shields.io/badge/License-MIT-green?style=flat-square" alt="License" />
 </p>
 
 <p align="center">
-
   <img width="150" height="150" alt="Desktop Frames150" src="https://github.com/user-attachments/assets/a88f7771-8ae8-4be8-86dc-4e8aabfa5a77" />
-
 </p>
 
+---
 
-> **Desktop Frames + 繁體中文維護分支**  
-> 本專案為 [limbo666/DesktopFramesPlus](https://github.com/limbo666/DesktopFramesPlus) 之開源分支，專注於提供完整台灣繁體中文 (zh-TW) 介面支援與穩定免安裝維護。原始程式碼依據 MIT License 授權開發與維護。
+## 📌 關於此分支與來源引註 (About This Fork & Upstream Attribution)
 
-##  ⚠️ Important Notice: Welcome to Desktop Frames + 
-
-You may have noticed a **new name** and a **new logo**. Recently, this repository was targeted by a trademark complaint from a large commercial software company regarding our name (and icon).
-
-To protect this repository from being suspended and to ensure this tool remains completely free and open-source for the community, I was forced to rebrand. We are now officially **Desktop Frames +**.
-
-Thank you to everyone who helped this project reach 500+ stars.  
-Your support is the reason this tool exists, and corporate pressure won't stop me from improving it.
-
-A short **how to upgrade guide** can be found on the following link:
-  https://github.com/limbo666/DesktopFramesPlus/blob/main/HowToUpgradeToDesktopFramesPlus.md
-
-
-##  About Desktop Frames +
-
-
-Desktop Frames + creates **virtual Frames** on your desktop, allowing you to group and organize icons in a clean and convenient way. With enhanced visual effects and right-click options, it aims to provide a more polished and customizable user interface.
-
-**Desktop Frames+** is an open-source desktop icon management software, originally created by HakanKokcu under the name BirdyFences.
-
-This project is a continuation and substantial modification of the original BirdyFences codebase, which was licensed under the MIT License at the time of forking. 
-
-Desktop Frames+ has been significantly enhanced and optimized for improved performance, stability, and user experience, while respecting the terms of the original license and acknowledging the original author.
-
-
-##  Version History  
-**$\color{green}{\text{The list of changes is moved here:}}$**    
-https://github.com/limbo666/DesktopFramesPlus/blob/main/VersionHistory.md
-
-##  Manual  
-**$\color{blue}{\text{A simple how to use guide is located here:}}$**   
-[https://github.com/limbo666/DesktopFramesPlus/blob/main/desktop_Frames_simple_manual.md](https://github.com/limbo666/DesktopFramesPlus/blob/main/desktop_frames_simple_manual.md)
-
-
-##  Tips 
-**$\color{red}{\text{Also some advanced usage tips:}}$**  
-https://github.com/limbo666/DesktopFramesPlus/blob/main/TIPS.md
-<br> Read them before starting an issue. 
-
-
-
-
-## Features
-
--   **Multiple Frame Types:** Create Data Frames for custom shortcuts, Portal Frames that actively mirror folder contents (with internal navigation and filters), and Note Frames for quick text.  
--   **Tabs Engine:** Keep your desktop clean by organizing shortcuts into multiple tabs within a single frame, complete with tab overflow management.
--   **Workspace Profiles:** Create independent layouts for different workflows (e.g., Work, Gaming). Switch profiles manually via hotkeys, or use Profile Automation to switch automatically when specific programs are launched.
--   **Smart Desktop Engine:** Automatically sort and move incoming files into specific Portal Frames or folders based on custom user rules.
--   **SpotSearch:** A built-in quick-search pane invoked by a hotkey to instantly find and launch shortcuts across all your frames.  
--   **Dynamic Visibility:** Temporarily "Peek Behind" frames to see the desktop, "Rollup" frames to hide their contents, or enable Auto-hide to conceal frames after a period of inactivity.    
--   **Focus Mode:** Highlight a specific frame using the tray menu or a hotkey combination. 
--   **Universal Support:** Fully supports standard files, folders, web links, MS Store apps, Steam games, and Spotify URIs. Includes advanced execution options like "Run as Administrator" and "Run as different user".
--   **Theming:** Customize individual frame background colors, set global tint levels, or use **Chameleon Mode** to automatically match your frames to your wallpaper's dominant color.   
--   **Launch Animations:** Select from multiple visual effects (Zoom, Bounce, Fadeout, SlideUp, Rotate, Elastic) when launching applications.
--   **Precision Layouts:** Utilize "Snap to Dimension" for perfect alignment, easily reorder icons with `CTRL + Drag`, and insert blank spacers to position your icons exactly where you want them.
--   **Icon Customization:** Extract and assign custom icons from executables, DLLs, or image files for any shortcut, folder, or web link.
--   **Automated Backups:** Features a daily automatic backup mechanism that saves your layouts, configurations, and shortcuts.   
--   **Export & Import:** Easily move your setup across different computers by exporting individual frames or entire tabs.
--   **Fully Portable:** Utilizes relative paths for files and folders to ensure seamless operation across different environments.
-
+- **專案定位**：本專案為 [limbo666/DesktopFramesPlus](https://github.com/limbo666/DesktopFramesPlus) 之開源維護分支。
+- **維護重點**：提供完整的台灣繁體中文 (zh-TW) 介面支援、解除未經授權之外部個人捐款連結，並在未設定下游更新發行伺服器前停用預設自動更新檢查，防止使用者本機配置被覆蓋或中斷。
+- **授權與致謝**：
+  - 本專案與原專案均遵循 **[MIT License](License.md)** 授權。
+  - 核心架構最初由 **HakanKokcu** 以 *BirdyFences* 之名發起。
+  - 後續由 **Nikos Georgousis (Hand Water Pump 2025-2026)** 進行大規模效能優化與功能擴充。
+  - 繁體中文版本由 **LiangHao** 進行多語系資源在地化與發行治理維護。
 
 ---
 
-##  Download
-Get the latest zh-TW release from the releases section:
-https://github.com/lianghao02/DesktopFramesPlus/releases
+## 🇹🇼 繁體中文說明
+
+### 🌟 核心特色
+- **多元面板類型**：支援自訂捷徑資料面板 (Data Frames)、資料夾即時鏡射面板 (Portal Frames，支援內部瀏覽與篩選) 以及便籤文字面板 (Note Frames)。
+- **分頁管理引擎**：單一面板內支援建立多個分頁，告別擁擠桌面。
+- **工作區設定檔 (Profiles)**：可為工作、遊戲等建立獨立佈局，並支援關聯應用程式啟動時自動切換。
+- **智慧桌面引擎 (Smart Desktop)**：可自訂規則，自動將桌面新檔案分門別類歸檔至指定資料夾或面板。
+- **SpotSearch 快速搜尋**：按下快速鍵即刻呼叫搜尋面板，秒級尋找並啟動所有面板中的捷徑。
+- **全域免安裝可攜架構 (Portable)**：配置與捷徑皆使用相對路徑儲存於 `Profiles/` 資料夾，隨身碟即開即用。
+- **極致視覺與主題**：支援變色龍模式 (Chameleon Mode，自動擷取桌布主色)、圖示光暈陰影效果、6 種應用程式啟動動畫與面板自動捲起。
+
+### 📥 下載與安裝
+1. 前往 **[Releases 發行頁面](https://github.com/lianghao02/DesktopFramesPlus/releases)** 下載最新免安裝 ZIP 壓縮包。
+2. 解壓縮至任何具備使用者寫入權限的資料夾（如 `D:\Tools\DesktopFramesPlus` 或桌面，請勿放於唯讀的 `Program Files`）。
+3. 執行 `Desktop Frames.exe` 即可直接使用，首次啟動自動建立繁體中文設定環境。
 
 ---
 
-##  Installation
->  Compatible with Windows 10/11  
->  Fully portable
+## 🇬🇧 English Description
 
- - Download the release package
- - Extract the all files contained in zip package into a folder 
- - Run `Desktop Frames.exe` .  
-   _All necessary configuration files and folders will be created on first run._
-   
-**Attention:** Only user-writable locations are compatible.  
-_See (https://github.com/limbo666/DesktopFramesPlus/issues/51)_
+### 🌟 Key Features
+- **Multiple Frame Types**: Create Data Frames for custom shortcuts, Portal Frames that actively mirror folder contents (with internal navigation and filters), and Note Frames for quick text.
+- **Tabs Engine**: Keep your desktop clean by organizing shortcuts into multiple tabs within a single frame, complete with tab overflow management.
+- **Workspace Profiles**: Create independent layouts for different workflows (e.g., Work, Gaming). Switch profiles manually via hotkeys, or use Profile Automation to switch automatically when specific programs are launched.
+- **Smart Desktop Engine**: Automatically sort and move incoming files into specific Portal Frames or folders based on custom user rules.
+- **SpotSearch**: A built-in quick-search pane invoked by a hotkey to instantly find and launch shortcuts across all your frames.
+- **Fully Portable**: Utilizes relative paths for files and folders to ensure seamless operation across different environments.
+- **Theming & Effects**: Customize individual frame background colors, set global tint levels, use Chameleon Mode to match wallpaper colors, and pick from multiple launch animations.
 
-
-##  Update existing installation
-
- - Download the release package
- - Extract the all files contained in zip package and overwrite existing int your Desktop Frames + folder 
- - Run `Desktop Frames.exe` .  
-   _Some releases may convert your configuration files and/or folders to be compatible with new functions_  
-   _As a safety measure it is suggested to backup your Desktop Frames + folder before updating_
-
+### 📥 Download & Installation
+1. Get the latest release package from the **[Releases Section](https://github.com/lianghao02/DesktopFramesPlus/releases)**.
+2. Extract the ZIP package into any user-writable folder (avoid write-protected paths like `Program Files`).
+3. Run `Desktop Frames.exe`. All necessary configuration files and folders will be created automatically on first run.
 
 ---
 
+## 📄 License & Credits
 
-##  License
-
-This project is licensed under the [MIT License](License.md).
-
----
-
-##  Credits
-
-Based on the original **BirdyFences** by HakanKokcu  
-Desktop Frames + is Enhanced and maintained by Nikos Georgousis.  
-Hand Water Pump 2025-2026
-
-
-
-
-
-
-
-
-
+- **License**: Licensed under the [MIT License](License.md).
+- **Original Project**: Forked from [limbo666/DesktopFramesPlus](https://github.com/limbo666/DesktopFramesPlus), which was originally based on **BirdyFences** by HakanKokcu.
+- **Upstream Authors**: Nikos Georgousis (Hand Water Pump 2025-2026).
+- **Localization & Maintenance**: LiangHao.
