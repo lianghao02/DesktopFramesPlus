@@ -106,8 +106,6 @@ namespace Desktop_Frames
 
                 CreateTabContent(mainGrid);
                 CreateFooter(mainGrid);
-                CreateDonationSection(mainGrid);
-
                 mainGrid.Children.Add(headerBorder);
                 mainBorder.Child = mainGrid;
                 _optionsWindow.Content = mainBorder;
@@ -999,7 +997,7 @@ namespace Desktop_Frames
 
             for (int i = 0; i < cats.Count; i++)
             {
-                var cb = new CheckBox { Content = cats[i].ToString(), Tag = cats[i], IsChecked = SettingsManager.EnabledLogCategories.Contains(cats[i]), FontSize = 13, Margin = new Thickness(15, 8, 0, 8) };
+                var cb = new CheckBox { Content = Strings.Get("LogCategory" + cats[i]), Tag = cats[i], IsChecked = SettingsManager.EnabledLogCategories.Contains(cats[i]), FontSize = 13, Margin = new Thickness(15, 8, 0, 8) };
                 if (i < half) l.Children.Add(cb); else r.Children.Add(cb);
             }
 

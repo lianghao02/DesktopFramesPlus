@@ -1,4 +1,4 @@
-﻿using DesktopFrames;
+using DesktopFrames;
 using Newtonsoft.Json.Linq;
 using System;
 using System.Linq;
@@ -34,7 +34,7 @@ namespace Desktop_Frames
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Profile Initialization Error: {ex.Message}", "Startup Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show(Strings.Get("MsgProfileInitializationError", ex.Message), Strings.Get("DlgStartupError"), MessageBoxButton.OK, MessageBoxImage.Error);
                 Shutdown();
                 return;
             }
@@ -179,7 +179,7 @@ namespace Desktop_Frames
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Critical Startup Error: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show(Strings.Get("MsgCriticalStartupError", ex.Message), Strings.DlgError, MessageBoxButton.OK, MessageBoxImage.Error);
                 Shutdown();
             }
         }

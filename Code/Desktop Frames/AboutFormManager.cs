@@ -228,7 +228,7 @@ namespace Desktop_Frames
             catch (Exception ex)
             {
                 LogManager.Log(LogManager.LogLevel.Error, LogManager.LogCategory.UI, $"Error showing About form: {ex.Message}");
-                MessageBox.Show($"Error showing About form: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show(Strings.Get("MsgShowAboutFailed", ex.Message), Strings.DlgError, MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
@@ -369,10 +369,6 @@ namespace Desktop_Frames
             // Credits Section
             CreateSection(contentStack, Strings.AboutSectionCredits, null,
                 Strings.AboutCreditsBody, 20);
-
-            // Support Development Section
-            CreateSupportSection(contentStack);
-
             // MIT License Section
             CreateLicenseSection(contentStack);
 

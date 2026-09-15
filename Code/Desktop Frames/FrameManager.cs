@@ -1,4 +1,4 @@
-﻿using Desktop_Frames.Localization;
+using Desktop_Frames.Localization;
 using IWshRuntimeLibrary;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -3595,7 +3595,7 @@ namespace Desktop_Frames
                 var dataFrame = new
                 {
                     Id = Guid.NewGuid().ToString(),
-                    Title = "New Frame - Drop your shortcuts here",
+                    Title = Strings.Get("DefaultFrameTitle"),
                     X = 20.0,
                     Y = 20.0,
                     Width = 360.0,
@@ -3624,7 +3624,7 @@ namespace Desktop_Frames
                 var noteFrame = new
                 {
                     Id = Guid.NewGuid().ToString(), // Unique ID
-                    Title = "Desktop Frames + Startup Tips", // Explicit Name
+                    Title = Strings.Get("DefaultTipsTitle"), // Explicit Name
                     X = 20.0,   // Positioned below the data frame
                     Y = 200.0,  // Data frame ends then this frame begins
                     Width = 555.0,
