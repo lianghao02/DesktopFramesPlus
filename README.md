@@ -15,6 +15,9 @@
 </p>
 
 
+> **Desktop Frames + 繁體中文維護分支**  
+> 本專案為 [limbo666/DesktopFramesPlus](https://github.com/limbo666/DesktopFramesPlus) 之開源分支，專注於提供完整台灣繁體中文 (zh-TW) 介面支援與穩定免安裝維護。原始程式碼依據 MIT License 授權開發與維護。
+
 ##  ⚠️ Important Notice: Welcome to Desktop Frames + 
 
 You may have noticed a **new name** and a **new logo**. Recently, this repository was targeted by a trademark complaint from a large commercial software company regarding our name (and icon).
@@ -26,27 +29,6 @@ Your support is the reason this tool exists, and corporate pressure won't stop m
 
 A short **how to upgrade guide** can be found on the following link:
   https://github.com/limbo666/DesktopFramesPlus/blob/main/HowToUpgradeToDesktopFramesPlus.md
-
-## Support Me
-
-If this project has helped you, please consider supporting its development! Your contribution directly impacts how fast and far this project grows.
-
-Maintaining and improving this tool takes time, effort, and resources. Donations help me:
-- Dedicate more time to fixing bugs and adding features
-- Cover the cost of tools (like AI assistance that speeds up development)
-- Stay motivated and keep pushing the project forward
-
-Your support literally drives the pace of development! Even small contributions mean a lot. Thank you for keeping this project alive and evolving!
-
-### Continuous Support
-If you'd like to become a regular supporter, Liberapay is a zero-fee platform designed for recurring open-source donations:
-
-[![Support via Liberapay](https://liberapay.com/assets/widgets/donate.svg)](https://liberapay.com/limbo/donate)
-
-### One-Time Tip
-If you prefer to make a single, one-time contribution, you can use PayPal:
-
-[![Donate](https://raw.githubusercontent.com/limbo666/DesktopFramesPlus/refs/heads/main/Images/paypal.png)](https://www.paypal.com/donate/?hosted_button_id=PPLWC66UC8Q42)
 
 
 ##  About Desktop Frames +
@@ -100,9 +82,8 @@ https://github.com/limbo666/DesktopFramesPlus/blob/main/TIPS.md
 ---
 
 ##  Download
-Get the latest release from releases section:
-https://github.com/limbo666/DesktopFramesPlus/releases
-**UPDATE: Release 2.7.7.294 is out**
+Get the latest zh-TW release from the releases section:
+https://github.com/lianghao02/DesktopFramesPlus/releases
 
 ---
 

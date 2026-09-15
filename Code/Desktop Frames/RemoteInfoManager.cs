@@ -1,4 +1,4 @@
-﻿using Desktop_Frames.Localization;
+using Desktop_Frames.Localization;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -14,10 +14,14 @@ namespace Desktop_Frames
         // YOUR REAL GITHUB URL
         private const string MANIFEST_URL = "https://raw.githubusercontent.com/limbo666/DesktopFramesPlus/refs/heads/main/ngdfcs/getversion.json";
 
+        // Set to true only if maintaining a downstream release manifest
+        public static bool EnableRemoteUpdates { get; set; } = false;
+
         private static bool _hasChecked = false;
 
         public static void Initialize()
         {
+            if (!EnableRemoteUpdates) return;
             if (_hasChecked) return;
             _hasChecked = true;
 

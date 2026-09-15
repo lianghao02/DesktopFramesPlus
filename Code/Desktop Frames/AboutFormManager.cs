@@ -1,4 +1,4 @@
-﻿using Desktop_Frames.Localization;
+using Desktop_Frames.Localization;
 using System;
 using System.Diagnostics;
 using System.Linq;
@@ -509,7 +509,7 @@ namespace Desktop_Frames
                 {
                     Process.Start(new ProcessStartInfo
                     {
-                        FileName = "https://github.com/limbo666/DesktopFramesPlus",
+                        FileName = "https://github.com/lianghao02/DesktopFramesPlus",
                         UseShellExecute = true
                     });
                 }
@@ -846,19 +846,7 @@ namespace Desktop_Frames
 
                 donateButton.Click += (s, e) =>
                 {
-                    try
-                    {
-                        Process.Start(new ProcessStartInfo
-                        {
-                            FileName = "https://www.paypal.com/donate/?hosted_button_id=PPLWC66UC8Q42",
-                            UseShellExecute = true
-                        });
-                        easterWindow.Close();
-                    }
-                    catch (Exception ex)
-                    {
-                        LogManager.Log(LogManager.LogLevel.Error, LogManager.LogCategory.UI, $"Error opening PayPal link: {ex.Message}");
-                    }
+                    easterWindow.Close();
                 };
 
                 footerBorder.Child = donateButton;
