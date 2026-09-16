@@ -1,4 +1,4 @@
-﻿using IWshRuntimeLibrary;
+using IWshRuntimeLibrary;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System;
@@ -126,6 +126,7 @@ namespace Desktop_Frames
 
                 // Create and add icon image
                 System.Windows.Controls.Image ico = new System.Windows.Controls.Image();
+                RenderOptions.SetBitmapScalingMode(ico, BitmapScalingMode.HighQuality);
 
                 // Apply icon size settings FIRST so placeholders scale correctly
                 ApplyIconSize(ico, filePath);
@@ -564,6 +565,8 @@ namespace Desktop_Frames
                     }
                     else if (Directory.Exists(targetPath))
                     {
+                        var folderIco = Utility.GetShellIcon(targetPath, true);
+                        if (folderIco != null) return folderIco;
                         return new BitmapImage(new Uri("pack://application:,,,/Resources/folder-White.png"));
                     }
                 }
@@ -624,9 +627,13 @@ namespace Desktop_Frames
         /// </summary>
         private static ImageSource GetFolderIcon(string folderPath)
         {
-            return Directory.Exists(folderPath) ?
-                CreateFrozenBitmap("pack://application:,,,/Resources/folder-White.png") :
-                CreateFrozenBitmap("pack://application:,,,/Resources/folder-WhiteX.png");
+            if (Directory.Exists(folderPath))
+            {
+                var folderIco = Utility.GetShellIcon(folderPath, true);
+                if (folderIco != null) return folderIco;
+                return CreateFrozenBitmap("pack://application:,,,/Resources/folder-White.png");
+            }
+            return CreateFrozenBitmap("pack://application:,,,/Resources/folder-WhiteX.png");
         }
 
         /// <summary>
@@ -887,6 +894,7 @@ namespace Desktop_Frames
 
                 // Create and add icon image
                 System.Windows.Controls.Image ico = new System.Windows.Controls.Image();
+                RenderOptions.SetBitmapScalingMode(ico, BitmapScalingMode.HighQuality);
 
                 // Apply icon size settings FIRST
                 ApplyIconSizeFromFrame(ico, frame);

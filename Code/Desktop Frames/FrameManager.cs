@@ -1287,35 +1287,6 @@ namespace Desktop_Frames
             };
             menu.Items.Add(newNoteFrameItem);
 
-            // --- NEW: Tiered Dynamic Plugin Menu ---
-            if (SettingsManager.PluginAvailabilityLevel > 0)
-            {
-                var addPluginMenu = new MenuItem { Header = Strings.MenuAddPlugin };
-                var availablePlugins = PluginManager.GetAvailablePlugins();
-
-                if (availablePlugins != null && availablePlugins.Count > 0)
-                {
-                    foreach (var plugin in availablePlugins)
-                    {
-                        string pId = plugin.Key;
-                        var pluginItem = new MenuItem { Header = plugin.Value };
-                        pluginItem.Click += (s, e) =>
-                        {
-                            var mousePosition = System.Windows.Forms.Cursor.Position;
-                            CreateNewFrame($"New {plugin.Value}", "Plugin", mousePosition.X, mousePosition.Y, null, null, pId);
-                        };
-                        addPluginMenu.Items.Add(pluginItem);
-                    }
-                }
-                else
-                {
-                    addPluginMenu.Items.Add(new MenuItem { Header = Strings.MenuNoPluginsAvailable, IsEnabled = false });
-                }
-                menu.Items.Add(addPluginMenu);
-            }
-            // If PluginAvailabilityLevel == 0, the menu option is completely hidden.
-            // --------------------------------
-
             menu.Items.Add(new Separator());
 
             // --- REORDERED: Tabs Option First ---
@@ -3860,6 +3831,7 @@ namespace Desktop_Frames
 
             // --- NEW: Declare Commit Action for robust saving ---
             Action CommitRename = null;
+            Label titlelabel = null;
             // ---------------------------------------------------
 
             // Check for valid Portal Frame target folder
@@ -4444,6 +4416,22 @@ namespace Desktop_Frames
             }
             // ---------------------------------------
 
+            // Rename item
+            MenuItem miRename = new MenuItem { Header = Strings.MenuRenameFrame };
+            miRename.Click += (s, e) =>
+            {
+                if (titlelabel != null && titletb != null)
+                {
+                    titletb.Text = titlelabel.Content?.ToString() ?? "";
+                    titlelabel.Visibility = Visibility.Collapsed;
+                    titletb.Visibility = Visibility.Visible;
+                    win.BeginKeyboardInteractiveEdit(titletb);
+                    titletb.Focus();
+                    titletb.SelectAll();
+                }
+            };
+            CnMnFramemanager.Items.Add(miRename);
+
             // CnMnFramemanager.Items.Add(miNewCustomize);
             MenuItem miCustomize = new MenuItem { Header = Strings.MenuCustomize };
             miCustomize.Click += (s, e) =>
@@ -5018,7 +5006,7 @@ namespace Desktop_Frames
             {
                 titleFontSize = 12; // Fallback to Medium
             }
-            Label titlelabel = new Label
+            titlelabel = new Label
             {
                 Content = frame.Title.ToString(),
                 Foreground = titleTextBrush, // Changed from hardcoded White
@@ -5692,6 +5680,9 @@ namespace Desktop_Frames
                 return;
             }
             bool isLocked = currentFrame.IsLocked?.ToString().ToLower() == "true";
+            System.Windows.Point? titleMouseDownPoint = null;
+            bool titleIsDraggingWindow = false;
+
             titlelabel.MouseDown += (sender, e) =>
             {
                 // FIX: Directly call CommitRename logic
@@ -5703,6 +5694,8 @@ namespace Desktop_Frames
 
                 if (e.ClickCount == 2)
                 {
+                    titleMouseDownPoint = null;
+                    titleIsDraggingWindow = false;
                     // Roll-up/roll-down logic (swapped from Ctrl+Click)
                     NonActivatingWindow win = FindVisualParent<NonActivatingWindow>(titlelabel);
                     string frameId = win?.Tag?.ToString();
@@ -5877,30 +5870,37 @@ namespace Desktop_Frames
                 {
                     if ((Keyboard.Modifiers & ModifierKeys.Control) != 0)
                     {
-                        // Rename frame (swapped from double-click)
+                        titleMouseDownPoint = null;
+                        titleIsDraggingWindow = false;
                         titletb.Text = titlelabel.Content.ToString();
                         titlelabel.Visibility = Visibility.Collapsed;
                         titletb.Visibility = Visibility.Visible;
                         win.BeginKeyboardInteractiveEdit(titletb);
+                        titletb.SelectAll();
+                        titletb.Focus();
                         LogManager.Log(LogManager.LogLevel.Debug, LogManager.LogCategory.FrameCreation, $"Focus set to title textbox for frame: {frame.Title}");
                         e.Handled = true;
                     }
                     else
                     {
+                        titleMouseDownPoint = e.GetPosition(win);
+                        titleIsDraggingWindow = false;
+                    }
+                }
+            };
+
+            titlelabel.MouseMove += (sender, e) =>
+            {
+                if (e.LeftButton == MouseButtonState.Pressed && titleMouseDownPoint.HasValue && !titleIsDraggingWindow)
+                {
+                    System.Windows.Point curPoint = e.GetPosition(win);
+                    if (Math.Abs(curPoint.X - titleMouseDownPoint.Value.X) > 4 || Math.Abs(curPoint.Y - titleMouseDownPoint.Value.Y) > 4)
+                    {
+                        titleIsDraggingWindow = true;
                         string frameId = win.Tag?.ToString();
-                        if (string.IsNullOrEmpty(frameId))
-                        {
-                            LogManager.Log(LogManager.LogLevel.Debug, LogManager.LogCategory.FrameCreation, $"Frame Id is missing for window '{win.Title}' during MouseDown");
-                            return;
-                        }
                         dynamic currentFrame = FrameDataManager.FrameData.FirstOrDefault(f => f.Id?.ToString() == frameId);
-                        if (currentFrame == null)
-                        {
-                            LogManager.Log(LogManager.LogLevel.Debug, LogManager.LogCategory.FrameCreation, $"Frame with Id '{frameId}' not found in FrameDataManager.FrameData during MouseDown");
-                            return;
-                        }
-                        bool isLocked = currentFrame.IsLocked?.ToString().ToLower() == "true";
-                        if (!isLocked)
+                        bool isLockedFrame = currentFrame?.IsLocked?.ToString().ToLower() == "true";
+                        if (!isLockedFrame)
                         {
                             SnapManager.StartDrag(win);
                             try
@@ -5911,11 +5911,44 @@ namespace Desktop_Frames
                             {
                                 SnapManager.EndDrag(win);
                             }
-                            LogManager.Log(LogManager.LogLevel.Debug, LogManager.LogCategory.FrameCreation, $"Dragging frame '{currentFrame.Title}'");
                         }
-                        else
+                    }
+                }
+            };
+
+            titlelabel.MouseLeftButtonUp += (sender, e) =>
+            {
+                if (titleMouseDownPoint.HasValue && !titleIsDraggingWindow && !titletb.IsVisible)
+                {
+                    titletb.Text = titlelabel.Content.ToString();
+                    titlelabel.Visibility = Visibility.Collapsed;
+                    titletb.Visibility = Visibility.Visible;
+                    win.BeginKeyboardInteractiveEdit(titletb);
+                    titletb.SelectAll();
+                    titletb.Focus();
+                    e.Handled = true;
+                }
+                titleMouseDownPoint = null;
+                titleIsDraggingWindow = false;
+            };
+
+            titleGrid.MouseDown += (sender, e) =>
+            {
+                if (e.LeftButton == MouseButtonState.Pressed && (e.OriginalSource == titleGrid || e.OriginalSource is Border))
+                {
+                    string frameId = win.Tag?.ToString();
+                    dynamic currentFrame = FrameDataManager.FrameData.FirstOrDefault(f => f.Id?.ToString() == frameId);
+                    bool isLockedFrame = currentFrame?.IsLocked?.ToString().ToLower() == "true";
+                    if (!isLockedFrame)
+                    {
+                        SnapManager.StartDrag(win);
+                        try
                         {
-                            LogManager.Log(LogManager.LogLevel.Debug, LogManager.LogCategory.FrameCreation, $"DragMove blocked for locked frame '{currentFrame.Title}'");
+                            win.DragMove();
+                        }
+                        finally
+                        {
+                            SnapManager.EndDrag(win);
                         }
                     }
                 }
@@ -6994,6 +7027,7 @@ namespace Desktop_Frames
                 Height = iconHeight,
                 Margin = new Thickness(5)
             };
+            RenderOptions.SetBitmapScalingMode(ico, BitmapScalingMode.HighQuality);
             if (SettingsManager.IconVisibilityEffect != IconVisibilityEffect.None)
             {
                 ico.Effect = Utility.CreateIconEffect(SettingsManager.IconVisibilityEffect);
@@ -7214,14 +7248,12 @@ namespace Desktop_Frames
                             targetIsFolder = true; isNetwork = true; isFolder = true; targetIsUncRoot = true;
                         }
 
-                        if (!isPortal && (isFolder || targetIsFolder)) shortcutIcon = null;
-                        else if (targetExists) shortcutIcon = Utility.GetShellIcon(targetPath, targetIsFolder);
+                        if (targetExists) shortcutIcon = Utility.GetShellIcon(targetPath, targetIsFolder);
                         else shortcutIcon = Utility.GetShellIcon(filePath, isFolder);
                     }
                     else
                     {
-                        if (!isPortal && isFolder) shortcutIcon = null;
-                        else shortcutIcon = Utility.GetShellIcon(filePath, isFolder);
+                        shortcutIcon = Utility.GetShellIcon(filePath, isFolder);
                     }
                 }
 
@@ -8325,8 +8357,8 @@ namespace Desktop_Frames
                         var frame = FrameDataManager.FrameData.FirstOrDefault(f => f.Id?.ToString() == frameId);
                         bool isPortal = frame != null && frame.ItemsType?.ToString() == "Portal";
 
-                        if (isPortal) newIcon = Utility.GetShellIcon(filePath, true);
-                        else newIcon = new BitmapImage(new Uri("pack://application:,,,/Resources/folder-White.png"));
+                        newIcon = Utility.GetShellIcon(filePath, true);
+                        if (newIcon == null) newIcon = new BitmapImage(new Uri("pack://application:,,,/Resources/folder-White.png"));
                     }
                 }
                 // CASE C: BROKEN FILES
@@ -8507,6 +8539,9 @@ namespace Desktop_Frames
             bool isShortcut = System.IO.Path.GetExtension(path).ToLower() == ".lnk";
 
             // --- NAMED LOCAL FUNCTIONS FOR EVENTS ---
+            System.Windows.Point? iconMouseDownPos = null;
+            bool isIconDragging = false;
+
             void MouseDownHandler(object sender, MouseButtonEventArgs e)
             {
                 if (e.ChangedButton != MouseButton.Left) return;
@@ -8524,9 +8559,12 @@ namespace Desktop_Frames
                     }
                 }
 
-                // CTRL + CLICK LOGIC
-                if (Keyboard.IsKeyDown(Key.LeftCtrl) || Keyboard.IsKeyDown(Key.RightCtrl))
+                // 1. Double click to launch / open
+                if (e.ClickCount == 2)
                 {
+                    iconMouseDownPos = null;
+                    isIconDragging = false;
+
                     NonActivatingWindow win = FindVisualParent<NonActivatingWindow>(sp);
                     string frameId = win?.Tag?.ToString();
                     dynamic frame = null;
@@ -8555,16 +8593,6 @@ namespace Desktop_Frames
                         }
                     }
 
-                    System.Windows.Point mousePosition = e.GetPosition(sp);
-                    IconDragDropManager.StartIconDrag(sp, mousePosition);
-                    e.Handled = true;
-                    return;
-                }
-
-                bool singleClickToLaunch = SettingsManager.SingleClickToLaunch;
-
-                if ((singleClickToLaunch && e.ClickCount == 1) || (!singleClickToLaunch && e.ClickCount == 2))
-                {
                     e.Handled = true; // Mark handled immediately so the UI thread is freed
 
                     // --- HANG FIX 2 (Click): Move network resolution to an STA Background Thread ---
@@ -8615,37 +8643,16 @@ namespace Desktop_Frames
                                 }
                             }
 
-
                             if (!targetExists && !isStoreApp) return;
-                            // NEEDS TO BE TESTED AND VERIFIED
-                            // Safely send the launch command back to the main UI thread once resolved
+
                             System.Windows.Application.Current.Dispatcher.BeginInvoke(new Action(() =>
                             {
-                                // --- THE SMART WORKAROUND: SELF-HEALING UI ---
-                                // If the user clicks a dead icon and it successfully resolves, 
-                                // we force the UI to instantly refresh the icon image to the "Alive" state!
                                 try { UpdateIcon(sp, path, dynamicIsFolder, resolvedPath); } catch { }
-
                                 LaunchItem(sp, path, dynamicIsFolder, arguments);
                             }));
                         }
                         catch (Exception ex)
                         {
-                            // FOR SAFETY REASONS WE KEEP IN COMMENT PREVIOUS APPROACH 
-
-                            //    if (!targetExists && !isStoreApp) return;
-
-                            //    // Safely send the launch command back to the main UI thread once resolved
-                            //    System.Windows.Application.Current.Dispatcher.BeginInvoke(new Action(() =>
-                            //    {
-                            //        LaunchItem(sp, path, dynamicIsFolder, arguments);
-                            //    }));
-                            //}
-                            //catch (Exception ex)
-                            //{
-                         
-                            
-                            
                             LogManager.Log(LogManager.LogLevel.Error, LogManager.LogCategory.General, $"Error checking target existence: {ex.Message}");
                         }
                     });
@@ -8653,11 +8660,30 @@ namespace Desktop_Frames
                     launchThread.SetApartmentState(System.Threading.ApartmentState.STA);
                     launchThread.IsBackground = true;
                     launchThread.Start();
+                    return;
+                }
+
+                // 2. Single click: record position for drag detection
+                if (e.ClickCount == 1)
+                {
+                    iconMouseDownPos = e.GetPosition(sp);
+                    isIconDragging = false;
                 }
             }
 
             void MouseMoveHandler(object sender, MouseEventArgs e)
             {
+                if (e.LeftButton == MouseButtonState.Pressed && iconMouseDownPos.HasValue && !isIconDragging && !IconDragDropManager.IsDragging)
+                {
+                    System.Windows.Point currentPos = e.GetPosition(sp);
+                    if (Math.Abs(currentPos.X - iconMouseDownPos.Value.X) >= SystemParameters.MinimumHorizontalDragDistance ||
+                        Math.Abs(currentPos.Y - iconMouseDownPos.Value.Y) >= SystemParameters.MinimumVerticalDragDistance)
+                    {
+                        isIconDragging = true;
+                        IconDragDropManager.StartIconDrag(sp, iconMouseDownPos.Value);
+                    }
+                }
+
                 if (IconDragDropManager.IsDragging)
                 {
                     try
@@ -8675,13 +8701,8 @@ namespace Desktop_Frames
                 {
                     try
                     {
-                        WrapPanel wrapPanel = FindVisualParent<WrapPanel>(sp);
-                        if (wrapPanel != null)
-                        {
-                            System.Windows.Point finalPosition = e.GetPosition(wrapPanel);
-                            IconDragDropManager.CompleteDrag(finalPosition);
-                        }
-                        else IconDragDropManager.CancelDrag();
+                        System.Windows.Point screenPosition = sp.PointToScreen(e.GetPosition(sp));
+                        IconDragDropManager.CompleteDrag(screenPosition);
                         e.Handled = true;
                     }
                     catch
@@ -8689,13 +8710,13 @@ namespace Desktop_Frames
                         IconDragDropManager.CancelDrag();
                     }
                 }
+                iconMouseDownPos = null;
+                isIconDragging = false;
             }
 
             void KeyUpHandler(object sender, KeyEventArgs e)
             {
-                if (IconDragDropManager.IsDragging &&
-                    (e.Key == Key.LeftCtrl || e.Key == Key.RightCtrl) &&
-                    !Keyboard.IsKeyDown(Key.LeftCtrl) && !Keyboard.IsKeyDown(Key.RightCtrl))
+                if (IconDragDropManager.IsDragging && e.Key == Key.Escape)
                 {
                     IconDragDropManager.CancelDrag();
                     e.Handled = true;
@@ -9290,7 +9311,10 @@ namespace Desktop_Frames
                             if (!FilePathUtilities.DoesFolderExist(shortcutPath, true))
                                 newIcon = new BitmapImage(new Uri("pack://application:,,,/Resources/folder-WhiteX.png"));
                             else
-                                newIcon = new BitmapImage(new Uri("pack://application:,,,/Resources/folder-White.png"));
+                            {
+                                newIcon = Utility.GetShellIcon(freshTargetPath ?? shortcutPath, true);
+                                if (newIcon == null) newIcon = new BitmapImage(new Uri("pack://application:,,,/Resources/folder-White.png"));
+                            }
                         }
                         else
                         {

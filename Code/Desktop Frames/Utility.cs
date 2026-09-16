@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices; // Added for DeleteObject
@@ -521,6 +521,24 @@ namespace Desktop_Frames
         [DllImport("gdi32.dll")]
         private static extern bool DeleteObject(IntPtr hObject);
 
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern bool DestroyIcon(IntPtr hIcon);
+
+        [DllImport("comctl32.dll", SetLastError = true)]
+        private static extern IntPtr ImageList_GetIcon(IntPtr himl, int i, int flags);
+
+        [DllImport("shell32.dll", EntryPoint = "#727")]
+        private static extern int SHGetImageList(int iImageList, ref Guid riid, out IntPtr ppv);
+
+        private static readonly Guid IID_IImageList = new Guid("46EB5926-582E-4017-9FDF-E8998DAA0950");
+        private const int SHIL_LARGE = 0x0;       // 32x32
+        private const int SHIL_SMALL = 0x1;       // 16x16
+        private const int SHIL_EXTRALARGE = 0x2;  // 48x48
+        private const int SHIL_SYSSMALL = 0x3;    // 16x16
+        private const int SHIL_JUMBO = 0x4;       // 256x256
+        private const uint SHGFI_SYSICONINDEX = 0x4000;
+        private const int ILD_TRANSPARENT = 0x00000001;
+
         // --- NEW: Native Shell API for robust icon extraction ---
         // --- UPDATED: Strict Unicode Shell API ---
     
@@ -558,52 +576,95 @@ namespace Desktop_Frames
                     if (System.IO.File.Exists(checkPath)) path = checkPath;
                 }
 
-                SHFILEINFO shinfo = new SHFILEINFO();
+                // 2. HIGH-RES EXTRACTION (JUMBO 256x256 or EXTRALARGE 48x48)
+                try
+                {
+                    SHFILEINFO shinfoIndex = new SHFILEINFO();
+                    uint flagsIndex = SHGFI_SYSICONINDEX;
+                    IntPtr res = SHGetFileInfo(path, 0, ref shinfoIndex, (uint)Marshal.SizeOf(shinfoIndex), flagsIndex);
+                    if (res != IntPtr.Zero && shinfoIndex.iIcon >= 0)
+                    {
+                        IntPtr hIconHighRes = IntPtr.Zero;
+                        Guid iid = IID_IImageList;
 
-                // 2. FLAG SELECTION
-                // Critical: Do NOT use SHGFI_USEFILEATTRIBUTES for .lnk files. 
-                // We want the Shell to read the file contents (the shortcut target), not just the file extension.
+                        // Try Jumbo first (256x256)
+                        if (SHGetImageList(SHIL_JUMBO, ref iid, out IntPtr himlJumbo) == 0 && himlJumbo != IntPtr.Zero)
+                        {
+                            hIconHighRes = ImageList_GetIcon(himlJumbo, shinfoIndex.iIcon, ILD_TRANSPARENT);
+                        }
+
+                        // If Jumbo not available, fallback to Extra Large (48x48)
+                        if (hIconHighRes == IntPtr.Zero)
+                        {
+                            if (SHGetImageList(SHIL_EXTRALARGE, ref iid, out IntPtr himlExtra) == 0 && himlExtra != IntPtr.Zero)
+                            {
+                                hIconHighRes = ImageList_GetIcon(himlExtra, shinfoIndex.iIcon, ILD_TRANSPARENT);
+                            }
+                        }
+
+                        if (hIconHighRes != IntPtr.Zero)
+                        {
+                            try
+                            {
+                                var highResImg = System.Windows.Interop.Imaging.CreateBitmapSourceFromHIcon(
+                                    hIconHighRes,
+                                    Int32Rect.Empty,
+                                    BitmapSizeOptions.FromEmptyOptions());
+
+                                if (highResImg.CanFreeze)
+                                {
+                                    highResImg.Freeze();
+                                }
+                                return highResImg;
+                            }
+                            finally
+                            {
+                                DestroyIcon(hIconHighRes);
+                            }
+                        }
+                    }
+                }
+                catch
+                {
+                    // Fallback to legacy extraction below
+                }
+
+                // 3. LEGACY EXTRACTION FALLBACK
+                SHFILEINFO shinfo = new SHFILEINFO();
                 uint flags = SHGFI_ICON | SHGFI_LARGEICON;
 
-                // 3. SPECIAL HANDLING FOR UWP SHORTCUTS
-                // If it is a shortcut, we force the shell to resolve it.
                 if (path.EndsWith(".lnk", StringComparison.OrdinalIgnoreCase))
                 {
-                    // Passing 0 as attributes forces shell to access the file
                     SHGetFileInfo(path, 0, ref shinfo, (uint)Marshal.SizeOf(shinfo), flags);
                 }
                 else if (isFolder)
                 {
-                    // FIX: Remove SHGFI_USEFILEATTRIBUTES to force Shell to read desktop.ini for custom icons.
-                    // We pass 0 for attributes so the Shell accesses the disk.
                     SHGetFileInfo(path, 0, ref shinfo, (uint)Marshal.SizeOf(shinfo), flags);
                 }
-                //else if (isFolder)
-                //{
-                //    // Optimization: For real folders, use attributes to avoid disk spin-up
-                //    flags |= SHGFI_USEFILEATTRIBUTES;
-                //    SHGetFileInfo(path, 0x00000010, ref shinfo, (uint)Marshal.SizeOf(shinfo), flags);
-                //}
                 else
                 {
-                    // Standard files
                     SHGetFileInfo(path, 0, ref shinfo, (uint)Marshal.SizeOf(shinfo), flags);
                 }
 
                 if (shinfo.hIcon == IntPtr.Zero) return null;
 
-                var img = System.Windows.Interop.Imaging.CreateBitmapSourceFromHIcon(
-                    shinfo.hIcon,
-                    Int32Rect.Empty,
-                    BitmapSizeOptions.FromEmptyOptions());
-
-                if (img.CanFreeze)
+                try
                 {
-                    img.Freeze();
-                }
+                    var img = System.Windows.Interop.Imaging.CreateBitmapSourceFromHIcon(
+                        shinfo.hIcon,
+                        Int32Rect.Empty,
+                        BitmapSizeOptions.FromEmptyOptions());
 
-                DeleteObject(shinfo.hIcon);
-                return img;
+                    if (img.CanFreeze)
+                    {
+                        img.Freeze();
+                    }
+                    return img;
+                }
+                finally
+                {
+                    DestroyIcon(shinfo.hIcon);
+                }
             }
             catch (Exception ex)
             {

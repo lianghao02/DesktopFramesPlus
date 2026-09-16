@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.InteropServices;
@@ -40,6 +40,7 @@ namespace Desktop_Frames
         private static JArray _sourceItemsList = null; // FIX: The specific list we are editing (Main or Tab)
 
         private static WrapPanel _sourceWrapPanel = null;
+        private static WrapPanel _currentHoverWrapPanel = null;
         private static Window _dragPreviewWindow = null;
         private static System.Windows.Point _lastDropIndicatorPosition = new System.Windows.Point(-1, -1);
         private static int _lastDropIndicatorIndex = -1;
@@ -173,6 +174,8 @@ namespace Desktop_Frames
                     }
 
                     if (_sourceWrapPanel != null) RemoveDropZoneIndicators(_sourceWrapPanel);
+                    if (_currentHoverWrapPanel != null && _currentHoverWrapPanel != _sourceWrapPanel) RemoveDropZoneIndicators(_currentHoverWrapPanel);
+                    _currentHoverWrapPanel = null;
 
                     _isDragging = false;
                     _draggedIcon = null;
@@ -202,29 +205,72 @@ namespace Desktop_Frames
             {
                 UpdateDragPreviewPosition(screenPosition);
 
-                if (_sourceWrapPanel != null)
+                WrapPanel targetPanel = null;
+                foreach (Window win in Application.Current.Windows)
                 {
-                    System.Windows.Point wrapPanelPosition = _sourceWrapPanel.PointFromScreen(screenPosition);
-                    ShowDropZoneIndicators(_sourceWrapPanel, wrapPanelPosition);
+                    if (win is NonActivatingWindow nw && nw.IsVisible)
+                    {
+                        Rect bounds = new Rect(nw.Left, nw.Top, nw.ActualWidth > 0 ? nw.ActualWidth : nw.Width, nw.ActualHeight > 0 ? nw.ActualHeight : nw.Height);
+                        if (bounds.Contains(screenPosition))
+                        {
+                            targetPanel = FindWrapPanel(nw);
+                            break;
+                        }
+                    }
+                }
+
+                if (targetPanel == null) targetPanel = _sourceWrapPanel;
+
+                if (_currentHoverWrapPanel != targetPanel)
+                {
+                    if (_currentHoverWrapPanel != null) RemoveDropZoneIndicators(_currentHoverWrapPanel);
+                    _currentHoverWrapPanel = targetPanel;
+                }
+
+                if (_currentHoverWrapPanel != null)
+                {
+                    System.Windows.Point wrapPanelPosition = _currentHoverWrapPanel.PointFromScreen(screenPosition);
+                    ShowDropZoneIndicators(_currentHoverWrapPanel, wrapPanelPosition);
                 }
             }
             catch { }
         }
 
         /// <summary>
-        /// Completes the drag operation and performs reordering
+        /// Completes the drag operation and performs reordering or cross-frame move
         /// </summary>
-        public static void CompleteDrag(System.Windows.Point finalPosition)
+        public static void CompleteDrag(System.Windows.Point screenPosition)
         {
             if (!_isDragging || _draggedIcon == null || _sourceWrapPanel == null) return;
 
             try
             {
-                // Calculate where to drop the item relative to the panel
-                int dropPosition = CalculateDropPosition(_sourceWrapPanel, finalPosition);
+                NonActivatingWindow sourceWindow = FindVisualParent<NonActivatingWindow>(_sourceWrapPanel);
+                NonActivatingWindow targetWindow = null;
 
-                // Perform the reordering on the specific list
-                ReorderframeItems(dropPosition);
+                foreach (Window win in Application.Current.Windows)
+                {
+                    if (win is NonActivatingWindow nw && nw.IsVisible)
+                    {
+                        Rect bounds = new Rect(nw.Left, nw.Top, nw.ActualWidth > 0 ? nw.ActualWidth : nw.Width, nw.ActualHeight > 0 ? nw.ActualHeight : nw.Height);
+                        if (bounds.Contains(screenPosition))
+                        {
+                            targetWindow = nw;
+                            break;
+                        }
+                    }
+                }
+
+                if (targetWindow == null || targetWindow == sourceWindow)
+                {
+                    System.Windows.Point wrapPanelPosition = _sourceWrapPanel.PointFromScreen(screenPosition);
+                    int dropPosition = CalculateDropPosition(_sourceWrapPanel, wrapPanelPosition);
+                    ReorderframeItems(dropPosition);
+                }
+                else
+                {
+                    MoveItemToTargetFrame(targetWindow, screenPosition);
+                }
 
                 CancelDrag();
             }
@@ -232,6 +278,169 @@ namespace Desktop_Frames
             {
                 LogManager.Log(LogManager.LogLevel.Error, LogManager.LogCategory.UI, $"Error completing drag: {ex.Message}");
                 CancelDrag();
+            }
+        }
+
+        public static void CompleteDrag()
+        {
+            GetCursorPos(out POINT pt);
+            CompleteDrag(new System.Windows.Point(pt.X, pt.Y));
+        }
+
+        private static void MoveItemToTargetFrame(NonActivatingWindow targetWindow, System.Windows.Point screenPosition)
+        {
+            if (targetWindow == null || _draggedItem == null || _sourceItemsList == null || _sourceFrame == null) return;
+
+            string targetFrameId = targetWindow.Tag?.ToString();
+            if (string.IsNullOrEmpty(targetFrameId)) return;
+
+            var FrameData = Framemanager.GetFrameData();
+            dynamic targetFrame = FrameData.FirstOrDefault(f => f.Id?.ToString() == targetFrameId);
+            if (targetFrame == null || targetFrame.ItemsType?.ToString() != "Data")
+            {
+                LogManager.Log(LogManager.LogLevel.Warn, LogManager.LogCategory.UI, "Cannot drop into target frame (not a Data frame or not found).");
+                return;
+            }
+
+            // Target JArray
+            JArray targetList = null;
+            bool tabsEnabled = targetFrame.TabsEnabled?.ToString().ToLower() == "true";
+            if (tabsEnabled)
+            {
+                var tabs = targetFrame.Tabs as JArray;
+                int currentTabIndex = Convert.ToInt32(targetFrame.CurrentTab?.ToString() ?? "0");
+                if (tabs != null && currentTabIndex >= 0 && currentTabIndex < tabs.Count)
+                {
+                    var activeTab = tabs[currentTabIndex] as JObject;
+                    targetList = activeTab?["Items"] as JArray;
+                }
+            }
+
+            if (targetList == null)
+            {
+                targetList = targetFrame.Items as JArray;
+                if (targetList == null)
+                {
+                    targetList = new JArray();
+                    if (targetFrame is JObject jObj) jObj["Items"] = targetList;
+                    else targetFrame.Items = targetList;
+                }
+            }
+
+            WrapPanel targetWrapPanel = FindWrapPanel(targetWindow);
+            int insertIndex = targetList.Count;
+            if (targetWrapPanel != null)
+            {
+                try
+                {
+                    System.Windows.Point targetPanelPoint = targetWrapPanel.PointFromScreen(screenPosition);
+                    insertIndex = CalculateDropPositionForPanel(targetWrapPanel, targetPanelPoint, targetList);
+                }
+                catch { }
+            }
+
+            // 1. Remove from source list
+            int currentPosition = -1;
+            for (int i = 0; i < _sourceItemsList.Count; i++)
+            {
+                if (_sourceItemsList[i]["Filename"]?.ToString() == _draggedItem["Filename"]?.ToString())
+                {
+                    currentPosition = i;
+                    break;
+                }
+            }
+
+            if (currentPosition >= 0)
+            {
+                _sourceItemsList.RemoveAt(currentPosition);
+                for (int i = 0; i < _sourceItemsList.Count; i++)
+                {
+                    _sourceItemsList[i]["DisplayOrder"] = i;
+                }
+            }
+
+            // 2. Insert into target list
+            insertIndex = Math.Max(0, Math.Min(insertIndex, targetList.Count));
+            targetList.Insert(insertIndex, _draggedItem);
+            for (int i = 0; i < targetList.Count; i++)
+            {
+                targetList[i]["DisplayOrder"] = i;
+            }
+
+            // 3. Save
+            FrameDataManager.SaveFrameData();
+
+            // 4. Refresh both frames
+            Application.Current.Dispatcher.Invoke(() =>
+            {
+                NonActivatingWindow sourceWindow = FindVisualParent<NonActivatingWindow>(_sourceWrapPanel);
+                if (sourceWindow != null)
+                {
+                    Framemanager.RefreshFrameUsingFormApproach(sourceWindow, _sourceFrame);
+                }
+                Framemanager.RefreshFrameUsingFormApproach(targetWindow, targetFrame);
+            });
+
+            LogManager.Log(LogManager.LogLevel.Info, LogManager.LogCategory.UI,
+                $"Transferred item {_draggedItem["Filename"]} to Target Frame {targetFrameId}");
+        }
+
+        private static int CalculateDropPositionForPanel(WrapPanel wrapPanel, System.Windows.Point mousePosition, JArray targetList)
+        {
+            try
+            {
+                if (wrapPanel == null) return 0;
+                var iconPanels = wrapPanel.Children.OfType<StackPanel>().Where(sp => sp != _draggedIcon).ToList();
+                if (iconPanels.Count == 0) return 0;
+
+                double closestDistance = double.MaxValue;
+                int bestInsertIndex = 0;
+
+                for (int i = 0; i < iconPanels.Count; i++)
+                {
+                    var iconPanel = iconPanels[i];
+                    try
+                    {
+                        var iconPosition = iconPanel.TranslatePoint(new System.Windows.Point(0, 0), wrapPanel);
+                        var iconCenter = new System.Windows.Point(
+                            iconPosition.X + iconPanel.ActualWidth / 2,
+                            iconPosition.Y + iconPanel.ActualHeight / 2
+                        );
+
+                        double distance = Math.Sqrt(Math.Pow(mousePosition.X - iconCenter.X, 2) + Math.Pow(mousePosition.Y - iconCenter.Y, 2));
+                        if (distance < closestDistance)
+                        {
+                            closestDistance = distance;
+                            bool insertBefore = mousePosition.X < iconCenter.X;
+
+                            var tagData = iconPanel.Tag;
+                            string filePath = tagData?.GetType().GetProperty("FilePath")?.GetValue(tagData)?.ToString();
+
+                            int dataIndex = -1;
+                            if (targetList != null && !string.IsNullOrEmpty(filePath))
+                            {
+                                for (int k = 0; k < targetList.Count; k++)
+                                {
+                                    if (targetList[k]["Filename"]?.ToString() == filePath)
+                                    {
+                                        dataIndex = k;
+                                        break;
+                                    }
+                                }
+                            }
+
+                            bestInsertIndex = dataIndex != -1 ? (insertBefore ? dataIndex : dataIndex + 1) : (insertBefore ? i : i + 1);
+                        }
+                    }
+                    catch { }
+                }
+
+                int maxCount = targetList?.Count ?? 0;
+                return Math.Max(0, Math.Min(bestInsertIndex, maxCount));
+            }
+            catch
+            {
+                return 0;
             }
         }
         #endregion

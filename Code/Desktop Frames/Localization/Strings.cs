@@ -283,6 +283,7 @@ namespace Desktop_Frames.Localization
         public static string MenuPluginSettings => Get("MenuPluginSettings");
         public static string MenuRemove => Get("MenuRemove");
         public static string MenuRenameItem => Get("MenuRenameItem");
+        public static string MenuRenameFrame => Get("MenuRenameFrame");
         public static string MenuResetColumns => Get("MenuResetColumns");
         public static string MenuResetSorting => Get("MenuResetSorting");
         public static string MenuRestoreLastDeleted => Get("MenuRestoreLastDeleted");

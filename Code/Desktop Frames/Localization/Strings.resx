@@ -972,6 +972,9 @@ Desktop Frames + is maintained by Nikos Georgousis, has been enhanced and optimi
   <data name="MenuRenameItem" xml:space="preserve">
     <value>Rename item</value>
   </data>
+  <data name="MenuRenameFrame" xml:space="preserve">
+    <value>Rename Frame</value>
+  </data>
   <data name="MenuResetColumns" xml:space="preserve">
     <value>Reset column layout</value>
   </data>

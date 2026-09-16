@@ -971,7 +971,10 @@
     <value>移除</value>
   </data>
   <data name="MenuRenameItem" xml:space="preserve">
-    <value>重新命名專案</value>
+    <value>重新命名項目</value>
+  </data>
+  <data name="MenuRenameFrame" xml:space="preserve">
+    <value>重新命名框架</value>
   </data>
   <data name="MenuResetColumns" xml:space="preserve">
     <value>重置列</value>
