@@ -897,6 +897,9 @@ Desktop Frames + is maintained by Nikos Georgousis, has been enhanced and optimi
   <data name="MenuDeleteThisFrame" xml:space="preserve">
     <value>Delete this Frame</value>
   </data>
+  <data name="MenuDesktopLayouts" xml:space="preserve">
+    <value>Desktop Layouts</value>
+  </data>
   <data name="MenuEdit" xml:space="preserve">
     <value>Edit...</value>
   </data>

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
@@ -248,6 +248,7 @@ namespace Desktop_Frames.Localization
         public static string MenuCutItem => Get("MenuCutItem");
         public static string MenuDeleteItem => Get("MenuDeleteItem");
         public static string MenuDeleteThisFrame => Get("MenuDeleteThisFrame");
+        public static string MenuDesktopLayouts => Get("MenuDesktopLayouts");
         public static string MenuEdit => Get("MenuEdit");
         public static string MenuEnableTabs => Get("MenuEnableTabs");
         public static string MenuExit => Get("MenuExit");

@@ -1,4 +1,4 @@
-﻿using Desktop_Frames.Localization;
+using Desktop_Frames.Localization;
 using Microsoft.Win32;
 using System;
 using System.Collections.Generic;
@@ -241,13 +241,15 @@ namespace Desktop_Frames
             }
 
             var trayMenu = new ContextMenuStrip();
+
+            // Desktop Layouts Submenu (Promoted to top for instant switching)
+            _profilesMenuItem = new ToolStripMenuItem(Strings.MenuDesktopLayouts);
+            trayMenu.Items.Add(_profilesMenuItem);
+            trayMenu.Items.Add(new ToolStripSeparator());
+
             trayMenu.Items.Add(Strings.MenuAbout, null, (s, e) => AboutFormManager.ShowAboutForm());
             trayMenu.Items.Add(Strings.MenuOptions, null, (s, e) => OptionsFormManager.ShowOptionsForm());
             trayMenu.Items.Add(new ToolStripSeparator());
-
-            // Profiles Submenu
-            _profilesMenuItem = new ToolStripMenuItem(Strings.TrayProfiles);
-            trayMenu.Items.Add(_profilesMenuItem);
 
             // Standalone Automation Toggle with explicit Save
             _automationMenuItem = new ToolStripMenuItem(Strings.LblEnableProfileAutomation) { CheckOnClick = true };
@@ -536,8 +538,9 @@ namespace Desktop_Frames
         {
             if (_profilesMenuItem == null) return;
 
-            _profilesMenuItem.DropDownItems.Clear();
             string currentProfile = ProfileManager.CurrentProfileName;
+            _profilesMenuItem.Text = $"{Strings.MenuDesktopLayouts} ({currentProfile})";
+            _profilesMenuItem.DropDownItems.Clear();
 
             // Get sorted list of profiles
             var profiles = ProfileManager.GetProfiles();
@@ -563,6 +566,7 @@ namespace Desktop_Frames
                         ProfileManager.SetManualBaseProfile(profile.Name);
                         _trayIcon.Text = $"Desktop Frames ({profile.Name})";
                         UpdateProfilesMenu();
+                        UpdateTrayIcon();
                     };
                 }
                 _profilesMenuItem.DropDownItems.Add(item);
@@ -570,38 +574,17 @@ namespace Desktop_Frames
 
             _profilesMenuItem.DropDownItems.Add(new ToolStripSeparator());
 
-            // 2. Quick Action: Create New Profile (Keep this for speed)
-            var createItem = new ToolStripMenuItem(Strings.TrayCreateNewProfile);
-            createItem.Click += (s, e) =>
-            {
-                string newName = Microsoft.VisualBasic.Interaction.InputBox("Enter name for new profile:", "New Profile");
-
-                if (!string.IsNullOrWhiteSpace(newName))
-                {
-                    if (ProfileManager.CreateProfile(newName))
-                    {
-                        UpdateProfilesMenu();
-                        MessageBoxesManager.ShowOKOnlyMessageBoxForm(Strings.Get("MsgProfileCreated", newName), Strings.DlgSuccess);
-                    }
-                    else
-                    {
-                        MessageBoxesManager.ShowOKOnlyMessageBoxForm(Strings.MsgCreateProfileFailed, Strings.DlgError);
-                    }
-                }
-            };
-            _profilesMenuItem.DropDownItems.Add(createItem);
-
-            // 3. Full UI: Manage Profiles (The new form)
+            // 2. Full UI: Manage Profiles
             var manageItem = new ToolStripMenuItem(Strings.TrayManageProfiles);
             manageItem.Click += (s, e) =>
             {
-                // Open the new Manager Window
                 var form = new ProfileManagerForm();
                 form.ShowDialog();
 
                 // Refresh menu immediately after closing the manager
-                // This ensures renames/reorders/deletes are reflected in the tray instantly
                 UpdateProfilesMenu();
+                UpdateTrayIcon();
+                Framemanager.UpdateAllHeartContextMenus();
             };
             _profilesMenuItem.DropDownItems.Add(manageItem);
         }

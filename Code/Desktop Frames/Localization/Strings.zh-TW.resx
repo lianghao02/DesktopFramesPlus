@@ -890,13 +890,16 @@
     <value>自訂…</value>
   </data>
   <data name="MenuCutItem" xml:space="preserve">
-    <value>剪下專案</value>
+    <value>剪下項目</value>
   </data>
   <data name="MenuDeleteItem" xml:space="preserve">
-    <value>刪除專案</value>
+    <value>刪除項目</value>
   </data>
   <data name="MenuDeleteThisFrame" xml:space="preserve">
     <value>刪除此面板</value>
+  </data>
+  <data name="MenuDesktopLayouts" xml:space="preserve">
+    <value>桌面版面</value>
   </data>
   <data name="MenuEdit" xml:space="preserve">
     <value>編輯…</value>

@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <root>
   <!-- 
     Microsoft ResX Schema 
@@ -955,6 +955,9 @@
   </data>
   <data name="MenuDeleteThisFrame" xml:space="preserve">
     <value>删除此面板</value>
+  </data>
+  <data name="MenuDesktopLayouts" xml:space="preserve">
+    <value>桌面布局</value>
   </data>
   <data name="MenuEdit" xml:space="preserve">
     <value>编辑…</value>

@@ -1199,6 +1199,52 @@ namespace Desktop_Frames
             menu.MouseLeave += (s, e) => { menuTimer.Stop(); menuTimer.Start(); };
             // ------------------------
 
+            // Desktop Layouts Submenu
+            string currentProfile = ProfileManager.CurrentProfileName;
+            var layoutsSubMenu = new MenuItem
+            {
+                Header = $"{Strings.MenuDesktopLayouts} ({currentProfile})"
+            };
+
+            var profiles = ProfileManager.GetProfiles();
+            foreach (var profile in profiles)
+            {
+                var profileItem = new MenuItem
+                {
+                    Header = $"{profile.Name} [{profile.Id}]",
+                    IsCheckable = true,
+                    IsChecked = string.Equals(profile.Name, currentProfile, StringComparison.OrdinalIgnoreCase),
+                    IsEnabled = !string.Equals(profile.Name, currentProfile, StringComparison.OrdinalIgnoreCase)
+                };
+
+                string targetProfileName = profile.Name;
+                profileItem.Click += (s, e) =>
+                {
+                    ProfileManager.SetManualBaseProfile(targetProfileName);
+                    ProfileManager.SwitchToProfile(targetProfileName);
+                    TrayManager.Instance?.UpdateProfilesMenu();
+                    TrayManager.Instance?.UpdateTrayIcon();
+                };
+
+                layoutsSubMenu.Items.Add(profileItem);
+            }
+
+            layoutsSubMenu.Items.Add(new Separator());
+
+            var manageLayoutsItem = new MenuItem { Header = Strings.TrayManageProfiles };
+            manageLayoutsItem.Click += (s, e) =>
+            {
+                var form = new ProfileManagerForm();
+                form.ShowDialog();
+                TrayManager.Instance?.UpdateProfilesMenu();
+                TrayManager.Instance?.UpdateTrayIcon();
+                UpdateAllHeartContextMenus();
+            };
+            layoutsSubMenu.Items.Add(manageLayoutsItem);
+
+            menu.Items.Add(layoutsSubMenu);
+            menu.Items.Add(new Separator());
+
             // About item
             var aboutItem = new MenuItem { Header = Strings.MenuAbout };
             aboutItem.Click += (s, e) => AboutFormManager.ShowAboutForm();
