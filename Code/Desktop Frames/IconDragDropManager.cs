@@ -207,7 +207,9 @@ namespace Desktop_Frames
             {
                 POINT pt = new POINT { X = (int)screenPosition.X, Y = (int)screenPosition.Y };
                 IntPtr hwnd = WindowFromPoint(pt);
-                if (hwnd != IntPtr.Zero)
+                IntPtr previewHwnd = _dragPreviewWindow != null ? new System.Windows.Interop.WindowInteropHelper(_dragPreviewWindow).Handle : IntPtr.Zero;
+
+                if (hwnd != IntPtr.Zero && hwnd != previewHwnd)
                 {
                     foreach (Window win in Application.Current.Windows)
                     {
@@ -378,15 +380,21 @@ namespace Desktop_Frames
             if (currentPosition >= 0)
             {
                 _sourceItemsList.RemoveAt(currentPosition);
-                for (int i = 0; i < _sourceItemsList.Count; i++)
-                {
-                    _sourceItemsList[i]["DisplayOrder"] = i;
-                }
+            }
+            else if (_draggedItem is JToken draggedToken && draggedToken.Parent != null)
+            {
+                draggedToken.Remove();
             }
 
-            // 2. Insert into target list
+            for (int i = 0; i < _sourceItemsList.Count; i++)
+            {
+                _sourceItemsList[i]["DisplayOrder"] = i;
+            }
+
+            // 2. Clone and Insert into target list
+            JToken itemToInsert = _draggedItem is JToken jt ? jt.DeepClone() : JToken.FromObject(_draggedItem);
             insertIndex = Math.Max(0, Math.Min(insertIndex, targetList.Count));
-            targetList.Insert(insertIndex, _draggedItem);
+            targetList.Insert(insertIndex, itemToInsert);
             for (int i = 0; i < targetList.Count; i++)
             {
                 targetList[i]["DisplayOrder"] = i;
