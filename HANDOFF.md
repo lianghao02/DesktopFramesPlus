@@ -2,9 +2,9 @@
 
 - **Repository**: `lianghao02/DesktopFramesPlus`
 - **Branch**: `main`
-- **功能實作基準 Commit**: `4b3f234`
-- **交接文件最後驗證時的 HEAD**: `4b3f234`
-- **版本狀態備註**: 本文件提交後請以 `git status` 與 `git log` 實況為準（修復跨 Fence 拖曳 DPI 判定、消除點擊卡頓與磁碟 I/O 阻塞）
+- **功能實作基準 Commit**: `80eefe9`
+- **交接文件最後驗證時的 HEAD**: `80eefe9`
+- **版本狀態備註**: 本文件提交後請以 `git status` 與 `git log` 實況為準（修復跨 Fence 拖曳預覽視窗遮蔽放不下去與轉移物件複製問題）
 - **Task Type**: FIX / ENHANCEMENT / PERF / AUDIT
 - **Date**: 2026-09-16
 - **Status**: 待驗收中，Release Build 成功，工作目錄 Clean
@@ -50,6 +50,14 @@
   - **修復**：移除開頭的不必要同步磁碟檢查。
 - **根本原因 3 (焦點爭奪與重繪)**：`SetSelectedIcon` 中原先呼叫了 `parentWin.Activate()`，與 `NonActivatingWindow` 的底層 `MA_NOACTIVATE` 衝突，導致作業系統與 WPF 重繪焦點延遲。
   - **修復**：移除 `parentWin.Activate()`，圖示面板自身設定 `sp.Focusable = true; sp.Focus()` 即可完美響應 `Delete` 快捷鍵。
+
+### F. 跨 Fence 拖曳「放不下去」與「變成複製」根治 (Commit `80eefe9`)
+- **放不下去問題（預覽視窗遮擋）**：
+  - **根因**：跟隨滑鼠游標移動的半透明預覽視窗 `_dragPreviewWindow` 在 Win32 層級（`WindowFromPoint`）仍會被滑鼠游標正下方的射線命中，導致 `FindTargetWindowAtScreenPoint` 比對不到目標 `NonActivatingWindow`，回傳 `null` 並視為拖出 Fence 外而取消。
+  - **修復**：於 `FindTargetWindowAtScreenPoint` 取得 `_dragPreviewWindow` 之 HWND，若 `WindowFromPoint` 命中該預覽視窗則予以排除，確保精準穿透命中底層目標 Fence。
+- **變成複製問題（物件引用未隔離與來源殘留）**：
+  - **根因**：原先直接將 `_draggedItem` 物件傳遞插入目標 JArray，在物件引用未隔離情況下，若來源端因比對問題未完全移除，兩側 Fence 的 JArray 會同時持有同一物件並存檔，造成幽靈複本。
+  - **修復**：目標端插入時強制執行 `DeepClone()`（`itemToInsert = _draggedItem is JToken jt ? jt.DeepClone() : JToken.FromObject(_draggedItem);`），來源端除 Index 移除外亦確保 JToken 父層移除，阻斷跨視窗引用共享。
 
 ---
 
