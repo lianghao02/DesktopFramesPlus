@@ -2,10 +2,10 @@
 
 - **Repository**: `lianghao02/DesktopFramesPlus`
 - **Branch**: `main`
-- **Commit SHA**: `c29e6d2` (最新代碼 commit: `be84267`)
+- **Commit SHA**: `21a13a5` (功能實作最新代碼 commit: `be84267`)
 - **Task Type**: FIX / ENHANCEMENT / AUDIT
 - **Date**: 2026-09-16
-- **Status**: 目前功能完工，Release Build 成功 (Exit Code: 0)，工作目錄 Clean
+- **Status**: 待驗收中（比 origin/main 領先 7 個 Commit），Release Build 成功，工作目錄 Clean
 
 ---
 
@@ -69,5 +69,5 @@
 
 ## 4. 給 Codex 的交接指引
 1. **工作目錄與分支**：`D:\Development\GitHub\DesktopFramesPlus`，分支 `main`。
-2. **最新 Commit**：`c29e6d2`，本地領先 `origin/main` 6 個 commits。
-3. **下一步方向**：若使用者測試已無其他體驗阻礙，可直接準備 Release 發布或依審查建議進行微調。
+2. **最新 Commit**：`21a13a5`，本地領先 `origin/main` 7 個 commits。
+3. **下一步方向**：依據使用者驗收清單進行實測驗收，暫緩加入新功能；優先關注 fork 更新來源安全（防止向 limbo666 拉取覆蓋）。
