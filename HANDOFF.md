@@ -2,8 +2,9 @@
 
 - **Repository**: `lianghao02/DesktopFramesPlus`
 - **Branch**: `main`
-- **Commit SHA**: `0adb376`
-- **Task Type**: FEAT / ENHANCEMENT
+- **Commit SHA**: `778925f`
+- **Release Tag**: `v2.8.0-zh-TW`
+- **Task Type**: RELEASE / ENHANCEMENT
 - **Date**: 2026-09-16
 
 ## 1. 當前已完成工作
