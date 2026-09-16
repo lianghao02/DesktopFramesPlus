@@ -6953,78 +6953,28 @@ namespace Desktop_Frames
 
             InitContent();
 
-            // Delete 鍵移除：按 Delete 時移除目前選取的圖示（限 Data frame）
+            // 1. 點擊視窗任意空白區域（非圖示目標）→ 立即取消高亮選取
+            win.PreviewMouseDown += (s, e) =>
+            {
+                if (_currentlySelectedIconPanel != null)
+                {
+                    DependencyObject source = e.OriginalSource as DependencyObject;
+                    StackPanel clickedSp = FindVisualParent<StackPanel>(source);
+                    if (clickedSp == null || clickedSp.Tag == null)
+                    {
+                        DeselectIcon();
+                    }
+                }
+            };
+
+            // 2. Delete 鍵快捷移除：按 Delete 時移除目前選取的圖示（限 Data frame，絕不碰實體檔案）
             if (frame.ItemsType?.ToString() == "Data")
             {
                 win.PreviewKeyDown += (s, e) =>
                 {
                     if (e.Key == Key.Delete && _currentlySelectedIconPanel != null)
                     {
-                        var selectedSp = _currentlySelectedIconPanel;
-                        try
-                        {
-                            // 取得 sp Tag 的 FilePath
-                            var tagObj = selectedSp.Tag;
-                            if (tagObj == null) return;
-                            string filePath = null;
-                            var tagType = tagObj.GetType();
-                            var fpProp = tagType.GetProperty("FilePath");
-                            if (fpProp != null) filePath = fpProp.GetValue(tagObj) as string;
-                            if (string.IsNullOrEmpty(filePath)) return;
-
-                            // 找到 liveFrame
-                            string frameId = frame.Id?.ToString();
-                            var liveFrame = FrameDataManager.FrameData.FirstOrDefault(f => f.Id?.ToString() == frameId);
-                            if (liveFrame == null) return;
-
-                            // 找到對應的 JArray
-                            JArray targetArray = liveFrame.Items as JArray;
-                            bool tabsEnabled = liveFrame.TabsEnabled?.ToString().ToLower() == "true";
-                            if (tabsEnabled)
-                            {
-                                var tabs = liveFrame.Tabs as JArray;
-                                int tabIdx = Convert.ToInt32(liveFrame.CurrentTab?.ToString() ?? "0");
-                                if (tabs != null && tabIdx < tabs.Count)
-                                    targetArray = tabs[tabIdx]["Items"] as JArray;
-                            }
-                            if (targetArray == null) return;
-
-                            // 確認確認訊息
-                            string displayName = System.IO.Path.GetFileNameWithoutExtension(filePath);
-                            bool isSpacer = filePath.StartsWith("INTERNAL_BLANK_");
-                            string confirmMsg = isSpacer
-                                ? Strings.Get("MsgConfirmRemoveItem", Strings.MenuSpacerBlank)
-                                : Strings.Get("MsgConfirmRemoveItem", displayName);
-
-                            var result = System.Windows.MessageBox.Show(
-                                confirmMsg,
-                                Strings.DlgInfo,
-                                MessageBoxButton.YesNo,
-                                MessageBoxImage.Question);
-
-                            if (result != MessageBoxResult.Yes) return;
-
-                            // 找 liveItem
-                            JToken liveItem = isSpacer
-                                ? targetArray.FirstOrDefault(i => i["Filename"]?.ToString() == filePath)
-                                : targetArray.FirstOrDefault(i => string.Equals(
-                                    System.IO.Path.GetFullPath(i["Filename"]?.ToString() ?? ""),
-                                    System.IO.Path.GetFullPath(filePath),
-                                    StringComparison.OrdinalIgnoreCase));
-
-                            if (liveItem != null)
-                            {
-                                targetArray.Remove(liveItem);
-                                FrameDataManager.SaveFrameData();
-                                var wp = VisualTreeHelper.GetParent(selectedSp) as WrapPanel;
-                                if (wp != null) wp.Children.Remove(selectedSp);
-                                DeselectIcon();
-                            }
-                        }
-                        catch (Exception ex)
-                        {
-                            LogManager.Log(LogManager.LogLevel.Error, LogManager.LogCategory.UI, $"Delete key remove error: {ex.Message}");
-                        }
+                        RemoveSelectedIconFromFrame(_currentlySelectedIconPanel);
                         e.Handled = true;
                     }
                 };
@@ -7209,7 +7159,10 @@ namespace Desktop_Frames
             {
                 Width = iconWidth,
                 Height = iconHeight,
-                Margin = new Thickness(5)
+                Margin = new Thickness(5),
+                Stretch = Stretch.Uniform,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center
             };
             RenderOptions.SetBitmapScalingMode(ico, BitmapScalingMode.HighQuality);
             if (SettingsManager.IconVisibilityEffect != IconVisibilityEffect.None)
@@ -8605,12 +8558,12 @@ namespace Desktop_Frames
                 // CASE E: STANDARD FILES
                 else
                 {
-                    try { newIcon = System.Drawing.Icon.ExtractAssociatedIcon(filePath).ToImageSource(); }
-                    catch
+                    // 優先使用系統 Shell 高清圖示（Jumbo 256x256 或 ExtraLarge 48x48）
+                    newIcon = Utility.GetShellIcon(filePath, false);
+                    if (newIcon == null)
                     {
-                        // FIX: Office/AppX Icon Crash (.pptx, etc.). Fallback to Shell API.
-                        newIcon = Utility.GetShellIcon(filePath, false);
-                        if (newIcon == null)
+                        try { newIcon = System.Drawing.Icon.ExtractAssociatedIcon(filePath).ToImageSource(); }
+                        catch
                         {
                             newIcon = new BitmapImage(new Uri("pack://application:,,,/Resources/file-WhiteX.png"));
                         }
@@ -8713,12 +8666,24 @@ namespace Desktop_Frames
         }
 
 
-        /// <summary>高亮選取指定圖示面板（半透明藍色背景），同時取消先前選取</summary>
+        /// <summary>高亮選取指定圖示面板（半透明藍色背景），同時獲取焦點以響應 Delete 快捷鍵</summary>
         private static void SetSelectedIcon(StackPanel sp)
         {
             DeselectIcon();
             _currentlySelectedIconPanel = sp;
             sp.Background = new SolidColorBrush(System.Windows.Media.Color.FromArgb(90, 0, 120, 215));
+
+            try
+            {
+                sp.Focusable = true;
+                NonActivatingWindow parentWin = FindVisualParent<NonActivatingWindow>(sp);
+                if (parentWin != null)
+                {
+                    parentWin.Activate();
+                }
+                sp.Focus();
+            }
+            catch { }
         }
 
         /// <summary>取消目前選取的圖示高亮</summary>
@@ -8728,6 +8693,76 @@ namespace Desktop_Frames
             {
                 _currentlySelectedIconPanel.Background = System.Windows.Media.Brushes.Transparent;
                 _currentlySelectedIconPanel = null;
+            }
+        }
+
+        /// <summary>自指定分區移除目前選取的圖示（僅移除捷徑或分區項目，絕不刪除實體檔案）</summary>
+        public static void RemoveSelectedIconFromFrame(StackPanel selectedSp)
+        {
+            if (selectedSp == null) return;
+            try
+            {
+                var tagObj = selectedSp.Tag;
+                if (tagObj == null) return;
+                string filePath = null;
+                var tagType = tagObj.GetType();
+                var fpProp = tagType.GetProperty("FilePath");
+                if (fpProp != null) filePath = fpProp.GetValue(tagObj) as string;
+                if (string.IsNullOrEmpty(filePath)) return;
+
+                NonActivatingWindow win = FindVisualParent<NonActivatingWindow>(selectedSp);
+                string frameId = win?.Tag?.ToString();
+                if (string.IsNullOrEmpty(frameId)) return;
+
+                var liveFrame = FrameDataManager.FrameData.FirstOrDefault(f => f.Id?.ToString() == frameId);
+                if (liveFrame == null) return;
+
+                // 找到對應的 JArray
+                JArray targetArray = liveFrame.Items as JArray;
+                bool tabsEnabled = liveFrame.TabsEnabled?.ToString().ToLower() == "true";
+                if (tabsEnabled)
+                {
+                    var tabs = liveFrame.Tabs as JArray;
+                    int tabIdx = Convert.ToInt32(liveFrame.CurrentTab?.ToString() ?? "0");
+                    if (tabs != null && tabIdx < tabs.Count)
+                        targetArray = tabs[tabIdx]["Items"] as JArray;
+                }
+                if (targetArray == null) return;
+
+                string displayName = System.IO.Path.GetFileNameWithoutExtension(filePath);
+                bool isSpacer = filePath.StartsWith("INTERNAL_BLANK_");
+                string confirmMsg = isSpacer
+                    ? Strings.Get("MsgConfirmRemoveItem", Strings.MenuSpacerBlank)
+                    : Strings.Get("MsgConfirmRemoveItem", displayName);
+
+                var result = System.Windows.MessageBox.Show(
+                    confirmMsg + "\n\n(" + (Strings.DlgConfirmImport != null ? "僅自此分區移除，不會刪除原始檔案" : "Remove from frame only, original file will not be deleted") + ")",
+                    Strings.DlgInfo,
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Question);
+
+                if (result != MessageBoxResult.Yes) return;
+
+                // 找 liveItem
+                JToken liveItem = isSpacer
+                    ? targetArray.FirstOrDefault(i => i["Filename"]?.ToString() == filePath)
+                    : targetArray.FirstOrDefault(i => string.Equals(
+                        System.IO.Path.GetFullPath(i["Filename"]?.ToString() ?? ""),
+                        System.IO.Path.GetFullPath(filePath),
+                        StringComparison.OrdinalIgnoreCase));
+
+                if (liveItem != null)
+                {
+                    targetArray.Remove(liveItem);
+                    FrameDataManager.SaveFrameData();
+                    var wp = VisualTreeHelper.GetParent(selectedSp) as WrapPanel;
+                    if (wp != null) wp.Children.Remove(selectedSp);
+                    DeselectIcon();
+                }
+            }
+            catch (Exception ex)
+            {
+                LogManager.Log(LogManager.LogLevel.Error, LogManager.LogCategory.UI, $"Delete key remove error: {ex.Message}");
             }
         }
 
@@ -8930,17 +8965,28 @@ namespace Desktop_Frames
                 }
             }
 
+            void KeyDownHandler(object sender, KeyEventArgs e)
+            {
+                if (e.Key == Key.Delete && _currentlySelectedIconPanel == sp)
+                {
+                    RemoveSelectedIconFromFrame(sp);
+                    e.Handled = true;
+                }
+            }
+
             // --- SAFELY REMOVE PREVIOUS HANDLERS (WPF APPROACH) ---
             sp.RemoveHandler(UIElement.MouseLeftButtonDownEvent, new MouseButtonEventHandler(MouseDownHandler));
             sp.RemoveHandler(UIElement.MouseMoveEvent, new MouseEventHandler(MouseMoveHandler));
             sp.RemoveHandler(UIElement.MouseLeftButtonUpEvent, new MouseButtonEventHandler(MouseUpHandler));
             sp.RemoveHandler(UIElement.KeyUpEvent, new KeyEventHandler(KeyUpHandler));
+            sp.RemoveHandler(UIElement.PreviewKeyDownEvent, new KeyEventHandler(KeyDownHandler));
 
             // --- ATTACH FRESH HANDLERS ---
             sp.MouseLeftButtonDown += MouseDownHandler;
             sp.MouseMove += MouseMoveHandler;
             sp.MouseLeftButtonUp += MouseUpHandler;
             sp.KeyUp += KeyUpHandler;
+            sp.PreviewKeyDown += KeyDownHandler;
         }
 
 

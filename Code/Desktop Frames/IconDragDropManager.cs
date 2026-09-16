@@ -451,17 +451,14 @@ namespace Desktop_Frames
         {
             try
             {
-                if (wrapPanel == null || _draggedIcon == null) return 0;
+                if (wrapPanel == null || _sourceItemsList == null || _sourceItemsList.Count == 0) return 0;
 
-                var iconPanels = wrapPanel.Children.OfType<StackPanel>().Where(sp => sp != _draggedIcon).ToList();
+                var iconPanels = wrapPanel.Children.OfType<StackPanel>().ToList();
                 if (iconPanels.Count == 0) return 0;
 
                 double closestDistance = double.MaxValue;
-                int bestInsertIndex = 0;
-
-                // We assume items in the WrapPanel match the order in _sourceItemsList
-                // But we must be careful if the visual list and data list are out of sync.
-                // Best bet is to find the index of the closest icon in the source list.
+                int closestIndex = 0;
+                bool insertBefore = true;
 
                 for (int i = 0; i < iconPanels.Count; i++)
                 {
@@ -479,42 +476,33 @@ namespace Desktop_Frames
                         if (distance < closestDistance)
                         {
                             closestDistance = distance;
-                            bool insertBefore = mousePosition.X < iconCenter.X;
-
-                            // Find this visual icon's corresponding data index
-                            var tagData = iconPanel.Tag;
-                            string filePath = tagData?.GetType().GetProperty("FilePath")?.GetValue(tagData)?.ToString();
-
-                            int dataIndex = -1;
-                            if (_sourceItemsList != null && !string.IsNullOrEmpty(filePath))
-                            {
-                                for (int k = 0; k < _sourceItemsList.Count; k++)
-                                {
-                                    if (_sourceItemsList[k]["Filename"]?.ToString() == filePath)
-                                    {
-                                        dataIndex = k;
-                                        break;
-                                    }
-                                }
-                            }
-
-                            if (dataIndex != -1)
-                            {
-                                bestInsertIndex = insertBefore ? dataIndex : dataIndex + 1;
-                            }
-                            else
-                            {
-                                // Fallback: Use visual index if data match fails
-                                bestInsertIndex = insertBefore ? i : i + 1;
-                            }
+                            closestIndex = i;
+                            insertBefore = mousePosition.X < iconCenter.X;
                         }
                     }
                     catch { }
                 }
 
-                // Bounds Check
-                int maxCount = _sourceItemsList?.Count ?? 0;
-                return Math.Max(0, Math.Min(bestInsertIndex, maxCount));
+                // 找到 closestIndex 對應到 _sourceItemsList 的 dataIndex
+                int targetDataIndex = closestIndex;
+                if (closestIndex >= 0 && closestIndex < iconPanels.Count)
+                {
+                    var tagData = iconPanels[closestIndex].Tag;
+                    string filePath = tagData?.GetType().GetProperty("FilePath")?.GetValue(tagData)?.ToString();
+                    if (!string.IsNullOrEmpty(filePath))
+                    {
+                        for (int k = 0; k < _sourceItemsList.Count; k++)
+                        {
+                            if (_sourceItemsList[k]["Filename"]?.ToString() == filePath)
+                            {
+                                targetDataIndex = k;
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                return insertBefore ? targetDataIndex : targetDataIndex + 1;
             }
             catch
             {
@@ -526,7 +514,6 @@ namespace Desktop_Frames
         {
             try
             {
-                // FIX: Use _sourceItemsList instead of _sourceFrame.Items
                 if (_sourceItemsList == null || _draggedItem == null) return;
 
                 int currentPosition = -1;
@@ -540,28 +527,36 @@ namespace Desktop_Frames
                 }
 
                 if (currentPosition == -1) return;
-                if (currentPosition == newPosition || (currentPosition + 1 == newPosition)) return;
 
-                // Move logic
-                var itemToMove = _sourceItemsList[currentPosition];
-                _sourceItemsList.RemoveAt(currentPosition);
-
-                int adjustedPosition = newPosition;
-                if (currentPosition < newPosition) adjustedPosition--;
-
-                adjustedPosition = Math.Max(0, Math.Min(adjustedPosition, _sourceItemsList.Count));
-                _sourceItemsList.Insert(adjustedPosition, itemToMove);
-
-                // Update DisplayOrder
-                for (int i = 0; i < _sourceItemsList.Count; i++)
+                // 若目標位置在當前位置之後，因為移除當前項目後索引會往前縮 1，因此目標索引減 1
+                int finalTargetIndex = newPosition;
+                if (currentPosition < newPosition)
                 {
-                    _sourceItemsList[i]["DisplayOrder"] = i;
+                    finalTargetIndex = newPosition - 1;
                 }
 
-                FrameDataManager.SaveFrameData();
+                finalTargetIndex = Math.Max(0, Math.Min(finalTargetIndex, _sourceItemsList.Count - 1));
 
-                // Refresh UI
-                RefreshFrameUI();
+                // 只有在目標索引不同時才執行重新排序
+                if (finalTargetIndex != currentPosition)
+                {
+                    var itemToMove = _sourceItemsList[currentPosition];
+                    _sourceItemsList.RemoveAt(currentPosition);
+                    _sourceItemsList.Insert(finalTargetIndex, itemToMove);
+
+                    // 更新所有項目的 DisplayOrder
+                    for (int i = 0; i < _sourceItemsList.Count; i++)
+                    {
+                        _sourceItemsList[i]["DisplayOrder"] = i;
+                    }
+
+                    FrameDataManager.SaveFrameData();
+
+                    // 即時刷新 UI
+                    RefreshFrameUI();
+                    LogManager.Log(LogManager.LogLevel.Info, LogManager.LogCategory.UI,
+                        $"Reordered item {_draggedItem["Filename"]} from {currentPosition} to {finalTargetIndex}");
+                }
             }
             catch (Exception ex)
             {
@@ -656,6 +651,7 @@ namespace Desktop_Frames
                     AllowsTransparency = true,
                     Background = System.Windows.Media.Brushes.Transparent,
                     ShowInTaskbar = false,
+                    ShowActivated = false,
                     Topmost = true,
                     Width = originalIcon.ActualWidth > 0 ? originalIcon.ActualWidth : 60,
                     Height = originalIcon.ActualHeight > 0 ? originalIcon.ActualHeight : 80,
