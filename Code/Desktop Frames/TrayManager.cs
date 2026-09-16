@@ -245,6 +245,7 @@ namespace Desktop_Frames
             // Desktop Layouts Submenu (Promoted to top for instant switching)
             _profilesMenuItem = new ToolStripMenuItem(Strings.MenuDesktopLayouts);
             trayMenu.Items.Add(_profilesMenuItem);
+            trayMenu.Items.Add(Strings.MenuDrawFrame, null, (s, e) => Framemanager.StartDrawMode());
             trayMenu.Items.Add(new ToolStripSeparator());
 
             trayMenu.Items.Add(Strings.MenuAbout, null, (s, e) => AboutFormManager.ShowAboutForm());

@@ -1,4 +1,5 @@
-﻿using System;
+using Desktop_Frames.Localization;
+using System;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -45,8 +46,7 @@ namespace Desktop_Frames
             _canvas = new Canvas();
             Content = _canvas;
 
-        
-            _hintBox = MessageBoxesManager.CreateUnifiedMessage("Draw a box to create a Frame (Esc to cancel)");
+            _hintBox = MessageBoxesManager.CreateUnifiedMessage(Strings.DrawFrameHint);
 
             _canvas.Children.Add(_hintBox);
 

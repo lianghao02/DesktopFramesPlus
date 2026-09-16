@@ -1259,6 +1259,10 @@ namespace Desktop_Frames
             menu.Items.Add(new Separator());
 
             // New frame items
+            var drawFrameItem = new MenuItem { Header = Strings.MenuDrawFrame };
+            drawFrameItem.Click += (s, e) => StartDrawMode();
+            menu.Items.Add(drawFrameItem);
+
             var newFrameItem = new MenuItem { Header = Strings.MenuNewFrame };
             newFrameItem.Click += (s, e) =>
             {
@@ -3509,35 +3513,139 @@ namespace Desktop_Frames
 
         public static void CreateFrameFromDraw(Rect r)
         {
-            // 1. Generate Random Unique Name (Adjective + Place pattern)
             string defaultName = CoreUtilities.GenerateUniqueFrameName();
 
-            // 2. Ask for Name (Pre-filled with the random name)
-            string name = Microsoft.VisualBasic.Interaction.InputBox("Enter name for new Frame:", "Create Frame", defaultName);
-            if (string.IsNullOrWhiteSpace(name)) return;
+            var dialog = new DrawFrameConfirmDialog(r, defaultName);
+            dialog.ShowDialog();
 
-            // 2. Create Data
-            // FIX: Changed "Standard" to "Data" so it functions correctly
+            if (!dialog.Confirmed) return;
+
+            string name = dialog.FrameTitle;
             var frame = FrameDataManager.CreateNewFrame(name, "Data", r.X, r.Y);
 
-            // 3. Update Dimensions & Title
-            // CreateNewFrame uses defaults (230x130) and generates a random name for Data Frames.
-            // We must override these with the User's Input and the Drawn Size.
             var frameDict = frame as System.Collections.Generic.IDictionary<string, object>;
             if (frameDict != null)
             {
                 frameDict["Width"] = r.Width;
                 frameDict["Height"] = r.Height;
-
-                // FIX: Force set the title to what the user actually typed
                 frameDict["Title"] = name;
-
                 FrameDataManager.SaveFrameData();
             }
 
-            // 4. Refresh UI
-            // Your ReloadFrames() correctly rebuilds the entire UI state
+            // Safe Non-destructive Item Collection
+            if (dialog.SelectedItemPaths != null && dialog.SelectedItemPaths.Count > 0)
+            {
+                foreach (string itemPath in dialog.SelectedItemPaths)
+                {
+                    try
+                    {
+                        AddItemToDataFrame(frame, itemPath);
+                    }
+                    catch (Exception ex)
+                    {
+                        LogManager.Log(LogManager.LogLevel.Error, LogManager.LogCategory.FrameCreation,
+                            $"Failed to add item '{itemPath}' to drawn frame: {ex.Message}");
+                    }
+                }
+                FrameDataManager.SaveFrameData();
+            }
+
             ReloadFrames();
+        }
+
+        public static bool AddItemToDataFrame(dynamic frame, string droppedFile)
+        {
+            if (frame == null || string.IsNullOrWhiteSpace(droppedFile)) return false;
+
+            bool fileExists = System.IO.File.Exists(droppedFile);
+            bool directoryExists = System.IO.Directory.Exists(droppedFile);
+            if (!fileExists && !directoryExists) return false;
+
+            bool isFolder = directoryExists;
+            if (!System.IO.Directory.Exists("Shortcuts")) System.IO.Directory.CreateDirectory("Shortcuts");
+            string baseShortcutName = System.IO.Path.Combine("Shortcuts", System.IO.Path.GetFileName(droppedFile));
+            string shortcutName = baseShortcutName;
+            int counter = 1;
+
+            bool isDroppedShortcut = System.IO.Path.GetExtension(droppedFile).ToLower() == ".lnk";
+            bool isDroppedUrlFile = System.IO.Path.GetExtension(droppedFile).ToLower() == ".url";
+            bool isWebLink = isDroppedUrlFile || CoreUtilities.IsWebLinkShortcut(droppedFile);
+
+            if (!isDroppedShortcut && !isDroppedUrlFile)
+            {
+                // CASE A: Creating new shortcut from raw file/folder
+                shortcutName = baseShortcutName + ".lnk";
+                while (System.IO.File.Exists(shortcutName))
+                {
+                    shortcutName = System.IO.Path.Combine("Shortcuts", $"{System.IO.Path.GetFileNameWithoutExtension(droppedFile)} ({counter++}).lnk");
+                }
+
+                try
+                {
+                    WshShell shell = new WshShell();
+                    IWshShortcut shortcut = (IWshShortcut)shell.CreateShortcut(shortcutName);
+                    shortcut.TargetPath = droppedFile;
+                    if (isFolder) shortcut.WorkingDirectory = droppedFile;
+                    shortcut.Save();
+                }
+                catch { return false; }
+            }
+            else
+            {
+                // CASE B: Copying existing shortcut (LNK or URL)
+                string ext = isWebLink ? ".url" : ".lnk";
+                if (!baseShortcutName.EndsWith(ext, StringComparison.OrdinalIgnoreCase))
+                    baseShortcutName = System.IO.Path.ChangeExtension(baseShortcutName, ext);
+
+                shortcutName = baseShortcutName;
+                while (System.IO.File.Exists(shortcutName))
+                {
+                    string nameNoExt = System.IO.Path.GetFileNameWithoutExtension(droppedFile);
+                    shortcutName = System.IO.Path.Combine("Shortcuts", $"{nameNoExt} ({counter++}){ext}");
+                }
+
+                System.IO.File.Copy(droppedFile, shortcutName, true);
+            }
+
+            dynamic newItem = new System.Dynamic.ExpandoObject();
+            IDictionary<string, object> newItemDict = newItem;
+
+            newItemDict["Filename"] = shortcutName;
+            newItemDict["IsFolder"] = isFolder;
+            newItemDict["IsLink"] = isWebLink;
+            newItemDict["IsNetwork"] = IsNetworkPath(shortcutName);
+
+            string displayFileName = System.IO.Path.GetFileNameWithoutExtension(droppedFile);
+            if (string.IsNullOrWhiteSpace(displayFileName))
+            {
+                displayFileName = droppedFile.TrimEnd(System.IO.Path.DirectorySeparatorChar, System.IO.Path.AltDirectorySeparatorChar)
+                                             .Split(System.IO.Path.DirectorySeparatorChar, System.IO.Path.AltDirectorySeparatorChar)
+                                             .LastOrDefault();
+                if (string.IsNullOrWhiteSpace(displayFileName)) displayFileName = droppedFile;
+            }
+
+            newItemDict["DisplayName"] = displayFileName;
+            newItemDict["AlwaysRunAsAdmin"] = false;
+
+            // Add to Items list
+            var frameDict = frame as IDictionary<string, object>;
+            JArray items = null;
+            if (frame.Items is JArray jArray)
+            {
+                items = jArray;
+            }
+            else if (frameDict != null && frameDict.ContainsKey("Items") && frameDict["Items"] is JArray dictArray)
+            {
+                items = dictArray;
+            }
+            else
+            {
+                items = new JArray();
+                if (frameDict != null) frameDict["Items"] = items;
+            }
+
+            items.Add(JObject.FromObject(newItem));
+            return true;
         }
 
 

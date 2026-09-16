@@ -249,6 +249,16 @@ namespace Desktop_Frames.Localization
         public static string MenuDeleteItem => Get("MenuDeleteItem");
         public static string MenuDeleteThisFrame => Get("MenuDeleteThisFrame");
         public static string MenuDesktopLayouts => Get("MenuDesktopLayouts");
+        public static string MenuDrawFrame => Get("MenuDrawFrame");
+        public static string DrawFrameHint => Get("DrawFrameHint");
+        public static string DlgCreateFrameTitle => Get("DlgCreateFrameTitle");
+        public static string LblFrameName => Get("LblFrameName");
+        public static string LblFrameSize => Get("LblFrameSize");
+        public static string OptCollectDesktopIcons => Get("OptCollectDesktopIcons");
+        public static string LblSafeModeHint => Get("LblSafeModeHint");
+        public static string BtnSelectAll => Get("BtnSelectAll");
+        public static string BtnDeselectAll => Get("BtnDeselectAll");
+        public static string LblNoDesktopIcons => Get("LblNoDesktopIcons");
         public static string MenuEdit => Get("MenuEdit");
         public static string MenuEnableTabs => Get("MenuEnableTabs");
         public static string MenuExit => Get("MenuExit");

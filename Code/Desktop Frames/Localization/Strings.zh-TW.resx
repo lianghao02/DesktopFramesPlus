@@ -1872,4 +1872,34 @@
   <data name="MsgTemplateExported" xml:space="preserve">
     <value>語言模板已成功匯出！</value>
   </data>
-<data name="MsgProfileInitializationError" xml:space="preserve"><value>設定檔初始化錯誤：{0}</value></data><data name="DlgStartupError" xml:space="preserve"><value>啟動錯誤</value></data><data name="MsgCriticalStartupError" xml:space="preserve"><value>嚴重啟動錯誤：{0}</value></data><data name="MsgShowAboutFailed" xml:space="preserve"><value>無法顯示「關於」視窗：{0}</value></data><data name="LogCategoryBackgroundValidation" xml:space="preserve"><value>背景驗證</value></data><data name="LogCategoryGeneral" xml:space="preserve"><value>一般</value></data><data name="LogCategorySettings" xml:space="preserve"><value>設定</value></data><data name="LogCategoryFrameUpdate" xml:space="preserve"><value>框架更新</value></data><data name="DefaultFrameTitle" xml:space="preserve"><value>新增框架 — 將快捷方式拖放到這裡</value></data><data name="DefaultTipsTitle" xml:space="preserve"><value>Desktop Frames + 啟動提示</value></data><data name="LogCategoryImportExport" xml:space="preserve"><value>匯入與匯出</value></data><data name="LogCategoryUI" xml:space="preserve"><value>使用者介面</value></data><data name="DefaultTipsContent" xml:space="preserve"><value>歡迎使用 DESKTOP FRAMES +&#xD;&#xA;---------------------------&#xD;&#xA;• 收合／展開：按兩下框架標題列。&#xD;&#xA;• 重新命名：Ctrl + 按一下標題列（按 Enter 儲存）。&#xD;&#xA;• 搜尋（SpotSearch）：按 Ctrl + &#96;（波浪符號）即可立即尋找任何圖示。&#xD;&#xA;• 選項：按一下左上角的「♥」選單圖示。&#xD;&#xA;• 重新排列圖示：Ctrl + 拖曳圖示至新位置。&#xD;&#xA;• 快顯功能表：在圖示或框架上按滑鼠右鍵，查看更多選項。&#xD;&#xA;&#xD;&#xA;提示：Ctrl + 按一下或 Ctrl + 按滑鼠右鍵，可顯示更多選項。&#xD;&#xA;&#xD;&#xA;試著自訂這個框架吧！在標題列上按滑鼠右鍵 → 自訂…</value></data><data name="LogCategoryIconHandling" xml:space="preserve"><value>圖示處理</value></data><data name="LogCategoryFrameCreation" xml:space="preserve"><value>框架建立</value></data></root>
+<data name="MsgProfileInitializationError" xml:space="preserve"><value>設定檔初始化錯誤：{0}</value></data><data name="DlgStartupError" xml:space="preserve"><value>啟動錯誤</value></data><data name="MsgCriticalStartupError" xml:space="preserve"><value>嚴重啟動錯誤：{0}</value></data><data name="MsgShowAboutFailed" xml:space="preserve"><value>無法顯示「關於」視窗：{0}</value></data><data name="LogCategoryBackgroundValidation" xml:space="preserve"><value>背景驗證</value></data><data name="LogCategoryGeneral" xml:space="preserve"><value>一般</value></data><data name="LogCategorySettings" xml:space="preserve"><value>設定</value></data><data name="LogCategoryFrameUpdate" xml:space="preserve"><value>框架更新</value></data><data name="DefaultFrameTitle" xml:space="preserve"><value>新增框架 — 將快捷方式拖放到這裡</value></data><data name="DefaultTipsTitle" xml:space="preserve"><value>Desktop Frames + 啟動提示</value></data><data name="LogCategoryImportExport" xml:space="preserve"><value>匯入與匯出</value></data><data name="LogCategoryUI" xml:space="preserve"><value>使用者介面</value></data><data name="DefaultTipsContent" xml:space="preserve"><value>歡迎使用 DESKTOP FRAMES +&#xD;&#xA;---------------------------&#xD;&#xA;• 收合／展開：按兩下框架標題列。&#xD;&#xA;• 重新命名：Ctrl + 按一下標題列（按 Enter 儲存）。&#xD;&#xA;• 搜尋（SpotSearch）：按 Ctrl + &#96;（波浪符號）即可立即尋找任何圖示。&#xD;&#xA;• 選項：按一下左上角的「♥」選單圖示。&#xD;&#xA;• 重新排列圖示：Ctrl + 拖曳圖示至新位置。&#xD;&#xA;• 快顯功能表：在圖示或框架上按滑鼠右鍵，查看更多選項。&#xD;&#xA;&#xD;&#xA;提示：Ctrl + 按一下或 Ctrl + 按滑鼠右鍵，可顯示更多選項。&#xD;&#xA;&#xD;&#xA;試著自訂這個框架吧！在標題列上按滑鼠右鍵 → 自訂…</value></data><data name="LogCategoryIconHandling" xml:space="preserve"><value>圖示處理</value></data>  <data name="MenuDrawFrame" xml:space="preserve">
+    <value>框選建立面板…</value>
+  </data>
+  <data name="DrawFrameHint" xml:space="preserve">
+    <value>拖曳滑鼠以框選建立面板（按 Esc 取消）</value>
+  </data>
+  <data name="DlgCreateFrameTitle" xml:space="preserve">
+    <value>建立新面板</value>
+  </data>
+  <data name="LblFrameName" xml:space="preserve">
+    <value>面板名稱：</value>
+  </data>
+  <data name="LblFrameSize" xml:space="preserve">
+    <value>尺寸：{0} × {1} 像素</value>
+  </data>
+  <data name="OptCollectDesktopIcons" xml:space="preserve">
+    <value>收納桌面圖示到此面板</value>
+  </data>
+  <data name="LblSafeModeHint" xml:space="preserve">
+    <value>✓ 安全模式：僅在面板中建立捷徑，桌面原始檔案維持原貌</value>
+  </data>
+  <data name="BtnSelectAll" xml:space="preserve">
+    <value>全選</value>
+  </data>
+  <data name="BtnDeselectAll" xml:space="preserve">
+    <value>全部取消</value>
+  </data>
+  <data name="LblNoDesktopIcons" xml:space="preserve">
+    <value>桌面上無可用圖示</value>
+  </data>
+</root>

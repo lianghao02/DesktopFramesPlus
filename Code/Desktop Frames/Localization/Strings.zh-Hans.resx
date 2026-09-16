@@ -1927,7 +1927,34 @@
   <data name="BtnExportTemplate" xml:space="preserve">
     <value>导出语言模板…</value>
   </data>
-  <data name="MsgTemplateExported" xml:space="preserve">
-    <value>语言模板已成功导出！</value>
+  <data name="MenuDrawFrame" xml:space="preserve">
+    <value>框选创建面板…</value>
+  </data>
+  <data name="DrawFrameHint" xml:space="preserve">
+    <value>拖动鼠标以框选创建面板（按 Esc 取消）</value>
+  </data>
+  <data name="DlgCreateFrameTitle" xml:space="preserve">
+    <value>创建新面板</value>
+  </data>
+  <data name="LblFrameName" xml:space="preserve">
+    <value>面板名称：</value>
+  </data>
+  <data name="LblFrameSize" xml:space="preserve">
+    <value>尺寸：{0} × {1} 像素</value>
+  </data>
+  <data name="OptCollectDesktopIcons" xml:space="preserve">
+    <value>收纳桌面图标到此面板</value>
+  </data>
+  <data name="LblSafeModeHint" xml:space="preserve">
+    <value>✓ 安全模式：仅在面板中创建快捷方式，桌面原始文件维持原貌</value>
+  </data>
+  <data name="BtnSelectAll" xml:space="preserve">
+    <value>全选</value>
+  </data>
+  <data name="BtnDeselectAll" xml:space="preserve">
+    <value>全部取消</value>
+  </data>
+  <data name="LblNoDesktopIcons" xml:space="preserve">
+    <value>桌面上无可用图标</value>
   </data>
 </root>

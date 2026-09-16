@@ -1856,4 +1856,34 @@ Restart now?</value>
   <data name="LastRunAt" xml:space="preserve">
     <value>Last successful run: {0}</value>
   </data>
-<data name="MsgProfileInitializationError" xml:space="preserve"><value>Profile initialization error: {0}</value></data><data name="DlgStartupError" xml:space="preserve"><value>Startup error</value></data><data name="MsgCriticalStartupError" xml:space="preserve"><value>Critical startup error: {0}</value></data><data name="MsgShowAboutFailed" xml:space="preserve"><value>Unable to show the About window: {0}</value></data><data name="LogCategoryBackgroundValidation" xml:space="preserve"><value>Background validation</value></data><data name="LogCategoryGeneral" xml:space="preserve"><value>General</value></data><data name="LogCategorySettings" xml:space="preserve"><value>Settings</value></data><data name="LogCategoryFrameUpdate" xml:space="preserve"><value>Frame updates</value></data><data name="DefaultFrameTitle" xml:space="preserve"><value>New Frame - Drop your shortcuts here</value></data><data name="DefaultTipsTitle" xml:space="preserve"><value>Desktop Frames + Startup Tips</value></data><data name="LogCategoryImportExport" xml:space="preserve"><value>Import and export</value></data><data name="LogCategoryUI" xml:space="preserve"><value>User interface</value></data><data name="DefaultTipsContent" xml:space="preserve"><value>Welcome to Desktop Frames +.&#xD;&#xA;---------------------------&#xD;&#xA;• Roll Up/Down: Double-click the frame title bar.&#xD;&#xA;• Rename: Ctrl + Click the title bar (Enter to save).&#xD;&#xA;• Search (SpotSearch): Press Ctrl + &#96; (Tilde) to find any icon instantly.&#xD;&#xA;• Options: Click the '♥' menu icon (top-left).&#xD;&#xA;• Reorder Icons on a frame: Ctrl + Drag icon to new position.&#xD;&#xA;• Context Menu: Right-click icons or Frames for more options.&#xD;&#xA;&#xD;&#xA;TIP: Ctrl + Click or Ctrl + Right-click, gives even more options.&#xD;&#xA;&#xD;&#xA;Try customizing this frame! Right-click the title bar → Customize…</value></data><data name="LogCategoryIconHandling" xml:space="preserve"><value>Icon handling</value></data><data name="LogCategoryFrameCreation" xml:space="preserve"><value>Frame creation</value></data></root>
+<data name="MsgProfileInitializationError" xml:space="preserve"><value>Profile initialization error: {0}</value></data><data name="DlgStartupError" xml:space="preserve"><value>Startup error</value></data><data name="MsgCriticalStartupError" xml:space="preserve"><value>Critical startup error: {0}</value></data><data name="MsgShowAboutFailed" xml:space="preserve"><value>Unable to show the About window: {0}</value></data><data name="LogCategoryBackgroundValidation" xml:space="preserve"><value>Background validation</value></data><data name="LogCategoryGeneral" xml:space="preserve"><value>General</value></data><data name="LogCategorySettings" xml:space="preserve"><value>Settings</value></data><data name="LogCategoryFrameUpdate" xml:space="preserve"><value>Frame updates</value></data><data name="DefaultFrameTitle" xml:space="preserve"><value>New Frame - Drop your shortcuts here</value></data><data name="DefaultTipsTitle" xml:space="preserve"><value>Desktop Frames + Startup Tips</value></data><data name="LogCategoryImportExport" xml:space="preserve"><value>Import and export</value></data><data name="LogCategoryUI" xml:space="preserve"><value>User interface</value></data><data name="DefaultTipsContent" xml:space="preserve"><value>Welcome to Desktop Frames +.&#xD;&#xA;---------------------------&#xD;&#xA;• Roll Up/Down: Double-click the frame title bar.&#xD;&#xA;• Rename: Ctrl + Click the title bar (Enter to save).&#xD;&#xA;• Search (SpotSearch): Press Ctrl + &#96; (Tilde) to find any icon instantly.&#xD;&#xA;• Options: Click the '♥' menu icon (top-left).&#xD;&#xA;• Reorder Icons on a frame: Ctrl + Drag icon to new position.&#xD;&#xA;• Context Menu: Right-click icons or Frames for more options.&#xD;&#xA;&#xD;&#xA;TIP: Ctrl + Click or Ctrl + Right-click, gives even more options.&#xD;&#xA;&#xD;&#xA;Try customizing this frame! Right-click the title bar → Customize…</value></data><data name="LogCategoryIconHandling" xml:space="preserve"><value>Icon handling</value></data>  <data name="MenuDrawFrame" xml:space="preserve">
+    <value>Draw New Frame...</value>
+  </data>
+  <data name="DrawFrameHint" xml:space="preserve">
+    <value>Draw a box to create a Frame (Esc to cancel)</value>
+  </data>
+  <data name="DlgCreateFrameTitle" xml:space="preserve">
+    <value>Create New Frame</value>
+  </data>
+  <data name="LblFrameName" xml:space="preserve">
+    <value>Frame Name:</value>
+  </data>
+  <data name="LblFrameSize" xml:space="preserve">
+    <value>Size: {0} × {1} px</value>
+  </data>
+  <data name="OptCollectDesktopIcons" xml:space="preserve">
+    <value>Collect desktop icons into this frame</value>
+  </data>
+  <data name="LblSafeModeHint" xml:space="preserve">
+    <value>✓ Safe Mode: Creates shortcuts only; original desktop files remain untouched.</value>
+  </data>
+  <data name="BtnSelectAll" xml:space="preserve">
+    <value>Select All</value>
+  </data>
+  <data name="BtnDeselectAll" xml:space="preserve">
+    <value>Deselect All</value>
+  </data>
+  <data name="LblNoDesktopIcons" xml:space="preserve">
+    <value>No icons found on desktop</value>
+  </data>
+</root>
