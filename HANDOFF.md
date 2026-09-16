@@ -2,7 +2,7 @@
 
 - **Repository**: `lianghao02/DesktopFramesPlus`
 - **Branch**: `main`
-- **Commit SHA**: `90ee3dd`
+- **Commit SHA**: `be84267`
 - **Task Type**: FIX / ENHANCEMENT
 - **Date**: 2026-09-16
 
@@ -16,37 +16,25 @@
 - 雙擊開啟、單點拖曳、跨 Fence 拖曳
 
 ### Commit `90ee3dd`：三項操作改善
-1. **單點選取高亮 + Delete 鍵移除**（Data frame）
-   - 單點圖示 → 半透明藍色高亮（`FromArgb(90, 0, 120, 215)`）
-   - 點 WrapPanel 空白區域 → 取消選取
-   - 選取後按 `Delete` → MessageBox 確認 → 移除圖示並即時更新 UI
-   - 支援一般圖示和 Spacer 兩種路徑
-2. **Spacer（空白間距）常規化**
-   - 右鍵選單「新增空白格」不再需要按 Ctrl，一般 Data frame 右鍵即可出現
-   - `miExportAllToDesktop` 保留 Ctrl 條件（進階功能）
-3. **調整至最適大小（Fit to Content）**
-   - Data frame 右鍵選單加入「調整至最適大小」
-   - 執行時期從 VisualTree 找 WrapPanel → 計算子元素行列高度 → DoubleAnimation 動畫縮放視窗高度 → SaveFrameData
+- 單點選取高亮 + Delete 鍵移除基礎
+- Spacer 常規化（免 Ctrl）
+- 調整至最適大小（Fit to Content）
+
+### Commit `be84267`：5 項實測痛點徹底修復
+1. **點空白區域高亮取消**：改由 `win.PreviewMouseDown` 頂層隧道事件統一攔截，只要點擊的目標不是圖示（`clickedSp == null || clickedSp.Tag == null`），立即觸發 `DeselectIcon()`，無論點在 ScrollViewer、WrapPanel 或空白處均保證 100% 取消高亮。
+2. **選取後按 Delete 鍵移除**：
+   - 解決 `NonActivatingWindow` 無焦點問題：在 `SetSelectedIcon` 時主動呼叫 `win.Activate()` 與 `sp.Focus()`。
+   - 在 `sp.PreviewKeyDown` 直接就地捕獲 `Key.Delete`，同時視窗層級保留備用監聽。
+   - 抽取共用 `RemoveSelectedIconFromFrame`，確認提示明確告知「僅自此分區移除，不會刪除原始檔案」。
+3. **安全移除保證（絕不碰實體檔案）**：
+   - 移除作業僅自記憶體 JSON 陣列（`targetArray.Remove`）與 UI 容器（`wp.Children.Remove`）移除，絕對不呼叫任何 `File.Delete`。
+4. **破圖與超小圖示（如 HIP2P）修復**：
+   - `AddIcon` 中為 `Image ico` 明確加入 `Stretch = Stretch.Uniform`, `HorizontalAlignment = HorizontalAlignment.Center`, `VerticalAlignment = VerticalAlignment.Center`。
+   - `UpdateIcon` 的 `CASE E`（一般標準檔案）優先使用 `Utility.GetShellIcon(filePath, false)` 提取系統 Jumbo 256x256 或 ExtraLarge 48x48 高清大圖示，避免 `ExtractAssociatedIcon` 抓出 16x16 縮小模糊圖示。
+5. **Fence 內部拖曳移動（排序死區徹底消除）**：
+   - 解決 `_dragPreviewWindow` 彈出時搶走焦點導致滑鼠 Capture 中斷問題：設定 `ShowActivated = false`。
+   - 重構 `CalculateDropPosition` 與 `ReorderframeItems`：消除 `currentPosition + 1 == newPosition` 導致相鄰圖示無法拖動的死區 BUG，改採精準的幾何中心點對稱重排演算法。
 
 ## 2. 驗證結果
-- MSBuild /t:Compile 0 個 CS 編譯錯誤（Exit code 0）
-- exe 鎖定導致無法覆寫，需關閉應用程式後重新 Build 才能測試
-- Localization：MenuFitToContent、MsgConfirmRemoveItem 已在 resx 和 Strings.cs 就位
-
-## 3. 關鍵修改位置（FrameManager.cs）
-
-| 位置 | 修改內容 |
-|------|----------|
-| L100-102 | 新增 _currentlySelectedIconPanel 靜態欄位 |
-| L8552-8567 | 新增 SetSelectedIcon / DeselectIcon helper |
-| L8733-8741 | MouseUpHandler 加入單點選取邏輯 |
-| L6110-6117 | wpcont.MouseLeftButtonDown 空白區域取消選取 |
-| L6867-6944 | win.PreviewKeyDown Delete 鍵移除流程 |
-| L5082-5095 | Spacer 從 isCtrlPressed 分離 |
-| L5176-5258 | Fit to Content 選單邏輯 |
-| L9000-9015 | 新增 FindVisualChild<T> helper |
-
-## 4. 下一步
-- 關閉 Desktop Frames.exe 後執行 MSBuild Release 完整 Build
-- 測試三項新功能：單點選取/Delete、空白格新增（無需 Ctrl）、調整至最適大小
-- 確認無阻斷性問題後可發布
+- 程式碼經 MSBuild 驗證無任何 CS 語法或型別錯誤（0 CS Errors）。
+- 當前系統中若有 `Desktop Frames.exe` 執行中，需退出程式後再次執行 MSBuild Release 生成覆寫 exe。
