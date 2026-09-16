@@ -366,32 +366,57 @@ namespace Desktop_Frames
                 catch { }
             }
 
-            // 1. Remove from source list
-            int currentPosition = -1;
-            for (int i = 0; i < _sourceItemsList.Count; i++)
+            // 1. Remove from source list (優先精準移除實例，並清除來源端所有同名重複項目)
+            bool removed = false;
+            if (_draggedItem is JToken draggedToken)
             {
-                if (string.Equals(_sourceItemsList[i]["Filename"]?.ToString(), _draggedItem["Filename"]?.ToString(), StringComparison.OrdinalIgnoreCase))
+                if (draggedToken.Parent is JArray parentArr)
                 {
-                    currentPosition = i;
-                    break;
+                    parentArr.Remove(draggedToken);
+                    removed = true;
+                }
+                else if (_sourceItemsList != null && _sourceItemsList.Contains(draggedToken))
+                {
+                    _sourceItemsList.Remove(draggedToken);
+                    removed = true;
                 }
             }
 
-            if (currentPosition >= 0)
+            string draggedFilename = _draggedItem?["Filename"]?.ToString();
+            if (_sourceItemsList != null && !string.IsNullOrEmpty(draggedFilename))
             {
-                _sourceItemsList.RemoveAt(currentPosition);
-            }
-            else if (_draggedItem is JToken draggedToken && draggedToken.Parent != null)
-            {
-                draggedToken.Remove();
+                // 若上述實例移除未中，或來源端本來就有多個歷史殘留的重複項，從後往前全部清除
+                for (int i = _sourceItemsList.Count - 1; i >= 0; i--)
+                {
+                    if (string.Equals(_sourceItemsList[i]["Filename"]?.ToString(), draggedFilename, StringComparison.OrdinalIgnoreCase))
+                    {
+                        _sourceItemsList.RemoveAt(i);
+                        removed = true;
+                    }
+                }
             }
 
-            for (int i = 0; i < _sourceItemsList.Count; i++)
+            if (_sourceItemsList != null)
             {
-                _sourceItemsList[i]["DisplayOrder"] = i;
+                for (int i = 0; i < _sourceItemsList.Count; i++)
+                {
+                    _sourceItemsList[i]["DisplayOrder"] = i;
+                }
             }
 
-            // 2. Clone and Insert into target list
+            // 2. 目標端防重複檢查（若目標端已存在同名項目，先移除舊的，再插入拖曳的新項目）
+            if (!string.IsNullOrEmpty(draggedFilename))
+            {
+                for (int i = targetList.Count - 1; i >= 0; i--)
+                {
+                    if (string.Equals(targetList[i]["Filename"]?.ToString(), draggedFilename, StringComparison.OrdinalIgnoreCase))
+                    {
+                        targetList.RemoveAt(i);
+                    }
+                }
+            }
+
+            // 3. Clone and Insert into target list
             JToken itemToInsert = _draggedItem is JToken jt ? jt.DeepClone() : JToken.FromObject(_draggedItem);
             insertIndex = Math.Max(0, Math.Min(insertIndex, targetList.Count));
             targetList.Insert(insertIndex, itemToInsert);
@@ -400,10 +425,10 @@ namespace Desktop_Frames
                 targetList[i]["DisplayOrder"] = i;
             }
 
-            // 3. Save
+            // 4. Save
             FrameDataManager.SaveFrameData();
 
-            // 4. Refresh both frames
+            // 5. Refresh both frames
             Application.Current.Dispatcher.Invoke(() =>
             {
                 NonActivatingWindow sourceWindow = FindVisualParent<NonActivatingWindow>(_sourceWrapPanel);
@@ -415,7 +440,7 @@ namespace Desktop_Frames
             });
 
             LogManager.Log(LogManager.LogLevel.Info, LogManager.LogCategory.UI,
-                $"Transferred item {_draggedItem["Filename"]} to Target Frame {targetFrameId}");
+                $"Transferred item {draggedFilename} to Target Frame {targetFrameId}");
         }
 
         private static int CalculateDropPositionForPanel(WrapPanel wrapPanel, System.Windows.Point mousePosition, JArray targetList)

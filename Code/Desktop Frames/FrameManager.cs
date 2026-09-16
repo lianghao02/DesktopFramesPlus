@@ -8676,6 +8676,12 @@ namespace Desktop_Frames
             try
             {
                 sp.Focusable = true;
+                NonActivatingWindow win = FindVisualParent<NonActivatingWindow>(sp);
+                if (win != null)
+                {
+                    win.EnableFocusPrevention(false);
+                    win.Activate();
+                }
                 sp.Focus();
             }
             catch { }
@@ -8686,6 +8692,16 @@ namespace Desktop_Frames
         {
             if (_currentlySelectedIconPanel != null)
             {
+                try
+                {
+                    NonActivatingWindow win = FindVisualParent<NonActivatingWindow>(_currentlySelectedIconPanel);
+                    if (win != null)
+                    {
+                        win.EnableFocusPrevention(true);
+                    }
+                }
+                catch { }
+
                 _currentlySelectedIconPanel.Background = System.Windows.Media.Brushes.Transparent;
                 _currentlySelectedIconPanel = null;
             }
@@ -8738,13 +8754,35 @@ namespace Desktop_Frames
 
                 if (result != MessageBoxResult.Yes) return;
 
-                // 找 liveItem
-                JToken liveItem = isSpacer
-                    ? targetArray.FirstOrDefault(i => i["Filename"]?.ToString() == filePath)
-                    : targetArray.FirstOrDefault(i => string.Equals(
-                        System.IO.Path.GetFullPath(i["Filename"]?.ToString() ?? ""),
-                        System.IO.Path.GetFullPath(filePath),
-                        StringComparison.OrdinalIgnoreCase));
+                // 找 liveItem：優先精確字串比對，次之以 GetFullPath 比對
+                JToken liveItem = null;
+                if (isSpacer)
+                {
+                    liveItem = targetArray.FirstOrDefault(i => i["Filename"]?.ToString() == filePath);
+                }
+                else
+                {
+                    liveItem = targetArray.FirstOrDefault(i => string.Equals(i["Filename"]?.ToString(), filePath, StringComparison.OrdinalIgnoreCase));
+                    if (liveItem == null)
+                    {
+                        string normalizedFilePath = null;
+                        try { normalizedFilePath = System.IO.Path.GetFullPath(filePath); } catch { }
+
+                        if (!string.IsNullOrEmpty(normalizedFilePath))
+                        {
+                            liveItem = targetArray.FirstOrDefault(i =>
+                            {
+                                try
+                                {
+                                    string itemPath = i["Filename"]?.ToString();
+                                    if (string.IsNullOrEmpty(itemPath)) return false;
+                                    return string.Equals(System.IO.Path.GetFullPath(itemPath), normalizedFilePath, StringComparison.OrdinalIgnoreCase);
+                                }
+                                catch { return false; }
+                            });
+                        }
+                    }
+                }
 
                 if (liveItem != null)
                 {
