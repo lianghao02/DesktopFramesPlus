@@ -1905,4 +1905,10 @@
   <data name="LblNoDesktopIcons" xml:space="preserve">
     <value>桌面上無可用圖示</value>
   </data>
+  <data name="MenuFitToContent" xml:space="preserve">
+    <value>調整至最適大小</value>
+  </data>
+  <data name="MsgConfirmRemoveItem" xml:space="preserve">
+    <value>確定要自此分區移除「{0}」嗎？</value>
+  </data>
 </root>

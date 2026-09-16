@@ -767,5 +767,7 @@ namespace Desktop_Frames.Localization
         // ── Generated frame names ──────────────────────────────────────────
         public static string RandomNameAdjectives => Get("RandomNameAdjectives");
         public static string RandomNamePlaces => Get("RandomNamePlaces");
+        public static string MenuFitToContent => Get("MenuFitToContent");
+        public static string MsgConfirmRemoveItem => Get("MsgConfirmRemoveItem");
     }
 }

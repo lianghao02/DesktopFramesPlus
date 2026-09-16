@@ -97,6 +97,9 @@ namespace Desktop_Frames
         private static Window _sizeFeedbackWindow;
         private static System.Windows.Threading.DispatcherTimer _hideTimer;
 
+        // 圖示單點選取狀態
+        private static StackPanel _currentlySelectedIconPanel = null;
+
         // Add near other static fields
         private static TargetChecker _currentTargetChecker;
 
@@ -5025,6 +5028,7 @@ namespace Desktop_Frames
             Separator sepAfterSpacer = null; // NEW: Layout Separator
             MenuItem miNameAfterPath = null; // New: For Portal Renaming
             Separator sepNameAfterPath = null; // New: Separator for layout
+            MenuItem miFitToContent = null; // 調整至最適大小
 
             CnMnFramemanager.Opened += (contextSender, contextArgs) =>
             {
@@ -5067,6 +5071,9 @@ namespace Desktop_Frames
                 if (sepAfterSpacer != null && CnMnFramemanager.Items.Contains(sepAfterSpacer))
                     CnMnFramemanager.Items.Remove(sepAfterSpacer);
 
+                if (miFitToContent != null && CnMnFramemanager.Items.Contains(miFitToContent))
+                    CnMnFramemanager.Items.Remove(miFitToContent);
+
                 if (miNameAfterPath != null && CnMnFramemanager.Items.Contains(miNameAfterPath))
 
 
@@ -5075,12 +5082,23 @@ namespace Desktop_Frames
                 if (sepNameAfterPath != null && CnMnFramemanager.Items.Contains(sepNameAfterPath))
                     CnMnFramemanager.Items.Remove(sepNameAfterPath);
 
-                // C. Export All & Spacer Menu (Data Frame + Ctrl)
+                // C. Export All (Data Frame + Ctrl 才顯示)
                 if (isCtrlPressed && isDataFrame)
                 {
                     miExportAllToDesktop = new MenuItem { Header = Strings.MenuExportAllIcons };
                     miExportAllToDesktop.Click += (s, e) => ExportAllIconsToDesktop(frame);
 
+                    // Insert before Customize (safe lookup)
+                    int exportInsertIndex = CnMnFramemanager.Items.Count - 1;
+                    var customizeItemForExport = CnMnFramemanager.Items.OfType<MenuItem>()
+                        .FirstOrDefault(m => m.Header.ToString() == Strings.MenuCustomize);
+                    if (customizeItemForExport != null) exportInsertIndex = CnMnFramemanager.Items.IndexOf(customizeItemForExport);
+                    CnMnFramemanager.Items.Insert(exportInsertIndex, miExportAllToDesktop);
+                }
+
+                // C2. Add Spacer Menu (Data Frame 即可，不需 Ctrl)
+                if (isDataFrame)
+                {
                     miAddSpacerMenu = new MenuItem { Header = Strings.MenuAddSpacer };
 
                     MenuItem miSpacerBlank = new MenuItem { Header = Strings.MenuSpacerBlank };
@@ -5151,10 +5169,90 @@ namespace Desktop_Frames
                         .FirstOrDefault(m => m.Header.ToString() == Strings.MenuCustomize);
                     if (customizeItem != null) insertIndex = CnMnFramemanager.Items.IndexOf(customizeItem);
 
-                    CnMnFramemanager.Items.Insert(insertIndex, miExportAllToDesktop);
-                    CnMnFramemanager.Items.Insert(insertIndex + 1, miAddSpacerMenu);
-                    CnMnFramemanager.Items.Insert(insertIndex + 2, sepAfterSpacer);
+                    CnMnFramemanager.Items.Insert(insertIndex, miAddSpacerMenu);
+                    CnMnFramemanager.Items.Insert(insertIndex + 1, sepAfterSpacer);
                 }
+
+                // C3. Fit to Content (Data Frame 即可)
+                if (isDataFrame)
+                {
+                    miFitToContent = new MenuItem { Header = Strings.MenuFitToContent };
+                    miFitToContent.Click += (s, e) =>
+                    {
+                        try
+                        {
+                            // 執行時期從 win 的 VisualTree 找 WrapPanel
+                            WrapPanel wp = FindVisualChild<WrapPanel>(win);
+                            if (wp == null) return;
+
+                            // 強制 WrapPanel 先完成排版，才能取得正確的 ActualWidth/Height
+                            wp.UpdateLayout();
+
+                            double totalContentHeight = 0;
+                            double rowWidth = 0;
+                            double rowHeight = 0;
+                            double availableWidth = win.Width - 20; // 預留滾動條/邊界
+
+                            foreach (UIElement child in wp.Children)
+                            {
+                                if (child.Visibility == Visibility.Collapsed) continue;
+                                child.Measure(new System.Windows.Size(double.PositiveInfinity, double.PositiveInfinity));
+                                double cw = child.DesiredSize.Width;
+                                double ch = child.DesiredSize.Height;
+
+                                if (rowWidth + cw > availableWidth && rowWidth > 0)
+                                {
+                                    totalContentHeight += rowHeight;
+                                    rowWidth = cw;
+                                    rowHeight = ch;
+                                }
+                                else
+                                {
+                                    rowWidth += cw;
+                                    rowHeight = Math.Max(rowHeight, ch);
+                                }
+                            }
+                            totalContentHeight += rowHeight; // 最後一行
+
+                            // 視窗 chrome 高度（標題列等）
+                            double chromeHeight = win.ActualHeight - (win.Content as FrameworkElement)?.ActualHeight ?? 0;
+                            if (chromeHeight <= 0) chromeHeight = 50; // 保守估計
+
+                            double targetHeight = totalContentHeight + chromeHeight + 16; // 加上 padding
+                            targetHeight = Math.Max(targetHeight, 80); // 最小高度
+
+                            // DoubleAnimation 動畫縮放
+                            var anim = new System.Windows.Media.Animation.DoubleAnimation
+                            {
+                                To = targetHeight,
+                                Duration = TimeSpan.FromMilliseconds(180),
+                                EasingFunction = new System.Windows.Media.Animation.CubicEase { EasingMode = System.Windows.Media.Animation.EasingMode.EaseOut }
+                            };
+                            win.BeginAnimation(Window.HeightProperty, anim);
+
+                            // 存檔
+                            string frameId2 = frame.Id?.ToString();
+                            var liveFrame2 = FrameDataManager.FrameData.FirstOrDefault(f => f.Id?.ToString() == frameId2);
+                            if (liveFrame2 is JObject jf2)
+                            {
+                                jf2["Height"] = targetHeight;
+                                FrameDataManager.SaveFrameData();
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            LogManager.Log(LogManager.LogLevel.Error, LogManager.LogCategory.UI, $"FitToContent error: {ex.Message}");
+                        }
+                    };
+
+                    // Insert before Customize
+                    int fitInsertIndex = CnMnFramemanager.Items.Count - 1;
+                    var customizeItemFit = CnMnFramemanager.Items.OfType<MenuItem>()
+                        .FirstOrDefault(m => m.Header.ToString() == Strings.MenuCustomize);
+                    if (customizeItemFit != null) fitInsertIndex = CnMnFramemanager.Items.IndexOf(customizeItemFit);
+                    CnMnFramemanager.Items.Insert(fitInsertIndex, miFitToContent);
+                }
+
                 // D. Name After Target (Portal Frame + Ctrl)
                 if (isCtrlPressed && isPortalFrame)
                 {
@@ -6099,6 +6197,14 @@ namespace Desktop_Frames
             }
             dp.Children.Add(wpcontscr);
 
+            // 點擊 WrapPanel 空白區域（未命中圖示）→ 取消選取
+            wpcont.MouseLeftButtonDown += (s, e) =>
+            {
+                // 若點到的是 WrapPanel 本身（非子圖示），取消選取
+                if (e.OriginalSource == wpcont)
+                    DeselectIcon();
+            };
+
             void InitContent()
             {
                 // 1. Handle Note frames - they don't use WrapPanel
@@ -6846,6 +6952,84 @@ namespace Desktop_Frames
 
 
             InitContent();
+
+            // Delete 鍵移除：按 Delete 時移除目前選取的圖示（限 Data frame）
+            if (frame.ItemsType?.ToString() == "Data")
+            {
+                win.PreviewKeyDown += (s, e) =>
+                {
+                    if (e.Key == Key.Delete && _currentlySelectedIconPanel != null)
+                    {
+                        var selectedSp = _currentlySelectedIconPanel;
+                        try
+                        {
+                            // 取得 sp Tag 的 FilePath
+                            var tagObj = selectedSp.Tag;
+                            if (tagObj == null) return;
+                            string filePath = null;
+                            var tagType = tagObj.GetType();
+                            var fpProp = tagType.GetProperty("FilePath");
+                            if (fpProp != null) filePath = fpProp.GetValue(tagObj) as string;
+                            if (string.IsNullOrEmpty(filePath)) return;
+
+                            // 找到 liveFrame
+                            string frameId = frame.Id?.ToString();
+                            var liveFrame = FrameDataManager.FrameData.FirstOrDefault(f => f.Id?.ToString() == frameId);
+                            if (liveFrame == null) return;
+
+                            // 找到對應的 JArray
+                            JArray targetArray = liveFrame.Items as JArray;
+                            bool tabsEnabled = liveFrame.TabsEnabled?.ToString().ToLower() == "true";
+                            if (tabsEnabled)
+                            {
+                                var tabs = liveFrame.Tabs as JArray;
+                                int tabIdx = Convert.ToInt32(liveFrame.CurrentTab?.ToString() ?? "0");
+                                if (tabs != null && tabIdx < tabs.Count)
+                                    targetArray = tabs[tabIdx]["Items"] as JArray;
+                            }
+                            if (targetArray == null) return;
+
+                            // 確認確認訊息
+                            string displayName = System.IO.Path.GetFileNameWithoutExtension(filePath);
+                            bool isSpacer = filePath.StartsWith("INTERNAL_BLANK_");
+                            string confirmMsg = isSpacer
+                                ? Strings.Get("MsgConfirmRemoveItem", Strings.MenuSpacerBlank)
+                                : Strings.Get("MsgConfirmRemoveItem", displayName);
+
+                            var result = System.Windows.MessageBox.Show(
+                                confirmMsg,
+                                Strings.DlgInfo,
+                                MessageBoxButton.YesNo,
+                                MessageBoxImage.Question);
+
+                            if (result != MessageBoxResult.Yes) return;
+
+                            // 找 liveItem
+                            JToken liveItem = isSpacer
+                                ? targetArray.FirstOrDefault(i => i["Filename"]?.ToString() == filePath)
+                                : targetArray.FirstOrDefault(i => string.Equals(
+                                    System.IO.Path.GetFullPath(i["Filename"]?.ToString() ?? ""),
+                                    System.IO.Path.GetFullPath(filePath),
+                                    StringComparison.OrdinalIgnoreCase));
+
+                            if (liveItem != null)
+                            {
+                                targetArray.Remove(liveItem);
+                                FrameDataManager.SaveFrameData();
+                                var wp = VisualTreeHelper.GetParent(selectedSp) as WrapPanel;
+                                if (wp != null) wp.Children.Remove(selectedSp);
+                                DeselectIcon();
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            LogManager.Log(LogManager.LogLevel.Error, LogManager.LogCategory.UI, $"Delete key remove error: {ex.Message}");
+                        }
+                        e.Handled = true;
+                    }
+                };
+            }
+
             // Add Note frame specific context menu items after content is initialized
             if (frame.ItemsType?.ToString() == "Note")
             {
@@ -8529,6 +8713,24 @@ namespace Desktop_Frames
         }
 
 
+        /// <summary>高亮選取指定圖示面板（半透明藍色背景），同時取消先前選取</summary>
+        private static void SetSelectedIcon(StackPanel sp)
+        {
+            DeselectIcon();
+            _currentlySelectedIconPanel = sp;
+            sp.Background = new SolidColorBrush(System.Windows.Media.Color.FromArgb(90, 0, 120, 215));
+        }
+
+        /// <summary>取消目前選取的圖示高亮</summary>
+        private static void DeselectIcon()
+        {
+            if (_currentlySelectedIconPanel != null)
+            {
+                _currentlySelectedIconPanel.Background = System.Windows.Media.Brushes.Transparent;
+                _currentlySelectedIconPanel = null;
+            }
+        }
+
         public static void ClickEventAdder(StackPanel sp, string path, bool isFolder, string arguments = null)
         {
             // Store only path, isFolder, and arguments in Tag
@@ -8710,6 +8912,11 @@ namespace Desktop_Frames
                         IconDragDropManager.CancelDrag();
                     }
                 }
+                else if (e.ChangedButton == MouseButton.Left && iconMouseDownPos.HasValue && !isIconDragging)
+                {
+                    // 單點選取：左鍵放開且非拖曳 → 高亮此圖示
+                    SetSelectedIcon(sp);
+                }
                 iconMouseDownPos = null;
                 isIconDragging = false;
             }
@@ -8791,6 +8998,20 @@ namespace Desktop_Frames
                 parent = VisualTreeHelper.GetParent(parent);
             }
             return parent as T;
+        }
+
+        private static T FindVisualChild<T>(DependencyObject parent) where T : DependencyObject
+        {
+            if (parent == null) return null;
+            int count = VisualTreeHelper.GetChildrenCount(parent);
+            for (int i = 0; i < count; i++)
+            {
+                var child = VisualTreeHelper.GetChild(parent, i);
+                if (child is T t) return t;
+                var result = FindVisualChild<T>(child);
+                if (result != null) return result;
+            }
+            return null;
         }
 
 

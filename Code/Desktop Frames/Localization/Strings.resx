@@ -1889,4 +1889,10 @@ Restart now?</value>
   <data name="LblNoDesktopIcons" xml:space="preserve">
     <value>No icons found on desktop</value>
   </data>
+  <data name="MenuFitToContent" xml:space="preserve">
+    <value>Fit to Content</value>
+  </data>
+  <data name="MsgConfirmRemoveItem" xml:space="preserve">
+    <value>Are you sure you want to remove '{0}' from this frame?</value>
+  </data>
 </root>
