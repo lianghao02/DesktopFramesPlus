@@ -2,9 +2,9 @@
 
 - **Repository**: `lianghao02/DesktopFramesPlus`
 - **Branch**: `main`
-- **功能實作基準 Commit**: `80eefe9`
-- **交接文件最後驗證時的 HEAD**: `80eefe9`
-- **版本狀態備註**: 本文件提交後請以 `git status` 與 `git log` 實況為準（修復跨 Fence 拖曳預覽視窗遮蔽放不下去與轉移物件複製問題）
+- **功能實作基準 Commit**: `eba6496`
+- **交接文件最後驗證時的 HEAD**: `eba6496`
+- **版本狀態備註**: 本文件提交後請以 `git status` 與 `git log` 實況為準（修復 Delete 鍵刪除無效與跨 Fence 拖曳重複項目問題）
 - **Task Type**: FIX / ENHANCEMENT / PERF / AUDIT
 - **Date**: 2026-09-16
 - **Status**: 待驗收中，Release Build 成功，工作目錄 Clean
@@ -51,18 +51,22 @@
 - **根本原因 3 (焦點爭奪與重繪)**：`SetSelectedIcon` 中原先呼叫了 `parentWin.Activate()`，與 `NonActivatingWindow` 的底層 `MA_NOACTIVATE` 衝突，導致作業系統與 WPF 重繪焦點延遲。
   - **修復**：移除 `parentWin.Activate()`，圖示面板自身設定 `sp.Focusable = true; sp.Focus()` 即可完美響應 `Delete` 快捷鍵。
 
-### F. 跨 Fence 拖曳「放不下去」與「變成複製」根治 (Commit `80eefe9`)
-- **放不下去問題（預覽視窗遮擋）**：
-  - **根因**：跟隨滑鼠游標移動的半透明預覽視窗 `_dragPreviewWindow` 在 Win32 層級（`WindowFromPoint`）仍會被滑鼠游標正下方的射線命中，導致 `FindTargetWindowAtScreenPoint` 比對不到目標 `NonActivatingWindow`，回傳 `null` 並視為拖出 Fence 外而取消。
-  - **修復**：於 `FindTargetWindowAtScreenPoint` 取得 `_dragPreviewWindow` 之 HWND，若 `WindowFromPoint` 命中該預覽視窗則予以排除，確保精準穿透命中底層目標 Fence。
-- **變成複製問題（物件引用未隔離與來源殘留）**：
-  - **根因**：原先直接將 `_draggedItem` 物件傳遞插入目標 JArray，在物件引用未隔離情況下，若來源端因比對問題未完全移除，兩側 Fence 的 JArray 會同時持有同一物件並存檔，造成幽靈複本。
-  - **修復**：目標端插入時強制執行 `DeepClone()`（`itemToInsert = _draggedItem is JToken jt ? jt.DeepClone() : JToken.FromObject(_draggedItem);`），來源端除 Index 移除外亦確保 JToken 父層移除，阻斷跨視窗引用共享。
+### F. 跨 Fence 拖曳預覽遮擋放不下去修復 (Commit `80eefe9`)
+- **根因**：跟隨滑鼠游標移動的半透明預覽視窗 `_dragPreviewWindow` 在 Win32 層級（`WindowFromPoint`）仍會被滑鼠游標正下方的射線命中，導致 `FindTargetWindowAtScreenPoint` 比對不到目標 `NonActivatingWindow`，回傳 `null` 並視為拖出 Fence 外而取消。
+- **修復**：於 `FindTargetWindowAtScreenPoint` 取得 `_dragPreviewWindow` 之 HWND，若 `WindowFromPoint` 命中該預覽視窗則予以排除，確保精準穿透命中底層目標 Fence。
+
+### G. Delete 鍵無效與跨 Fence 拖曳「重複」徹底修復 (Commit `eba6496`)
+1. **Delete 鍵無效**：
+   - **根本原因**：`DesktopFramesPlus` 採用 `NonActivatingWindow`，原生是不接收焦點的（`WS_EX_NOACTIVATE` 與 `WM_MOUSEACTIVATE -> MA_NOACTIVATE`）。先前僅呼叫 `sp.Focus()`，但視窗未激活，WPF 鍵盤訊息幫浦無法截獲按鍵。此外，`RemoveSelectedIconFromFrame` 中的 `Path.GetFullPath` 對某些相對路徑或 `.url` 檔案拋出異常或比對失真。
+   - **修復**：在 `SetSelectedIcon` 中短暫啟用視窗焦點（`win.EnableFocusPrevention(false); win.Activate(); sp.Focus();`），取消選取時 `DeselectIcon` 即時還原 `win.EnableFocusPrevention(true)`；在 `RemoveSelectedIconFromFrame` 中強化為雙層容錯比對（優先字串比對，次之以 Try-Catch 保護之 `Path.GetFullPath`），徹底修復 Delete 鍵移除無反應問題。
+2. **跨 Fence 拖曳重複**：
+   - **根本原因**：`MoveItemToTargetFrame` 在來源端移除時，僅依據字串比對查找第一個項目，且若來源端已存在多個歷史重複項時只移除了首筆；此外目標端插入時未過濾既有同名項目，造成「來源沒清乾淨、目標又新增」的重複複本累積。
+   - **修復**：來源端優先透過 `JToken` 實例自所屬容器移除（`parentArr.Remove(draggedToken)` 或 `_sourceItemsList.Remove(draggedToken)`），並由後往前遍歷清除來源端所有同名殘留項目；目標端插入前執行防重複過濾，確保資料結構與雙方 UI 完整同步。
 
 ---
 
 ## 2. 驗證依據與證據 (Verification Proof)
-1. **MSBuild Release 編譯**：通過，Exit Code 0，成功產出最新版 `Desktop Frames.exe`。
+1. **MSBuild Release 編譯**：通過，0 Errors，成功產出最新版 `Desktop Frames.exe`。
 2. **Git 工作目錄**：Clean，無任何未提交或暫存衝突檔案。
 3. **語系檔完整性**：新增字串 `MenuFitToContent`、`MsgConfirmRemoveItem` 均已於 `Strings.cs`、`Strings.resx`、`Strings.zh-TW.resx` 建立完畢。
 
@@ -74,7 +78,7 @@
 
 ### 潛在問題 A：`FrameManager.cs` 單檔體積龐大（約 9,900 行）
 - **現況**：視窗管理、圖示載入、事件處理、右鍵選單邏輯全擠在 `FrameManager.cs`。
-- **影響**：維護時容易發生閉包變數作用域陷阱（如先前 `wpcont` 變數宣告順序問題）。
+- **影響**：維護時容易發生閉包變數作用域陷阱。
 - **建議**：目前功能運作正常，切忌在無單元測試防護下進行大規模拆檔重構；未來若有新模組需求，再將右鍵選單或選取狀態抽出獨立 Manager。
 
 ### 潛在問題 B：多螢幕 / DPI 混合縮放情境下的拖曳預覽
@@ -86,5 +90,5 @@
 
 ## 4. 給 Codex 的交接指引
 1. **工作目錄與分支**：`D:\Development\GitHub\DesktopFramesPlus`，分支 `main`。
-2. **代碼實作基準**：`4b3f234`（修復跨 Fence 拖曳 DPI 判定、消除點擊卡頓鈍感與後台輪詢阻塞），目前 HEAD 差異僅為文件更新，請以現場 `git status` 與 `git log` 為準。
-3. **下一步方向**：嚴格鎖定於手動驗收 7 大項清單，暫緩開新功能（包括 Smart Frame Snapping），並優先評估 fork 更新來源隔離。
+2. **代碼實作基準**：`eba6496`（修復 Delete 鍵移除無效與跨 Fence 拖曳重複複本問題），請以現場 `git status` 與 `git log` 為準。
+3. **下一步方向**：進行手動驗收測試（選取圖示按下 Delete 鍵移除、跨 Fence 拖曳圖示移動），確認無異常後準備收斂交付。
