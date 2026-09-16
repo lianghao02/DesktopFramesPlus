@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Timers;
 
@@ -12,7 +12,9 @@ namespace Desktop_Frames
 
         public TargetChecker(double interval)
         {
-            _timer = new Timer(interval);
+            // 防止高頻輪詢磁碟 I/O 阻塞 UI 執行緒，設定最小間隔 15 秒 (15000ms)
+            double safeInterval = Math.Max(interval, 15000.0);
+            _timer = new Timer(safeInterval);
             _timer.Elapsed += OnTimedEvent;
             _checkActions = new Dictionary<string, (Action, bool)>();
             Start(); // Start the timer immediately

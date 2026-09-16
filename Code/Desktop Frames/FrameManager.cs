@@ -8676,11 +8676,6 @@ namespace Desktop_Frames
             try
             {
                 sp.Focusable = true;
-                NonActivatingWindow parentWin = FindVisualParent<NonActivatingWindow>(sp);
-                if (parentWin != null)
-                {
-                    parentWin.Activate();
-                }
                 sp.Focus();
             }
             catch { }
@@ -8782,19 +8777,6 @@ namespace Desktop_Frames
             void MouseDownHandler(object sender, MouseButtonEventArgs e)
             {
                 if (e.ChangedButton != MouseButton.Left) return;
-
-                // Runtime Correction for Extension Mismatch
-                if (!System.IO.File.Exists(path) && !System.IO.Directory.Exists(path))
-                {
-                    if (path.EndsWith(".lnk", StringComparison.OrdinalIgnoreCase))
-                    {
-                        string potentialUrlPath = System.IO.Path.ChangeExtension(path, ".url");
-                        if (System.IO.File.Exists(potentialUrlPath))
-                        {
-                            path = potentialUrlPath;
-                        }
-                    }
-                }
 
                 // 1. Double click to launch / open
                 if (e.ClickCount == 2)
