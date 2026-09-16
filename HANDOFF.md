@@ -2,9 +2,9 @@
 
 - **Repository**: `lianghao02/DesktopFramesPlus`
 - **Branch**: `main`
-- **功能實作基準 Commit**: `be84267`
-- **交接文件最後驗證時的 HEAD**: `d121cfb`
-- **版本狀態備註**: 本文件提交後請以 `git status` 與 `git log` 實況為準（功能代碼已就緒，待手動驗收）
+- **功能實作基準 Commit**: `28a5fcd`
+- **交接文件最後驗證時的 HEAD**: `28a5fcd`
+- **版本狀態備註**: 本文件提交後請以 `git status` 與 `git log` 實況為準（修復跨 Fence 拖曳 DPI 判定，待手動驗收）
 - **Task Type**: FIX / ENHANCEMENT / AUDIT
 - **Date**: 2026-09-16
 - **Status**: 待驗收中，Release Build 成功，工作目錄 Clean
@@ -71,5 +71,5 @@
 
 ## 4. 給 Codex 的交接指引
 1. **工作目錄與分支**：`D:\Development\GitHub\DesktopFramesPlus`，分支 `main`。
-2. **代碼實作基準**：`be84267`（功能已全部落地），目前 HEAD 差異僅為文件更新，請以現場 `git status` 與 `git log` 為準。
+2. **代碼實作基準**：`28a5fcd`（修復跨 Fence 拖曳 DPI 坐標判定與忽略大小寫路徑比對），目前 HEAD 差異僅為文件更新，請以現場 `git status` 與 `git log` 為準。
 3. **下一步方向**：嚴格鎖定於手動驗收 7 大項清單，暫緩開新功能（包括 Smart Frame Snapping），並優先評估 fork 更新來源隔離。
