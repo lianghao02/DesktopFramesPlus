@@ -21,6 +21,9 @@ namespace Desktop_Frames
         [DllImport("user32.dll")]
         private static extern bool GetCursorPos(out POINT lpPoint);
 
+        [DllImport("user32.dll")]
+        private static extern IntPtr WindowFromPoint(POINT Point);
+
         [StructLayout(LayoutKind.Sequential)]
         public struct POINT
         {
@@ -195,6 +198,52 @@ namespace Desktop_Frames
         }
 
         /// <summary>
+        /// 依據物理螢幕座標精確查找游標所在的 NonActivatingWindow（支援多螢幕與任意 DPI 縮放，絕無偏差）
+        /// </summary>
+        private static NonActivatingWindow FindTargetWindowAtScreenPoint(System.Windows.Point screenPosition)
+        {
+            // 方案 1: Win32 WindowFromPoint 獲取游標正下方的頂層視窗 Handle（最精準，免疫 DPI 縮放問題）
+            try
+            {
+                POINT pt = new POINT { X = (int)screenPosition.X, Y = (int)screenPosition.Y };
+                IntPtr hwnd = WindowFromPoint(pt);
+                if (hwnd != IntPtr.Zero)
+                {
+                    foreach (Window win in Application.Current.Windows)
+                    {
+                        if (win is NonActivatingWindow nw && nw.IsVisible)
+                        {
+                            IntPtr nwHwnd = new System.Windows.Interop.WindowInteropHelper(nw).Handle;
+                            if (nwHwnd == hwnd) return nw;
+                        }
+                    }
+                }
+            }
+            catch { }
+
+            // 方案 2: 使用 WPF PointFromScreen（自動經由 WPF 坐標矩陣還原 DPI）
+            foreach (Window win in Application.Current.Windows)
+            {
+                if (win is NonActivatingWindow nw && nw.IsVisible)
+                {
+                    try
+                    {
+                        System.Windows.Point localPoint = nw.PointFromScreen(screenPosition);
+                        double w = nw.ActualWidth > 0 ? nw.ActualWidth : nw.Width;
+                        double h = nw.ActualHeight > 0 ? nw.ActualHeight : nw.Height;
+                        if (localPoint.X >= 0 && localPoint.X <= w && localPoint.Y >= 0 && localPoint.Y <= h)
+                        {
+                            return nw;
+                        }
+                    }
+                    catch { }
+                }
+            }
+
+            return null;
+        }
+
+        /// <summary>
         /// Handles mouse move during drag operation
         /// </summary>
         public static void HandleDragMove(System.Windows.Point screenPosition)
@@ -205,19 +254,8 @@ namespace Desktop_Frames
             {
                 UpdateDragPreviewPosition(screenPosition);
 
-                WrapPanel targetPanel = null;
-                foreach (Window win in Application.Current.Windows)
-                {
-                    if (win is NonActivatingWindow nw && nw.IsVisible)
-                    {
-                        Rect bounds = new Rect(nw.Left, nw.Top, nw.ActualWidth > 0 ? nw.ActualWidth : nw.Width, nw.ActualHeight > 0 ? nw.ActualHeight : nw.Height);
-                        if (bounds.Contains(screenPosition))
-                        {
-                            targetPanel = FindWrapPanel(nw);
-                            break;
-                        }
-                    }
-                }
+                NonActivatingWindow targetWin = FindTargetWindowAtScreenPoint(screenPosition);
+                WrapPanel targetPanel = targetWin != null ? FindWrapPanel(targetWin) : _sourceWrapPanel;
 
                 if (targetPanel == null) targetPanel = _sourceWrapPanel;
 
@@ -246,20 +284,7 @@ namespace Desktop_Frames
             try
             {
                 NonActivatingWindow sourceWindow = FindVisualParent<NonActivatingWindow>(_sourceWrapPanel);
-                NonActivatingWindow targetWindow = null;
-
-                foreach (Window win in Application.Current.Windows)
-                {
-                    if (win is NonActivatingWindow nw && nw.IsVisible)
-                    {
-                        Rect bounds = new Rect(nw.Left, nw.Top, nw.ActualWidth > 0 ? nw.ActualWidth : nw.Width, nw.ActualHeight > 0 ? nw.ActualHeight : nw.Height);
-                        if (bounds.Contains(screenPosition))
-                        {
-                            targetWindow = nw;
-                            break;
-                        }
-                    }
-                }
+                NonActivatingWindow targetWindow = FindTargetWindowAtScreenPoint(screenPosition);
 
                 if (targetWindow == null || targetWindow == sourceWindow)
                 {
@@ -343,7 +368,7 @@ namespace Desktop_Frames
             int currentPosition = -1;
             for (int i = 0; i < _sourceItemsList.Count; i++)
             {
-                if (_sourceItemsList[i]["Filename"]?.ToString() == _draggedItem["Filename"]?.ToString())
+                if (string.Equals(_sourceItemsList[i]["Filename"]?.ToString(), _draggedItem["Filename"]?.ToString(), StringComparison.OrdinalIgnoreCase))
                 {
                     currentPosition = i;
                     break;
@@ -421,7 +446,7 @@ namespace Desktop_Frames
                             {
                                 for (int k = 0; k < targetList.Count; k++)
                                 {
-                                    if (targetList[k]["Filename"]?.ToString() == filePath)
+                                    if (string.Equals(targetList[k]["Filename"]?.ToString(), filePath, StringComparison.OrdinalIgnoreCase))
                                     {
                                         dataIndex = k;
                                         break;
