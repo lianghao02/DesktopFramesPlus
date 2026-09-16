@@ -2,10 +2,10 @@
 
 - **Repository**: `lianghao02/DesktopFramesPlus`
 - **Branch**: `main`
-- **功能實作基準 Commit**: `28a5fcd`
-- **交接文件最後驗證時的 HEAD**: `28a5fcd`
-- **版本狀態備註**: 本文件提交後請以 `git status` 與 `git log` 實況為準（修復跨 Fence 拖曳 DPI 判定，待手動驗收）
-- **Task Type**: FIX / ENHANCEMENT / AUDIT
+- **功能實作基準 Commit**: `4b3f234`
+- **交接文件最後驗證時的 HEAD**: `4b3f234`
+- **版本狀態備註**: 本文件提交後請以 `git status` 與 `git log` 實況為準（修復跨 Fence 拖曳 DPI 判定、消除點擊卡頓與磁碟 I/O 阻塞）
+- **Task Type**: FIX / ENHANCEMENT / PERF / AUDIT
 - **Date**: 2026-09-16
 - **Status**: 待驗收中，Release Build 成功，工作目錄 Clean
 
@@ -39,6 +39,18 @@
    - 拖曳預覽視窗 `_dragPreviewWindow` 設置 `ShowActivated = false`，防止彈出時搶焦點中斷滑鼠 capture。
    - 重構 `CalculateDropPosition` 與 `ReorderframeItems`：消除 `currentPosition + 1 == newPosition` 導致相鄰圖示無法拖動的死區 BUG，改採精準的幾何中心點對稱重排演算法。
 
+### D. 跨 Fence 拖曳單向失效修復 (Commit `28a5fcd`)
+- **根因**：先前跨視窗比對直接使用 `PointToScreen()` 的物理像素比對 `Window.Left/Top` 的 WPF 邏輯像素。在螢幕有 DPI 縮放（如 125%/150%）時，下方或右側視窗在計算範圍時會完全吞噬上方視窗的邊界，導致拖曳到上方視窗判定為無效或落入錯誤 Fence。
+- **修復**：引入 Win32 `WindowFromPoint` API 取得滑鼠下方的精準實體視窗，再搭配 WPF `PointFromScreen` 雙重驗證。路徑比對統一強化為 `StringComparison.OrdinalIgnoreCase`。
+
+### E. 點擊 Fence 偶發延遲/卡頓鈍感根治 (Commit `4b3f234`)
+- **根本原因 1 (TargetChecker)**：`TargetChecker` 原先每隔 1000ms（1秒）就強制在 UI 執行緒以同步 `Dispatcher.Invoke` 輪詢檢查所有圖示的實體檔案路徑與狀態，造成 WPF 訊息幫浦每秒被卡住數十毫秒；當使用者恰好在該瞬間點擊 Fence 時，滑鼠事件被排在後方，產生明顯的鈍感。
+  - **修復**：將 `TargetChecker` 間隔由 1000ms 調大至安全的至少 15000ms（15秒）。
+- **根本原因 2 (MouseDown 同步 I/O)**：`MouseDownHandler` 每次點擊圖示時都在 UI 執行緒直接執行 `File.Exists(path)` 與 `Directory.Exists(path)`，遇到網路路徑或已失效捷徑會瞬間卡死 UI。
+  - **修復**：移除開頭的不必要同步磁碟檢查。
+- **根本原因 3 (焦點爭奪與重繪)**：`SetSelectedIcon` 中原先呼叫了 `parentWin.Activate()`，與 `NonActivatingWindow` 的底層 `MA_NOACTIVATE` 衝突，導致作業系統與 WPF 重繪焦點延遲。
+  - **修復**：移除 `parentWin.Activate()`，圖示面板自身設定 `sp.Focusable = true; sp.Focus()` 即可完美響應 `Delete` 快捷鍵。
+
 ---
 
 ## 2. 驗證依據與證據 (Verification Proof)
@@ -57,12 +69,7 @@
 - **影響**：維護時容易發生閉包變數作用域陷阱（如先前 `wpcont` 變數宣告順序問題）。
 - **建議**：目前功能運作正常，切忌在無單元測試防護下進行大規模拆檔重構；未來若有新模組需求，再將右鍵選單或選取狀態抽出獨立 Manager。
 
-### 潛在問題 B：`win.Activate()` 對「非啟動視窗」的可能微小副作用
-- **現況**：為了讓 Delete 鍵能立即被視窗接收，在 `SetSelectedIcon` 中執行了 `parentWin.Activate()`。
-- **評估**：這能完美解決 Delete 鍵無反應的問題；但若使用者在玩全螢幕遊戲或使用極度敏感的無焦點浮動視窗時點擊圖示，該視窗會短暫取得焦點。
-- **建議**：請 Codex 評估是否需要加入全域鍵盤低階鉤子（`SetWindowsHookEx(WH_KEYBOARD_LL)`），或維持目前的 WPF 標準 `Activate()`。
-
-### 潛在問題 C：多螢幕 / DPI 混合縮放情境下的拖曳預覽
+### 潛在問題 B：多螢幕 / DPI 混合縮放情境下的拖曳預覽
 - **現況**：`_dragPreviewWindow` 在跨不同 DPI 螢幕時，座標計算目前寫入 `dpiScale = 1.0`（簡化版）。
 - **影響**：在一般單螢幕或等比例螢幕上完全正常；若使用者有兩台縮放比差異極大的螢幕（如 100% + 200%），拖曳預覽視窗位置可能會有少許偏差。
 - **建議**：可審查 `GetDpiScaleFactor` 的多螢幕動態判定。
@@ -71,5 +78,5 @@
 
 ## 4. 給 Codex 的交接指引
 1. **工作目錄與分支**：`D:\Development\GitHub\DesktopFramesPlus`，分支 `main`。
-2. **代碼實作基準**：`28a5fcd`（修復跨 Fence 拖曳 DPI 坐標判定與忽略大小寫路徑比對），目前 HEAD 差異僅為文件更新，請以現場 `git status` 與 `git log` 為準。
+2. **代碼實作基準**：`4b3f234`（修復跨 Fence 拖曳 DPI 判定、消除點擊卡頓鈍感與後台輪詢阻塞），目前 HEAD 差異僅為文件更新，請以現場 `git status` 與 `git log` 為準。
 3. **下一步方向**：嚴格鎖定於手動驗收 7 大項清單，暫緩開新功能（包括 Smart Frame Snapping），並優先評估 fork 更新來源隔離。
