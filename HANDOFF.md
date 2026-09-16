@@ -1,34 +1,52 @@
-# HANDOFF: DesktopFramesPlus 維護交接狀態
+# HANDOFF: DesktopFramesPlus 工作狀態
 
 - **Repository**: `lianghao02/DesktopFramesPlus`
 - **Branch**: `main`
-- **Commit SHA**: `733776e`
+- **Commit SHA**: `90ee3dd`
 - **Task Type**: FIX / ENHANCEMENT
 - **Date**: 2026-09-16
 
-## 1. 當前已完成工作
-1. **繁體中文與發行治理 (v2.7.8-zh-TW)**：
-   - 建立完整 `Strings.zh-TW.resx`（620 筆鍵值，100% 覆蓋）。
-   - 停用指向上游之自動更新，清理外部 PayPal 連結。
-   - 改版中英雙語 README.md，發布 GitHub Release 並上架 13_Project-Hub。
-2. **第一階段：框架智慧對齊與 8px 間距吸附 (FrameSnapCalculator)**：
-   - 純幾何數學運算類別 `FrameSnapCalculator.cs`，支援螢幕工作區、邊緣對齊、相鄰 8px 吸附與中心線對齊。
-   - 脫離阻尼手感與穿透對齊輔助線 `SnapGuideOverlay.cs`。
-3. **第二階段：簡化桌面版面切換入口（Desktop Layouts / Profiles）**：
-   - 系統匣首要入口動態顯示目前版面，框架愛心功能選單整合版面切換，全面汰換老舊 Visual Basic 彈窗。
-4. **第三階段：框選範圍後收納圖示（安全預覽與確認版）**：
-   - 建立 `DrawFrameConfirmDialog.cs`，非破壞性無損收納桌面圖示，原始檔案原位保留。
-5. **第四階段：5 大核心桌面分區體驗修復**：
-   - **移除小元件外掛**：徹底清理愛心選單中的相框、VU 電平表、計算器等不協調小元件，回歸純粹分區。
-   - **面板頂端直接重新命名**：單擊標題列文字直接就地編輯改名（按 Enter 儲存、Esc 放棄），拖曳文字或背景平滑移動視窗，右鍵選單增設「重新命名框架」。
-   - **原生資料夾圖示修復**：拔除強制 white folder 回退代碼，全面改由 `Utility.GetShellIcon` 提取 Windows 原生黃色資料夾圖示。
-   - **高畫質圖示提取與抗鋸齒**：升級 `Utility.cs` 支援 `SHGetImageList` 提取 Extra Large (48x48) 與 Jumbo (256x256) 高清圖標，釋放改用 `DestroyIcon`，WPF `Image` 全面啟用 `BitmapScalingMode.HighQuality`。
-   - **雙擊開啟、單點拖曳與跨 Fence 搬移**：圖示點兩下開啟防誤觸，單點按住拖曳（免 Ctrl），放開至另一個 Fence 即刻安全轉移。
+## 1. 已完成工作
 
-## 2. 驗證證據
-- MSBuild Release 建置通過（0 個錯誤）。
-- `tools/verify-localization.ps1` 檢驗繁體中文資源檔 100% 覆蓋無遺漏。
-- Git Commit: `733776e`。
+### Commit `733776e`：5 大體驗痛點修復
+- 移除小元件（Widget）
+- 標題單擊改名（Enter 儲存、Esc 取消）
+- 原生彩色資料夾圖示（`Utility.GetShellIcon`）
+- 高清圖示渲染（SHGetImageList + HighQuality）
+- 雙擊開啟、單點拖曳、跨 Fence 拖曳
 
-## 3. 下一步路線
-- 目前 5 大核心痛點已全部修復完畢，軟體品質與分區體驗已顯著躍升。可依需求進行新版本標籤發布。
+### Commit `90ee3dd`：三項操作改善
+1. **單點選取高亮 + Delete 鍵移除**（Data frame）
+   - 單點圖示 → 半透明藍色高亮（`FromArgb(90, 0, 120, 215)`）
+   - 點 WrapPanel 空白區域 → 取消選取
+   - 選取後按 `Delete` → MessageBox 確認 → 移除圖示並即時更新 UI
+   - 支援一般圖示和 Spacer 兩種路徑
+2. **Spacer（空白間距）常規化**
+   - 右鍵選單「新增空白格」不再需要按 Ctrl，一般 Data frame 右鍵即可出現
+   - `miExportAllToDesktop` 保留 Ctrl 條件（進階功能）
+3. **調整至最適大小（Fit to Content）**
+   - Data frame 右鍵選單加入「調整至最適大小」
+   - 執行時期從 VisualTree 找 WrapPanel → 計算子元素行列高度 → DoubleAnimation 動畫縮放視窗高度 → SaveFrameData
+
+## 2. 驗證結果
+- MSBuild /t:Compile 0 個 CS 編譯錯誤（Exit code 0）
+- exe 鎖定導致無法覆寫，需關閉應用程式後重新 Build 才能測試
+- Localization：MenuFitToContent、MsgConfirmRemoveItem 已在 resx 和 Strings.cs 就位
+
+## 3. 關鍵修改位置（FrameManager.cs）
+
+| 位置 | 修改內容 |
+|------|----------|
+| L100-102 | 新增 _currentlySelectedIconPanel 靜態欄位 |
+| L8552-8567 | 新增 SetSelectedIcon / DeselectIcon helper |
+| L8733-8741 | MouseUpHandler 加入單點選取邏輯 |
+| L6110-6117 | wpcont.MouseLeftButtonDown 空白區域取消選取 |
+| L6867-6944 | win.PreviewKeyDown Delete 鍵移除流程 |
+| L5082-5095 | Spacer 從 isCtrlPressed 分離 |
+| L5176-5258 | Fit to Content 選單邏輯 |
+| L9000-9015 | 新增 FindVisualChild<T> helper |
+
+## 4. 下一步
+- 關閉 Desktop Frames.exe 後執行 MSBuild Release 完整 Build
+- 測試三項新功能：單點選取/Delete、空白格新增（無需 Ctrl）、調整至最適大小
+- 確認無阻斷性問題後可發布
