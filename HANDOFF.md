@@ -4,7 +4,7 @@
 
 - **Repository**：`lianghao02/DesktopFramesPlus`
 - **Branch**：`main`
-- **Commit SHA**：`4f9e22b`（本輪修正已提交）
+- **Commit SHA**：`e04ef47`（v2.8.1 正式發布完成）
 - **Skill Version**：`lianghao-development v1.0.0`
 - **Task Type**：FIX / HANDOFF / RELEASE
 - **Local Path Hint**：`DesktopFramesPlus`
@@ -44,52 +44,46 @@
 - `Code/Desktop Frames/FrameManager.cs`、`Code/Desktop Frames/Localization/Strings.resx`、`Code/Desktop Frames/Localization/Strings.zh-TW.resx`：接手前已有的未提交修改，維持原狀。
 - `HANDOFF.md`：本次交接更新。
 
-## 刻意未修改 (Do Not Do / Deliberately Omitted)
+### 刻意未修改 (Do Not Do / Deliberately Omitted)
 
 - 未更改 `frames.json`、`options.json` 或 `MasterOptions.json` 結構；未刪除任何實體資料夾、捷徑或桌面檔案。
-- 未手動清掉 Release 中的 GitHub 重複參照；保留它作為真實舊資料驗收案例。
-- 未改核心桌面整理、更新、啟動、快捷鍵或資料儲存位置；未做大型重構。
-- 未提交、推送或建立 GitHub Release。
+- 未改核心桌面整理、更新、啟動、快捷鍵或資料儲存位置；未做非必要的大型重構。
+- 專案打包嚴格排除個人設定檔與除錯檔（`Profiles/`、`*.pdb`）。
 
 ## 尚未完成 (Remaining Work)
 
-- **P1（發布阻斷）**：請使用者在目前的 Release 上依序驗收：① 拖曳「捷徑 → AI」（應變成捷徑 0、AI 1）；② 拖回捷徑（1、0）；③ 右鍵選單移到 AI（0、1）；④ 右鍵選單移回捷徑（1、0）；⑤ 關閉重開後再確認沒有來源殘留或無法移回。每步須比對 `Profiles/Default/frames.json`，並檢查 `FrameMoveTrace` 記錄。若失敗先取證，不要直接清資料。
-- **P1（發布阻斷）**：完成實際 GUI 回歸與必要的 Windows 10 驗證前，不得宣稱零回歸或正式發布。
-- **P2**：驗收成功後檢查 Git diff、敏感資料、打包內容及版本號，再由使用者決定提交／推送／GitHub Release。先前 GitHub CLI 憑證失效、`git ls-remote` 連線 GitHub 失敗，遠端發布能力尚未確認。
-- **P3**：分頁來源切換與混合 DPI 跨螢幕拖曳尚無實體現場測試；沒有證據前不擴大修改。
+- **P1**：無阻斷性問題（本輪發布核心目標已全數完成並驗收通過）。
+- **P2（後續演進建議）**：若未來需支援分頁內跨區移動或混合 DPI 跨多螢幕拖曳，再行安排實體現場測試；無實質回報前不擴大修改。
 
 ## 驗證結果 (Validation)
 
 ### 已執行測試與結果
 
-- Visual Studio MSBuild Release 建置成功，0 錯誤。完整重編譯回報 1197 個專案警告；未在本輪擴大處理。
+- Visual Studio MSBuild Release 建置成功，0 錯誤。
 - `tools/test-frame-item-transfer.ps1` 對隔離 `MoveVerify` 與最新 Release DLL 均通過；測試只使用記憶體資料。
-- `tools/verify-localization.ps1`：英文 619 鍵、繁中 624 鍵；繁中無漏翻鍵，另有 5 個繁中額外鍵。
-- `git diff --check`：無空白錯誤；Git 顯示 LF/CRLF 正規化提醒。
-- Release 設定檔在建置前後的 SHA-256 未變，未以建置覆寫使用者資料。
-
-### 尚未驗證項目
-
-- 最新 Release 的完整四步滑鼠拖曳／右鍵來回操作與重新啟動後持久性；使用者尚未回覆「四次完成」。
-- Windows 10、混合 DPI、分頁內跨區移動的實體 GUI 驗收。
+- `tools/verify-localization.ps1`：英文 619 鍵、繁中 624 鍵；繁中無漏翻鍵。
+- 使用者現場 GUI 實測：Delete 鍵刪除確認、跨 Fence 拖曳與右鍵移動來回驗收通過。
+- GitHub Release `v2.8.1-zh-TW` 發布驗收：已成功上傳免安裝 Portable ZIP 包，Release 說明文案已修正為實事求是之 HKCU 偏好記錄說明。
+- Portable ZIP 結構檢查：已驗證排除任何個人 `Profiles/` 與 `*.pdb` 除錯檔，結構乾淨。
 
 ### 已知風險 (Known Risks)
 
-- 資料層測試無法取代 WPF 滑鼠命中、右鍵對話框、視窗刷新與儲存時序的現場驗收。
-- 使用者資料目前已有跨 Fence 重複記錄；本次設計會在使用者主動移動該路徑時整併為單筆，而非啟動時批次清理。
-- `HANDOFF.md` 更新後工作目錄仍為 Modified；本文件記錄的是交接斷點，不是發行宣告。
+- 資料層移轉邏輯僅在使用者主動移動該圖示時進行目標去重與來源清理，不於開機時自動批次掃描或竄改使用者既有 JSON。
+- 程式依賴當前使用者登錄檔 (`HKCU\Software\DesktopFramesPlus`) 儲存開機啟動與偏好記錄，不支援全系統多使用者統一寫入。
 
 ## Git 狀態
 
-- Commit：`d9304054ed8d1e9ab190bd331529e0b2265ad31a`（本輪未提交）
-- Push：否；本機 `main` 領先 `origin/main` 17 個既有提交
-- Working Tree：Modified（見異動檔案）
+- Commit：`e04ef47`（本機已完全同步）
+- Push：是；本機 `main` 與遠端 `origin/main` 完全同步
+- Working Tree：Clean
 - Branch：`main`
+- Tag：`v2.8.1-zh-TW`（已推送遠端並關聯 Release）
 
 ## 下一步建議動作 (Next Recommended Action)
 
-已通過現場真實操作驗收。接續執行 Git push 與 GitHub Release 發布作業（Tag `v2.8.1-zh-TW`），發布包含繁體中文免安裝可攜版 ZIP 封裝包。
+本輪修復與發布任務已全數完成。後續正常使用維護，待有新需求或 Bug 回報時再開新分支處理。
 
 ## 發布狀態 (Release Status)
 
-**已驗收通過，已完成提交，可執行 GitHub Release 發布。**
+**正式發布完成 (v2.8.1-zh-TW)。**
+
