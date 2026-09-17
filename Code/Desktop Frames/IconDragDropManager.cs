@@ -329,6 +329,29 @@ namespace Desktop_Frames
                 return;
             }
 
+            // 拖曳期間吸附關係儲存可能替換主清單中的分區物件，不能沿用開始拖曳時的來源參照。
+            string sourceFrameId = _sourceFrame.Id?.ToString();
+            bool sourceIsMain = ReferenceEquals(_sourceItemsList, _sourceFrame.Items as JArray);
+            int sourceTabIndex = sourceIsMain ? -1 : Convert.ToInt32(_sourceFrame.CurrentTab?.ToString() ?? "0");
+            dynamic liveSourceFrame = FrameData.FirstOrDefault(f => f.Id?.ToString() == sourceFrameId);
+            JArray liveSourceList = null;
+            if (liveSourceFrame != null)
+            {
+                if (sourceIsMain) liveSourceList = liveSourceFrame.Items as JArray;
+                else
+                {
+                    var sourceTabs = liveSourceFrame.Tabs as JArray;
+                    if (sourceTabs != null && sourceTabIndex >= 0 && sourceTabIndex < sourceTabs.Count)
+                        liveSourceList = sourceTabs[sourceTabIndex]?["Items"] as JArray;
+                }
+            }
+            if (liveSourceList == null)
+            {
+                LogManager.Log(LogManager.LogLevel.Warn, LogManager.LogCategory.IconHandling,
+                    $"Move blocked: live source list is unavailable for frame {sourceFrameId}.");
+                return;
+            }
+
             // Target JArray
             JArray targetList = null;
             bool tabsEnabled = targetFrame.TabsEnabled?.ToString().ToLower() == "true";
@@ -354,6 +377,19 @@ namespace Desktop_Frames
                 }
             }
 
+            string traceId = Guid.NewGuid().ToString("N")[..8];
+            string draggedFilename = _draggedItem?["Filename"]?.ToString();
+            string draggedName = _draggedItem?["DisplayName"]?.ToString();
+            string sourceLocation = sourceIsMain ? "main" : $"tab:{sourceTabIndex}";
+            string targetLocation = ReferenceEquals(targetList, targetFrame.Items as JArray)
+                ? "main" : $"tab:{targetFrame.CurrentTab}";
+            string targetSameName = string.Join("; ", targetList
+                .Where(item => (!string.IsNullOrEmpty(draggedName) && string.Equals(item["DisplayName"]?.ToString(), draggedName, StringComparison.OrdinalIgnoreCase))
+                    || string.Equals(item["Filename"]?.ToString(), draggedFilename, StringComparison.OrdinalIgnoreCase))
+                .Select(item => $"{item["DisplayName"]}|{item["Filename"]}"));
+            LogManager.Log(LogManager.LogLevel.Info, LogManager.LogCategory.IconHandling,
+                $"[FrameMoveTrace:{traceId}] route=drag stage=before source={sourceFrameId}/{sourceLocation} target={targetFrameId}/{targetLocation} filename={draggedFilename} name={draggedName} sourceCount={liveSourceList.Count} targetCount={targetList.Count} sourcePathMatches={liveSourceList.Count(item => string.Equals(item["Filename"]?.ToString(), draggedFilename, StringComparison.OrdinalIgnoreCase))} targetPathMatches={targetList.Count(item => string.Equals(item["Filename"]?.ToString(), draggedFilename, StringComparison.OrdinalIgnoreCase))} targetSameName=[{targetSameName}] sourceListWasLive={ReferenceEquals(_sourceItemsList, liveSourceList)}");
+
             WrapPanel targetWrapPanel = FindWrapPanel(targetWindow);
             int insertIndex = targetList.Count;
             if (targetWrapPanel != null)
@@ -366,75 +402,47 @@ namespace Desktop_Frames
                 catch { }
             }
 
-            // 1. Remove from source list (優先精準移除實例，並清除來源端所有同名重複項目)
-            bool removed = false;
-            if (_draggedItem is JToken draggedToken)
+            JToken draggedToken = _draggedItem as JToken;
+            JToken liveDraggedToken = draggedToken != null && ReferenceEquals(draggedToken.Parent, liveSourceList)
+                ? draggedToken : null;
+            if (liveDraggedToken == null)
             {
-                if (draggedToken.Parent is JArray parentArr)
-                {
-                    parentArr.Remove(draggedToken);
-                    removed = true;
-                }
-                else if (_sourceItemsList != null && _sourceItemsList.Contains(draggedToken))
-                {
-                    _sourceItemsList.Remove(draggedToken);
-                    removed = true;
-                }
+                var pathMatches = liveSourceList.Where(item =>
+                    string.Equals(item["Filename"]?.ToString(), draggedFilename, StringComparison.OrdinalIgnoreCase)).ToList();
+                var exactMatches = draggedToken == null ? new List<JToken>() : pathMatches
+                    .Where(item => JToken.DeepEquals(item, draggedToken)).ToList();
+                if (exactMatches.Count == 1) liveDraggedToken = exactMatches[0];
+                else if (pathMatches.Count == 1) liveDraggedToken = pathMatches[0];
+            }
+            if (liveDraggedToken == null)
+            {
+                LogManager.Log(LogManager.LogLevel.Warn, LogManager.LogCategory.IconHandling,
+                    $"[FrameMoveTrace:{traceId}] route=drag stage=blocked reason=source-item-not-unique-in-live-list");
+                return;
             }
 
-            string draggedFilename = _draggedItem?["Filename"]?.ToString();
-            if (_sourceItemsList != null && !string.IsNullOrEmpty(draggedFilename))
+            if (ReferenceEquals(liveSourceList, targetList))
             {
-                // 若上述實例移除未中，或來源端本來就有多個歷史殘留的重複項，從後往前全部清除
-                for (int i = _sourceItemsList.Count - 1; i >= 0; i--)
-                {
-                    if (string.Equals(_sourceItemsList[i]["Filename"]?.ToString(), draggedFilename, StringComparison.OrdinalIgnoreCase))
-                    {
-                        _sourceItemsList.RemoveAt(i);
-                        removed = true;
-                    }
-                }
+                LogManager.Log(LogManager.LogLevel.Warn, LogManager.LogCategory.IconHandling,
+                    $"[FrameMoveTrace:{traceId}] route=drag stage=blocked reason=source-and-target-are-same-list");
+                return;
             }
 
-            if (_sourceItemsList != null)
-            {
-                for (int i = 0; i < _sourceItemsList.Count; i++)
-                {
-                    _sourceItemsList[i]["DisplayOrder"] = i;
-                }
-            }
+            var transfer = FrameItemTransfer.Move(liveSourceList, targetList, liveDraggedToken,
+                draggedFilename, insertIndex);
 
-            // 2. 目標端防重複檢查（若目標端已存在同名項目，先移除舊的，再插入拖曳的新項目）
-            if (!string.IsNullOrEmpty(draggedFilename))
-            {
-                for (int i = targetList.Count - 1; i >= 0; i--)
-                {
-                    if (string.Equals(targetList[i]["Filename"]?.ToString(), draggedFilename, StringComparison.OrdinalIgnoreCase))
-                    {
-                        targetList.RemoveAt(i);
-                    }
-                }
-            }
-
-            // 3. Clone and Insert into target list
-            JToken itemToInsert = _draggedItem is JToken jt ? jt.DeepClone() : JToken.FromObject(_draggedItem);
-            insertIndex = Math.Max(0, Math.Min(insertIndex, targetList.Count));
-            targetList.Insert(insertIndex, itemToInsert);
-            for (int i = 0; i < targetList.Count; i++)
-            {
-                targetList[i]["DisplayOrder"] = i;
-            }
-
-            // 4. Save
+            // Save
             FrameDataManager.SaveFrameData();
+            LogManager.Log(LogManager.LogLevel.Info, LogManager.LogCategory.IconHandling,
+                $"[FrameMoveTrace:{traceId}] route=drag stage=after sourceCount={liveSourceList.Count} targetCount={targetList.Count} sourcePathMatches={liveSourceList.Count(item => string.Equals(item["Filename"]?.ToString(), draggedFilename, StringComparison.OrdinalIgnoreCase))} targetPathMatches={targetList.Count(item => string.Equals(item["Filename"]?.ToString(), draggedFilename, StringComparison.OrdinalIgnoreCase))} sourceRemoved={transfer.SourceRemoved} targetDuplicatesRemoved={transfer.TargetDuplicatesRemoved} addedToTarget={transfer.AddedToTarget}");
 
-            // 5. Refresh both frames
+            // Refresh both frames
             Application.Current.Dispatcher.Invoke(() =>
             {
                 NonActivatingWindow sourceWindow = FindVisualParent<NonActivatingWindow>(_sourceWrapPanel);
                 if (sourceWindow != null)
                 {
-                    Framemanager.RefreshFrameUsingFormApproach(sourceWindow, _sourceFrame);
+                    Framemanager.RefreshFrameUsingFormApproach(sourceWindow, liveSourceFrame);
                 }
                 Framemanager.RefreshFrameUsingFormApproach(targetWindow, targetFrame);
             });

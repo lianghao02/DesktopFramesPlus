@@ -1911,4 +1911,10 @@
   <data name="MsgConfirmRemoveItem" xml:space="preserve">
     <value>確定要自此分區移除「{0}」嗎？</value>
   </data>
+  <data name="MsgRemoveFromFrameOnly" xml:space="preserve">
+    <value>僅移除此分區中的項目，不會刪除原始檔案。</value>
+  </data>
+  <data name="MsgFrameAlreadyContainsItem" xml:space="preserve">
+    <value>此分區已有相同項目，因此未移動任何項目。</value>
+  </data>
 </root>

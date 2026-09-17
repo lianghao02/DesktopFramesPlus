@@ -8747,7 +8747,7 @@ namespace Desktop_Frames
                     : Strings.Get("MsgConfirmRemoveItem", displayName);
 
                 var result = System.Windows.MessageBox.Show(
-                    confirmMsg + "\n\n(" + (Strings.DlgConfirmImport != null ? "僅自此分區移除，不會刪除原始檔案" : "Remove from frame only, original file will not be deleted") + ")",
+                    confirmMsg + "\n\n" + Strings.Get("MsgRemoveFromFrameOnly"),
                     Strings.DlgInfo,
                     MessageBoxButton.YesNo,
                     MessageBoxImage.Question);

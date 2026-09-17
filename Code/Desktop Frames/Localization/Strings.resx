@@ -1895,4 +1895,10 @@ Restart now?</value>
   <data name="MsgConfirmRemoveItem" xml:space="preserve">
     <value>Are you sure you want to remove '{0}' from this frame?</value>
   </data>
+  <data name="MsgRemoveFromFrameOnly" xml:space="preserve">
+    <value>Only the frame entry will be removed. The original file will not be deleted.</value>
+  </data>
+  <data name="MsgFrameAlreadyContainsItem" xml:space="preserve">
+    <value>This frame already contains this item. Nothing was moved.</value>
+  </data>
 </root>

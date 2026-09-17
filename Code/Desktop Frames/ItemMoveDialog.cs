@@ -491,6 +491,19 @@ namespace Desktop_Frames
         {
             try
             {
+                // 選單可能持有重新建立視窗前的舊物件；移動時一律操作目前儲存中的分區。
+                var liveFrames = Framemanager.GetFrameData();
+                string sourceFrameId = sourceFrame.Id?.ToString();
+                string targetFrameId = targetFrame.Id?.ToString();
+                sourceFrame = liveFrames.FirstOrDefault(frame => frame.Id?.ToString() == sourceFrameId);
+                targetFrame = liveFrames.FirstOrDefault(frame => frame.Id?.ToString() == targetFrameId);
+                if (sourceFrame == null || targetFrame == null)
+                {
+                    LogManager.Log(LogManager.LogLevel.Warn, LogManager.LogCategory.IconHandling,
+                        "Move blocked: source or target frame is no longer available.");
+                    return;
+                }
+
                 IDictionary<string, object> itemDict = item is IDictionary<string, object> dict ?
                     dict : ((JObject)item).ToObject<IDictionary<string, object>>();
                 string filename = itemDict.ContainsKey("Filename") ? itemDict["Filename"].ToString() : "Unknown";
@@ -506,20 +519,32 @@ namespace Desktop_Frames
                     if (sourceCurrentTab >= 0 && sourceCurrentTab < sourceTabs.Count)
                     {
                         var sourceActiveTab = sourceTabs[sourceCurrentTab] as JObject;
-                        sourceItems = sourceActiveTab?["Items"] as JArray ?? new JArray();
+                        sourceItems = sourceActiveTab?["Items"] as JArray;
                     }
                 }
                 else
                 {
-                    sourceItems = sourceFrame.Items as JArray ?? new JArray();
+                    sourceItems = sourceFrame.Items as JArray;
                 }
 
-                // Find item in source
-                var itemToMove = sourceItems?.FirstOrDefault(i => i["Filename"]?.ToString() == filename);
+                // 優先辨識使用者選取的實例；舊 UI 物件僅在能唯一比對時才移動。
+                JToken selectedToken = item is JToken token ? token : null;
+                JToken itemToMove = selectedToken != null && ReferenceEquals(selectedToken.Parent, sourceItems)
+                    ? selectedToken : null;
+                if (itemToMove == null && sourceItems != null)
+                {
+                    var pathMatches = sourceItems.Where(existing =>
+                        string.Equals(existing["Filename"]?.ToString(), filename, StringComparison.OrdinalIgnoreCase)).ToList();
+                    var exactMatches = selectedToken == null ? new List<JToken>() : pathMatches
+                        .Where(existing => JToken.DeepEquals(existing, selectedToken)).ToList();
+                    if (exactMatches.Count == 1) itemToMove = exactMatches[0];
+                    else if (pathMatches.Count == 1) itemToMove = pathMatches[0];
+                }
                 if (itemToMove == null)
                 {
-                    LogManager.Log(LogManager.LogLevel.Error, LogManager.LogCategory.IconHandling,
-                        $"Item '{filename}' not found in source location");
+                    LogManager.Log(LogManager.LogLevel.Warn, LogManager.LogCategory.IconHandling,
+                        $"Move blocked: item '{filename}' was not found uniquely in the live source frame.");
+                    MessageBoxesManager.ShowOKOnlyMessageBoxForm(Strings.Get("MsgMoveFailed", filename), Strings.DlgError);
                     return;
                 }
 
@@ -534,7 +559,7 @@ namespace Desktop_Frames
                     if (targetTabIndex.Value >= 0 && targetTabIndex.Value < targetTabs.Count)
                     {
                         var targetTab = targetTabs[targetTabIndex.Value] as JObject;
-                        destItems = targetTab?["Items"] as JArray ?? new JArray();
+                        destItems = targetTab?["Items"] as JArray;
                         string tabName = targetTab?["TabName"]?.ToString() ?? $"Tab {targetTabIndex.Value}";
                         destinationDescription = $"tab '{tabName}' in frame '{targetFrame.Title}'";
                     }
@@ -542,7 +567,7 @@ namespace Desktop_Frames
                 else
                 {
                     // Moving to frame main Items
-                    destItems = targetFrame.Items as JArray ?? new JArray();
+                    destItems = targetFrame.Items as JArray;
                     destinationDescription = $"main area of frame '{targetFrame.Title}'";
                 }
 
@@ -553,12 +578,30 @@ namespace Desktop_Frames
                     return;
                 }
 
-                // Perform the move
-                sourceItems.Remove(itemToMove);
-                destItems.Add(itemToMove);
+                string traceId = Guid.NewGuid().ToString("N")[..8];
+                string displayName = itemDict.ContainsKey("DisplayName") ? itemDict["DisplayName"]?.ToString() : null;
+                string targetSameName = string.Join("; ", destItems
+                    .Where(existing => (!string.IsNullOrEmpty(displayName) && string.Equals(existing["DisplayName"]?.ToString(), displayName, StringComparison.OrdinalIgnoreCase))
+                        || string.Equals(existing["Filename"]?.ToString(), filename, StringComparison.OrdinalIgnoreCase))
+                    .Select(existing => $"{existing["DisplayName"]}|{existing["Filename"]}"));
+                LogManager.Log(LogManager.LogLevel.Info, LogManager.LogCategory.IconHandling,
+                    $"[FrameMoveTrace:{traceId}] route=menu stage=before source={sourceFrame.Id}/{(sourceIsTabbed ? $"tab:{sourceFrame.CurrentTab}" : "main")} target={targetFrame.Id}/{(targetTabIndex.HasValue ? $"tab:{targetTabIndex.Value}" : "main")} filename={filename} name={displayName} sourceCount={sourceItems.Count} targetCount={destItems.Count} sourcePathMatches={sourceItems.Count(existing => string.Equals(existing["Filename"]?.ToString(), filename, StringComparison.OrdinalIgnoreCase))} targetPathMatches={destItems.Count(existing => string.Equals(existing["Filename"]?.ToString(), filename, StringComparison.OrdinalIgnoreCase))} targetSameName=[{targetSameName}] selectedTokenMatches={ReferenceEquals(item, itemToMove)}");
+
+                if (ReferenceEquals(sourceItems, destItems))
+                {
+                    LogManager.Log(LogManager.LogLevel.Warn, LogManager.LogCategory.IconHandling,
+                        $"[FrameMoveTrace:{traceId}] route=menu stage=blocked reason=source-and-target-are-same-list");
+                    return;
+                }
+
+                // 與拖曳共用相同的資料轉移規則，清除來源殘留並避免目標重複。
+                var transfer = FrameItemTransfer.Move(sourceItems, destItems, itemToMove,
+                    filename, destItems.Count);
 
                 // Save changes
                 FrameDataManager.SaveFrameData();
+                LogManager.Log(LogManager.LogLevel.Info, LogManager.LogCategory.IconHandling,
+                    $"[FrameMoveTrace:{traceId}] route=menu stage=after sourceCount={sourceItems.Count} targetCount={destItems.Count} sourcePathMatches={sourceItems.Count(existing => string.Equals(existing["Filename"]?.ToString(), filename, StringComparison.OrdinalIgnoreCase))} targetPathMatches={destItems.Count(existing => string.Equals(existing["Filename"]?.ToString(), filename, StringComparison.OrdinalIgnoreCase))} sourceRemoved={transfer.SourceRemoved} targetDuplicatesRemoved={transfer.TargetDuplicatesRemoved} addedToTarget={transfer.AddedToTarget}");
 
                 LogManager.Log(LogManager.LogLevel.Info, LogManager.LogCategory.IconHandling,
                     $"Successfully moved item '{filename}' from '{sourceFrame.Title}' to {destinationDescription}");
