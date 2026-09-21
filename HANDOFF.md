@@ -1,90 +1,94 @@
 # HANDOFF
 
 ## 核心元資料 (Metadata)
-
 - **Repository**：`lianghao02/DesktopFramesPlus`
 - **Branch**：`main`
-- **Commit SHA**：`61e564d`
+- **Commit SHA**：`3a881e8`（功能實作）
 - **Skill Version**：`lianghao-development v1.0.0`
-- **Task Type**：FIX / HANDOFF / RELEASE
+- **Task Type**：IMPROVE / REVIEW / HANDOFF
 - **Local Path Hint**：`DesktopFramesPlus`
-- **交接日期**：2026-09-21
 
 ---
 
 ## 目前狀態
-
-**驗收通過，完成 Commit 與 Release 更新。** 關於視窗版本號正式更新至 2.8.1，移除 Hand Water Pump 底部橫幅並保留原創者致謝於致謝名單中。Release 建置成功且新版免安裝 Portable ZIP 已上傳覆寫更新至 GitHub Release `v2.8.1-zh-TW`。
+**可交付**。Desktop Notes 字體調校、全域預設樣式與相關生命週期修正已完成 Working Tree Review、自動化 WPF 整合驗證、Release 建置、在地化驗證及實體鍵盤操作驗收。
 
 ## 本輪目標
-
-1. 更新「關於 (About)」視窗版本號為 2.8.1，與專案檔 `Desktop Frames.csproj` 一致。
-2. 移除「關於」視窗底部 Hand Water Pump 橫幅，版面微調為 600px 避免留白，並將原創者致謝保留於語系檔之致謝名單。
-3. 重新編譯 Release，使用 `tools/package-release.ps1` 打包免安裝 Portable ZIP 並同步上傳更新 GitHub Release `v2.8.1-zh-TW`。
+1. 單張便箋提供 12、14、16、18 四段字級，以及微軟正黑體、標楷體、Segoe UI、系統預設四種字型。
+2. 便箋 `⋯` 選單可直達選項的「樣式與效果」。
+3. 「樣式與效果」可設定新便箋預設字型、字級與底色，且不污染既有便箋。
+4. 舊版 `notes.json` 缺少 `fontSize`、`fontFamily` 時仍可完整載入。
 
 ## 基準與已確認事實 (Baseline & Confirmed Facts)
-
-- 原始「關於」視窗顯示舊版本號 `2.7.8.358`，底部有 Hand Water Pump 橘字連結橫幅。
-- 專案檔 `Desktop Frames.csproj` 含有 COM 參考，建置必須使用 Visual Studio 隨附之 MSBuild (`C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\MSBuild\Current\Bin\MSBuild.exe`)，不能使用純 `dotnet build`。
-- GitHub Release `v2.8.1-zh-TW` 發布附件為 `DesktopFramesPlus-v2.8.1-zh-TW-Portable.zip`。
+- 修改前基準 Commit 為 `feb4088`。
+- 完整 Rebuild 基準為 1197 個既有警告；本輪完成後仍為 1197，沒有新增警告。
+- `notes.json` 位於目前 Profile 目錄，既有 JSON 結構保留，新欄位缺漏時使用安全 fallback。
+- 新便箋預設樣式只在建立新便箋時讀取，不會回寫既有便箋。
 
 ## 已完成 (Completed)
-
-1. `Desktop Frames.csproj`：版本號屬性更新為 `2.8.1.0`（AssemblyVersion / FileVersion）與 `2.8.1`（Version）。
-2. `AboutFormManager.cs`：視窗高度調整為 600px，移除底部 Hand Water Pump 橫幅列（RowDefinition、`CreateFooter`、`OpenHWPLink`）。
-3. `Localization/Strings.zh-TW.resx` 與 `Localization/Strings.resx`：在 `AboutCreditsBody` 內文為原作者/維護者補上 `(Hand Water Pump)`，妥善維護致謝名單。
-4. Visual Studio MSBuild Release 編譯成功（0 錯誤），產出 `Desktop Frames.exe` 經查驗 ProductVersion 為 `2.8.1`。
-5. `tools/verify-localization.ps1`：在地化驗證通過（100% 覆蓋率）。
-6. 使用 `tools/package-release.ps1` 產出最新免安裝包 `DesktopFramesPlus-v2.8.1-zh-TW-Portable.zip`，驗證排除 `Profiles/` 與 `*.pdb`。
-7. 使用 `gh release upload --clobber` 更新 GitHub Release `v2.8.1-zh-TW` 之資產包。
+1. 新增獨立 `Notes` 模組，包含資料模型、色票、儲存服務、生命週期管理與 WPF 便箋視窗。
+2. 新增 `Ctrl + Alt + N`、系統匣新增／顯示全部／隱藏全部便箋入口，以及應用程式啟動、結束整合。
+3. 單張便箋可即時切換四段字級、四種字型與六種底色，並保存至可攜式 `notes.json`。
+4. 選項支援直達「樣式與效果」，新增三項新便箋預設值並保存至既有 `options.json` 結構。
+5. 修復樣式頁漏掛 `ScrollViewer` 的白畫面，以及 `SaveOptions()` 轉型造成的 `NullReferenceException`。
+6. Review 修正三項重要問題：
+   - 「系統預設」原先會被轉回微軟正黑體，現以空字串保存並套用 Windows 系統訊息字型。
+   - 原子儲存 fallback 原先先刪正式檔，現改為同磁碟覆寫搬移，避免搬移失敗造成資料遺失。
+   - Delete 原先被一般關閉攔截成 Hide，現透過刪除生命週期真正關閉 WPF 視窗並移除 `notes.json` 項目。
+7. 清除本輪新增的 Nullability 警告；完整 Rebuild 警告數維持基準版 1197，未增加。
 
 ## 異動檔案 (Changed Files)
+- `Code/Desktop Frames/App.xaml.cs`
+- `Code/Desktop Frames/GlobalHotkeyManager.cs`
+- `Code/Desktop Frames/TrayManager.cs`
+- `Code/Desktop Frames/OptionsFormManager.cs`
+- `Code/Desktop Frames/SettingsManager.cs`
+- `Code/Desktop Frames/Localization/Strings.cs`
+- `Code/Desktop Frames/Localization/Strings.resx`
+- `Code/Desktop Frames/Localization/Strings.zh-TW.resx`
+- `Code/Desktop Frames/Notes/NoteColors.cs`
+- `Code/Desktop Frames/Notes/Models/NoteItem.cs`
+- `Code/Desktop Frames/Notes/Services/NoteManager.cs`
+- `Code/Desktop Frames/Notes/Services/NoteStorageService.cs`
+- `Code/Desktop Frames/Notes/Views/NoteWindow.xaml`
+- `Code/Desktop Frames/Notes/Views/NoteWindow.xaml.cs`
+- `HANDOFF.md`
 
-- `Code/Desktop Frames/AboutFormManager.cs`：移除底部橫幅與微調高度。
-- `Code/Desktop Frames/Desktop Frames.csproj`：版本號統一升級為 2.8.1。
-- `Code/Desktop Frames/Localization/Strings.resx`：英文致謝名單補上 `(Hand Water Pump)`。
-- `Code/Desktop Frames/Localization/Strings.zh-TW.resx`：繁中致謝名單補上 `(Hand Water Pump)`。
-- `HANDOFF.md`：本次交接更新。
-
-### 刻意未修改 (Do Not Do / Deliberately Omitted)
-
-- 未更改 `frames.json`、`options.json` 或 `MasterOptions.json` 結構；未刪除任何實體資料夾、捷徑或桌面檔案。
-- 未改動既有彩蛋機制（Ctrl+Click 標誌互動）。
-- 專案打包嚴格排除個人設定檔與除錯檔（`Profiles/`、`*.pdb`）。
-
-## 尚未完成 (Remaining Work)
-
-- **P1**：無阻斷性問題（本輪發布核心目標已全數完成並驗收通過）。
-- **P2（後續演進建議）**：若未來需支援分頁內跨區移動或混合 DPI 跨多螢幕拖曳，再行安排實體現場測試；無實質回報前不擴大修改。
+## 刻意未修改 (Deliberately Omitted)
+- `FrameManager.cs` 與 `IconDragDropManager.cs` 未修改。
+- 未變更 Frames、捷徑、工作區、備份、更新或既有設定 JSON 結構。
+- 未新增 Markdown、文字樣式、任意字級、字體顏色、行距、對齊、搜尋、提醒或垃圾桶功能。
 
 ## 驗證結果 (Validation)
+1. **Working Tree Review**：變更均屬 Desktop Notes 與最小整合範圍；無無關格式化、核心 Frame 侵入或新增第三方套件。
+2. **舊資料相容**：缺少新欄位的舊 JSON 已實際反序列化；內容、座標、尺寸、顏色、置頂、鎖定、顯示狀態全數保持，fallback 為 14／Microsoft JhengHei。
+3. **單張便箋 WPF 整合驗證**：四段字級、四種字型、系統字型 fallback、繁體中文換行、垂直捲動、六色、鎖定、置頂、隱藏與顯示全數通過。
+4. **Options 驗證**：直達索引 1、`ScrollViewer` 內容存在、三個 ComboBox 儲存無例外，DFKai-SB／16／blue 正確落盤。
+5. **資料隔離**：既有便箋 A 維持 Microsoft JhengHei／14／yellow；新便箋 B 正確繼承 DFKai-SB／16／blue。
+6. **Regression**：Move、Resize、Auto Save 600ms 防抖、Delete 真正移除資料與視窗皆通過；正式 Release 啟動後程序回應正常；使用者實機確認 `Ctrl + Alt + N` 新增與「刪除便箋」正常。
+7. **MSBuild**：使用 Visual Studio 2022 Build Tools 的指定 Release 指令建置成功，0 errors；增量建置 2 個既有 COM 警告。完整 Rebuild 為 1197 個既有警告，與 `feb4088` 基準相同。
+8. **Localization**：英文 627 鍵、繁中 632 鍵、0 缺漏、繁中覆蓋率 100%；5 個既有額外繁中鍵未變。
+9. **Diff 檢查**：`git diff --check` 無空白錯誤；僅顯示既有行尾正規化提示。
 
-### 已執行測試與結果
+## 尚未完成 (Remaining Work)
+- **P1 (阻斷/必須)**：無。
+- **P2 (重要/當次)**：無。
+- **P3 (改善建議/暫緩)**：無；依本輪停止條件不擴大功能。
 
-- Visual Studio MSBuild Release 建置成功，0 錯誤。
-- `Desktop Frames.exe` 屬性查驗：`ProductVersion: 2.8.1`、`FileVersion: 2.8.1.0`。
-- `tools/verify-localization.ps1`：在地化驗證通過（100% 覆蓋率）。
-- Portable ZIP 結構檢查：已驗證排除任何個人 `Profiles/` 與 `*.pdb` 除錯檔，結構乾淨。
-- GitHub Release `v2.8.1-zh-TW` 資產覆寫更新完成 (`DesktopFramesPlus-v2.8.1-zh-TW-Portable.zip`)。
+### 尚未驗證項目
+- 無本輪阻斷性未驗證項目。
 
 ### 已知風險 (Known Risks)
-
-- 資料層移轉邏輯僅在使用者主動移動該圖示時進行目標去重與來源清理，不於開機時自動批次掃描或竄改使用者既有 JSON。
-- 程式依賴當前使用者登錄檔 (`HKCU\Software\DesktopFramesPlus`) 儲存開機啟動與偏好記錄，不支援全系統多使用者統一寫入。
+- 標楷體若未安裝，WPF 會依既定字型 fallback 顯示，不會造成啟動或儲存失敗。
 
 ## Git 狀態
-
-- Commit：`61e564d`（已同步）
-- Push：是；本機 `main` 與遠端 `origin/main` 完全同步
-- Working Tree：Clean
 - Branch：`main`
-- Tag：`v2.8.1-zh-TW`（已推送遠端並關聯 Release）
+- Commit：`3a881e8`
+- Working Tree：Clean（本 HANDOFF 提交後）
+- Push：未執行
 
 ## 下一步建議動作 (Next Recommended Action)
-
-本輪修復、介面美化與發布更新任務已全數完成。後續正常使用維護，待有新需求或 Bug 回報時再開新分支處理。
+- 可依發布流程推送或製作 Release；本輪不需再修改程式。
 
 ## 發布狀態 (Release Status)
-
-**正式發布完成 (v2.8.1-zh-TW)。**
-
+可交付；不需擴大修改。
