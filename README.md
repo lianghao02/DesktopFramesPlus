@@ -36,6 +36,7 @@
 - **智慧桌面引擎 (Smart Desktop)**：可自訂規則，自動將桌面新檔案分門別類歸檔至指定資料夾或面板。
 - **SpotSearch 快速搜尋**：按下快速鍵即刻呼叫搜尋面板，秒級尋找並啟動所有面板中的捷徑。
 - **全域免安裝可攜架構 (Portable)**：配置與捷徑皆使用相對路徑儲存於 `Profiles/` 資料夾，隨身碟即開即用。
+- **桌面便箋 (Desktop Notes)**：輕量極簡桌面便利貼，支援即時自動存檔、`Ctrl + Alt + N` 快速建立、4 段字級（12/14/16/18）與多字型切換、置頂、鎖定與 6 款莫蘭迪配色。
 - **極致視覺與主題**：支援變色龍模式 (Chameleon Mode，自動擷取桌布主色)、圖示光暈陰影效果、6 種應用程式啟動動畫與面板自動捲起。
 
 ### 📥 下載與安裝
@@ -49,6 +50,7 @@
 
 ### 🌟 Key Features
 - **Multiple Frame Types**: Create Data Frames for custom shortcuts, Portal Frames that actively mirror folder contents (with internal navigation and filters), and Note Frames for quick text.
+- **Desktop Notes**: Lightweight, always-on sticky notes featuring instant auto-save, `Ctrl + Alt + N` shortcut creation, 4 font sizes (12/14/16/18), customizable fonts, pin-to-top, position lock, and 6 soft Morandi color palettes.
 - **Tabs Engine**: Keep your desktop clean by organizing shortcuts into multiple tabs within a single frame, complete with tab overflow management.
 - **Workspace Profiles**: Create independent layouts for different workflows (e.g., Work, Gaming). Switch profiles manually via hotkeys, or use Profile Automation to switch automatically when specific programs are launched.
 - **Smart Desktop Engine**: Automatically sort and move incoming files into specific Portal Frames or folders based on custom user rules.
