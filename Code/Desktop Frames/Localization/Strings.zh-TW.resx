@@ -59,6 +59,18 @@
   <resheader name="writer">
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
+  <data name="MenuDesktopNotes" xml:space="preserve">
+    <value>桌面便箋</value>
+  </data>
+  <data name="MenuNewNote" xml:space="preserve">
+    <value>新增便箋 (Ctrl+Alt+N)</value>
+  </data>
+  <data name="MenuShowAllNotes" xml:space="preserve">
+    <value>顯示所有便箋</value>
+  </data>
+  <data name="MenuHideAllNotes" xml:space="preserve">
+    <value>隱藏所有便箋</value>
+  </data>
   <data name="AboutAnd" xml:space="preserve">
     <value> 和 </value>
   </data>
@@ -1574,6 +1586,18 @@
   </data>
   <data name="SecMaintenance" xml:space="preserve">
     <value>維護</value>
+  </data>
+  <data name="SecNotePreferences" xml:space="preserve">
+    <value>新便箋預設樣式</value>
+  </data>
+  <data name="LblNoteDefaultFont" xml:space="preserve">
+    <value>預設字型：</value>
+  </data>
+  <data name="LblNoteDefaultSize" xml:space="preserve">
+    <value>預設字體大小：</value>
+  </data>
+  <data name="LblNoteDefaultColor" xml:space="preserve">
+    <value>預設底色：</value>
   </data>
   <data name="SecProfileManagement" xml:space="preserve">
     <value>設定檔管理</value>

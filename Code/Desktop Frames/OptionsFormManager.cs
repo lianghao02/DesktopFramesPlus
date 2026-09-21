@@ -1,4 +1,4 @@
-﻿using Desktop_Frames.Localization;
+using Desktop_Frames.Localization;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -28,10 +28,14 @@ namespace Desktop_Frames
         private static readonly Color ColorHotkeys = Color.FromRgb(139, 69, 19); // SaddleBrown
         private static readonly Color ColorSmartDesktop = Color.FromRgb(41, 74, 122); // Semi Dark Blue
 
-        public static void ShowOptionsForm()
+        public static void ShowOptionsForm(int targetTabIndex = 0)
         {
             try
             {
+                if (targetTabIndex >= 0 && targetTabIndex <= 6)
+                {
+                    _lastSelectedTabIndex = targetTabIndex;
+                }
                 _userAccentColor = Utility.GetColorFromName(SettingsManager.SelectedColor);
 
                 _optionsWindow = new Window
@@ -225,6 +229,10 @@ namespace Desktop_Frames
 
         /// <summary>Set when the saved options carry a different language than before.</summary>
         private static bool _languageChanged;
+
+        private static ComboBox _noteDefaultFontCombo = null!;
+        private static ComboBox _noteDefaultSizeCombo = null!;
+        private static ComboBox _noteDefaultColorCombo = null!;
 
         /// <summary>
         /// Offers to restart once the settings are on disk, when the language changed.
@@ -563,6 +571,96 @@ namespace Desktop_Frames
             iconGrid.Children.Add(menuIconPanel);
             iconGrid.Children.Add(lockIconPanel);
             c.Children.Add(iconGrid);
+
+            // --- NEW: Note Default Style Section ---
+            CreateSectionHeader(c, Strings.SecNotePreferences, ColorStyle);
+
+            Grid noteStyleGrid = new Grid { Margin = new Thickness(15, 5, 0, 15) };
+            noteStyleGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(140) });
+            noteStyleGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(200) });
+            noteStyleGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(32) });
+            noteStyleGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(32) });
+            noteStyleGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(32) });
+
+            // 1. Default Font Family
+            TextBlock lblNoteFont = new TextBlock
+            {
+                Text = Strings.LblNoteDefaultFont,
+                FontSize = 13,
+                VerticalAlignment = VerticalAlignment.Center
+            };
+            _noteDefaultFontCombo = new ComboBox
+            {
+                Name = "NoteDefaultFontComboBox",
+                Height = 25,
+                FontSize = 13,
+                VerticalAlignment = VerticalAlignment.Center
+            };
+            _noteDefaultFontCombo.Items.Add(new ComboBoxItem { Content = "微軟正黑體", Tag = "Microsoft JhengHei" });
+            _noteDefaultFontCombo.Items.Add(new ComboBoxItem { Content = "標楷體", Tag = "DFKai-SB" });
+            _noteDefaultFontCombo.Items.Add(new ComboBoxItem { Content = "Segoe UI", Tag = "Segoe UI" });
+            _noteDefaultFontCombo.Items.Add(new ComboBoxItem { Content = "系統預設", Tag = "" });
+            var fontMatch = _noteDefaultFontCombo.Items.OfType<ComboBoxItem>()
+                .FirstOrDefault(i => string.Equals(i.Tag as string, SettingsManager.NoteDefaultFontFamily, StringComparison.OrdinalIgnoreCase));
+            _noteDefaultFontCombo.SelectedItem = fontMatch ?? _noteDefaultFontCombo.Items[0];
+            Grid.SetRow(lblNoteFont, 0); Grid.SetColumn(lblNoteFont, 0);
+            Grid.SetRow(_noteDefaultFontCombo, 0); Grid.SetColumn(_noteDefaultFontCombo, 1);
+            noteStyleGrid.Children.Add(lblNoteFont);
+            noteStyleGrid.Children.Add(_noteDefaultFontCombo);
+
+            // 2. Default Font Size
+            TextBlock lblNoteSize = new TextBlock
+            {
+                Text = Strings.LblNoteDefaultSize,
+                FontSize = 13,
+                VerticalAlignment = VerticalAlignment.Center
+            };
+            _noteDefaultSizeCombo = new ComboBox
+            {
+                Name = "NoteDefaultSizeComboBox",
+                Height = 25,
+                FontSize = 13,
+                VerticalAlignment = VerticalAlignment.Center
+            };
+            _noteDefaultSizeCombo.Items.Add(new ComboBoxItem { Content = "小（12）", Tag = 12.0 });
+            _noteDefaultSizeCombo.Items.Add(new ComboBoxItem { Content = "標準（14）", Tag = 14.0 });
+            _noteDefaultSizeCombo.Items.Add(new ComboBoxItem { Content = "大（16）", Tag = 16.0 });
+            _noteDefaultSizeCombo.Items.Add(new ComboBoxItem { Content = "特大（18）", Tag = 18.0 });
+            var sizeMatch = _noteDefaultSizeCombo.Items.OfType<ComboBoxItem>()
+                .FirstOrDefault(i => (i.Tag is double d) && Math.Abs(d - SettingsManager.NoteDefaultFontSize) < 0.5);
+            _noteDefaultSizeCombo.SelectedItem = sizeMatch ?? _noteDefaultSizeCombo.Items[1];
+            Grid.SetRow(lblNoteSize, 1); Grid.SetColumn(lblNoteSize, 0);
+            Grid.SetRow(_noteDefaultSizeCombo, 1); Grid.SetColumn(_noteDefaultSizeCombo, 1);
+            noteStyleGrid.Children.Add(lblNoteSize);
+            noteStyleGrid.Children.Add(_noteDefaultSizeCombo);
+
+            // 3. Default Color Palette
+            TextBlock lblNoteColor = new TextBlock
+            {
+                Text = Strings.LblNoteDefaultColor,
+                FontSize = 13,
+                VerticalAlignment = VerticalAlignment.Center
+            };
+            _noteDefaultColorCombo = new ComboBox
+            {
+                Name = "NoteDefaultColorComboBox",
+                Height = 25,
+                FontSize = 13,
+                VerticalAlignment = VerticalAlignment.Center
+            };
+            foreach (var pal in Notes.NoteColors.AllPalettes)
+            {
+                _noteDefaultColorCombo.Items.Add(new ComboBoxItem { Content = pal.DisplayName, Tag = pal.Key });
+            }
+            var colorMatch = _noteDefaultColorCombo.Items.OfType<ComboBoxItem>()
+                .FirstOrDefault(i => string.Equals(i.Tag as string, SettingsManager.NoteDefaultColor, StringComparison.OrdinalIgnoreCase));
+            _noteDefaultColorCombo.SelectedItem = colorMatch ?? _noteDefaultColorCombo.Items[0];
+            Grid.SetRow(lblNoteColor, 2); Grid.SetColumn(lblNoteColor, 0);
+            Grid.SetRow(_noteDefaultColorCombo, 2); Grid.SetColumn(_noteDefaultColorCombo, 1);
+            noteStyleGrid.Children.Add(lblNoteColor);
+            noteStyleGrid.Children.Add(_noteDefaultColorCombo);
+
+            c.Children.Add(noteStyleGrid);
 
             t.Content = new ScrollViewer { Content = c, VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
             _tabControl.Items.Add(t);
@@ -1140,6 +1238,20 @@ namespace Desktop_Frames
                             }
                         }
                     }
+                }
+
+                // Note Default Style
+                if ((_noteDefaultFontCombo?.SelectedItem as ComboBoxItem)?.Tag is string fontTag)
+                {
+                    SettingsManager.NoteDefaultFontFamily = fontTag;
+                }
+                if ((_noteDefaultSizeCombo?.SelectedItem as ComboBoxItem)?.Tag is double sizeVal)
+                {
+                    SettingsManager.NoteDefaultFontSize = sizeVal;
+                }
+                if ((_noteDefaultColorCombo?.SelectedItem as ComboBoxItem)?.Tag is string colorTag)
+                {
+                    SettingsManager.NoteDefaultColor = colorTag;
                 }
 
                 // 3. Tools

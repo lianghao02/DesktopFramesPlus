@@ -58,6 +58,18 @@
   <resheader name="writer">
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
+  <data name="MenuDesktopNotes" xml:space="preserve">
+    <value>Desktop Notes</value>
+  </data>
+  <data name="MenuNewNote" xml:space="preserve">
+    <value>New Note (Ctrl+Alt+N)</value>
+  </data>
+  <data name="MenuShowAllNotes" xml:space="preserve">
+    <value>Show All Notes</value>
+  </data>
+  <data name="MenuHideAllNotes" xml:space="preserve">
+    <value>Hide All Notes</value>
+  </data>
   <data name="AboutAnd" xml:space="preserve">
     <value> and </value>
   </data>
@@ -1573,6 +1585,18 @@ Restart now?</value>
   </data>
   <data name="SecMaintenance" xml:space="preserve">
     <value>Maintenance</value>
+  </data>
+  <data name="SecNotePreferences" xml:space="preserve">
+    <value>New Note Default Style</value>
+  </data>
+  <data name="LblNoteDefaultFont" xml:space="preserve">
+    <value>Default Font:</value>
+  </data>
+  <data name="LblNoteDefaultSize" xml:space="preserve">
+    <value>Default Font Size:</value>
+  </data>
+  <data name="LblNoteDefaultColor" xml:space="preserve">
+    <value>Default Background:</value>
   </data>
   <data name="SecProfileManagement" xml:space="preserve">
     <value>Profile Management</value>

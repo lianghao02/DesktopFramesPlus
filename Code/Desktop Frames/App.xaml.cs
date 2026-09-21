@@ -163,6 +163,16 @@ namespace Desktop_Frames
 
 
 
+                    // --- NEW: Start Desktop Sticky Notes ---
+                    try
+                    {
+                        Desktop_Frames.Notes.Services.NoteManager.Initialize();
+                    }
+                    catch (Exception ex)
+                    {
+                        LogManager.Log(LogManager.LogLevel.Error, LogManager.LogCategory.General, $"Failed to initialize NoteManager: {ex.Message}");
+                    }
+
                     // --- NEW: Direct Draw Mode Check ---
                     // If this MAIN instance was started via Context Menu, trigger draw mode now.
                     // Use the same robust check as above.
@@ -186,6 +196,15 @@ namespace Desktop_Frames
 
         protected override void OnExit(ExitEventArgs e)
         {
+            try
+            {
+                Desktop_Frames.Notes.Services.NoteManager.Instance?.FlushAndCloseAll();
+            }
+            catch (Exception ex)
+            {
+                LogManager.Log(LogManager.LogLevel.Error, LogManager.LogCategory.General, $"Error in NoteManager.FlushAndCloseAll: {ex.Message}");
+            }
+
             InterCore.Cleanup();
             try
             {

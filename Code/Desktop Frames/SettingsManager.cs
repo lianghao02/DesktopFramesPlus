@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -57,6 +57,10 @@ namespace Desktop_Frames
 
         public static bool EnableChameleonMode { get; set; } = false;
         public static bool EnableProfileAutomation { get; set; } = false;
+
+        public static double NoteDefaultFontSize { get; set; } = 14.0;
+        public static string NoteDefaultFontFamily { get; set; } = "Microsoft JhengHei";
+        public static string NoteDefaultColor { get; set; } = "yellow";
 
         public static bool EnableAutoOrganize { get; set; } = false;
 
@@ -252,6 +256,9 @@ namespace Desktop_Frames
                 EnableChameleonMode, 
                 EnableAutoOrganize,
                 EnableAutoOrganizeNotifications,
+                NoteDefaultFontSize,
+                NoteDefaultFontFamily,
+                NoteDefaultColor,
                 // NEW
                 ApplyTintToIcons,
                 EnableContextMenu,
@@ -357,6 +364,9 @@ namespace Desktop_Frames
             try { GlobalFontFamily = data.GlobalFontFamily?.ToString() ?? "Segoe UI"; } catch { GlobalFontFamily = "Segoe UI"; }
             try { DefaultItemFontSize = data.DefaultItemFontSize ?? 12; } catch { DefaultItemFontSize = 12; }
             try { PluginAvailabilityLevel = data.PluginAvailabilityLevel ?? 1; } catch { PluginAvailabilityLevel = 1; }
+            try { NoteDefaultFontSize = data.NoteDefaultFontSize ?? 14.0; } catch { NoteDefaultFontSize = 14.0; }
+            try { NoteDefaultFontFamily = data.NoteDefaultFontFamily?.ToString() ?? "Microsoft JhengHei"; } catch { NoteDefaultFontFamily = "Microsoft JhengHei"; }
+            try { NoteDefaultColor = data.NoteDefaultColor?.ToString() ?? "yellow"; } catch { NoteDefaultColor = "yellow"; }
 
             // Auto-Hide
             try { AutoHideFrames = data.AutoHideFrames ?? false; } catch { AutoHideFrames = false; }

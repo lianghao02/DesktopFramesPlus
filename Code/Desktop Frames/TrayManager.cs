@@ -246,6 +246,33 @@ namespace Desktop_Frames
             _profilesMenuItem = new ToolStripMenuItem(Strings.MenuDesktopLayouts);
             trayMenu.Items.Add(_profilesMenuItem);
             trayMenu.Items.Add(Strings.MenuDrawFrame, null, (s, e) => Framemanager.StartDrawMode());
+
+            // Desktop Sticky Notes Submenu
+            var notesMenuItem = new ToolStripMenuItem(Strings.Get("MenuDesktopNotes", "桌面便箋"));
+            notesMenuItem.DropDownItems.Add(Strings.Get("MenuNewNote", "新增便箋 (Ctrl+Alt+N)"), null, (s, e) =>
+            {
+                System.Windows.Application.Current?.Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    Desktop_Frames.Notes.Services.NoteManager.Instance?.CreateNewNote();
+                }));
+            });
+            notesMenuItem.DropDownItems.Add(new ToolStripSeparator());
+            notesMenuItem.DropDownItems.Add(Strings.Get("MenuShowAllNotes", "顯示所有便箋"), null, (s, e) =>
+            {
+                System.Windows.Application.Current?.Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    Desktop_Frames.Notes.Services.NoteManager.Instance?.ShowAllNotes();
+                }));
+            });
+            notesMenuItem.DropDownItems.Add(Strings.Get("MenuHideAllNotes", "隱藏所有便箋"), null, (s, e) =>
+            {
+                System.Windows.Application.Current?.Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    Desktop_Frames.Notes.Services.NoteManager.Instance?.HideAllNotes();
+                }));
+            });
+            trayMenu.Items.Add(notesMenuItem);
+
             trayMenu.Items.Add(new ToolStripSeparator());
 
             trayMenu.Items.Add(Strings.MenuAbout, null, (s, e) => AboutFormManager.ShowAboutForm());

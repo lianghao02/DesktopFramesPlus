@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Windows;
@@ -29,6 +29,7 @@ namespace Desktop_Frames
         // Triggers
         private const int VK_D = 0x44;
         private const int VK_G = 0x47; // Gravity
+        private const int VK_N = 0x4E; // Sticky Note
         private const int VK_Z = 0x5A; // Focus Frame
         private const int VK_0 = 0x30; // 0 key
         private const int VK_9 = 0x39; // 9 key
@@ -342,6 +343,24 @@ namespace Desktop_Frames
                             {
                                 GravityDropTriggered?.Invoke(null, EventArgs.Empty);
                             }));
+                        }
+                    }
+
+                    // Desktop Sticky Notes (Ctrl + Alt + N)
+                    if (vkCode == VK_N && isKeyDown)
+                    {
+                        bool isC = (GetAsyncKeyState(VK_CONTROL) & 0x8000) != 0;
+                        bool isA = (GetAsyncKeyState(VK_MENU) & 0x8000) != 0;
+                        bool isS = (GetAsyncKeyState(VK_SHIFT) & 0x8000) != 0;
+                        bool isW = (GetAsyncKeyState(VK_LWIN) & 0x8000) != 0 || (GetAsyncKeyState(VK_RWIN) & 0x8000) != 0;
+
+                        if (isC && isA && !isS && !isW)
+                        {
+                            System.Windows.Application.Current?.Dispatcher.BeginInvoke(new Action(() =>
+                            {
+                                Desktop_Frames.Notes.Services.NoteManager.Instance?.CreateNewNote();
+                            }));
+                            return (IntPtr)1; // Swallow key
                         }
                     }
                 }

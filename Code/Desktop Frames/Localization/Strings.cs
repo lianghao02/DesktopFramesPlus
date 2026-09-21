@@ -482,6 +482,10 @@ namespace Desktop_Frames.Localization
         public static string SecLogCategories => Get("SecLogCategories");
         public static string SecLogConfiguration => Get("SecLogConfiguration");
         public static string SecMaintenance => Get("SecMaintenance");
+        public static string SecNotePreferences => Get("SecNotePreferences");
+        public static string LblNoteDefaultFont => Get("LblNoteDefaultFont");
+        public static string LblNoteDefaultSize => Get("LblNoteDefaultSize");
+        public static string LblNoteDefaultColor => Get("LblNoteDefaultColor");
         public static string SecProfileManagement => Get("SecProfileManagement");
         public static string SecProfileSwitching => Get("SecProfileSwitching");
         public static string SecSelections => Get("SecSelections");
