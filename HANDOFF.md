@@ -83,12 +83,13 @@
 
 ## Git 狀態
 - Branch：`main`
-- Commit：`3a881e8`
-- Working Tree：Clean（本 HANDOFF 提交後）
-- Push：未執行
+- Commit：`951235a`
+- Working Tree：Clean
+- Push：已完成推送至遠端 `origin/main`
 
 ## 下一步建議動作 (Next Recommended Action)
-- 可依發布流程推送或製作 Release；本輪不需再修改程式。
+- 已完成 README 更新、推送遠端並更新 GitHub Release `v2.8.1-zh-TW`。
+- 本輪任務全數閉環，正常運作維護即可。
 
 ## 發布狀態 (Release Status)
-可交付；不需擴大修改。
+正式發布完成 (v2.8.1-zh-TW)。
