@@ -13,3 +13,7 @@ Code snippet
 *.nuget.targets
 project.lock.json
 project.assets.json
+
+# Packaging artifacts
+dist/
+*.zip

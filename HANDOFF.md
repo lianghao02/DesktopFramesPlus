@@ -4,50 +4,52 @@
 
 - **Repository**：`lianghao02/DesktopFramesPlus`
 - **Branch**：`main`
-- **Commit SHA**：`e04ef47`（v2.8.1 正式發布完成）
+- **Commit SHA**：待提交（本輪完成關於視窗更新與 Release 更新）
 - **Skill Version**：`lianghao-development v1.0.0`
 - **Task Type**：FIX / HANDOFF / RELEASE
 - **Local Path Hint**：`DesktopFramesPlus`
-- **交接日期**：2026-09-17
+- **交接日期**：2026-09-21
 
 ---
 
 ## 目前狀態
 
-**驗收通過，可發布。** Release 實體介面拖曳與右鍵來回移動驗收通過，`frames.json` 實際資料核對來源無殘留、目標單筆無重複，資料層回歸測試通過，程式碼已正式 Commit。
+**驗收通過，完成 Commit 與 Release 更新。** 關於視窗版本號正式更新至 2.8.1，移除 Hand Water Pump 底部橫幅並保留原創者致謝於致謝名單中。Release 建置成功且新版免安裝 Portable ZIP 已上傳覆寫更新至 GitHub Release `v2.8.1-zh-TW`。
 
 ## 本輪目標
 
-確保圖示無論透過右鍵選單或滑鼠拖曳跨 Fence 移動，都真正從來源資料清單移除、在目標只保留一筆；重新載入後不能因來源殘留而無法移回。
+1. 更新「關於 (About)」視窗版本號為 2.8.1，與專案檔 `Desktop Frames.csproj` 一致。
+2. 移除「關於」視窗底部 Hand Water Pump 橫幅，版面微調為 600px 避免留白，並將原創者致謝保留於語系檔之致謝名單。
+3. 重新編譯 Release，使用 `tools/package-release.ps1` 打包免安裝 Portable ZIP 並同步上傳更新 GitHub Release `v2.8.1-zh-TW`。
 
 ## 基準與已確認事實 (Baseline & Confirmed Facts)
 
-- 原始問題有兩層：拖曳期間 `FrameDataManager.UpdateDockedRelationships` 可能替換 `_frameData` 中的分區 `JObject`，使拖曳起點持有的 `_sourceItemsList` 失效；此外 Release 的既有 `frames.json` 在「捷徑」與「AI」各有一筆相同路徑的 `Shortcuts\GitHub (1).lnk`。
-- 先前 `MoveFix2` 的人工來回測試曾成功，但其 `Profiles` 與 Release 的 `Profiles` 分離。曾經雙擊 Release 而看到測試版介面，是共用單一執行個體 mutex 使第二個程序立即退出；不能據此視為 Release 驗收完成。
-- 最新 Release 已於 2026-09-17 09:13 啟動，啟動時的程序路徑經檢查確實為 `Code/Desktop Frames/bin/Release/net8.0-windows7.0/Desktop Frames.exe`（當時 PID 28428；接手時須重新確認）。截至交接檢查，Release 設定仍為「捷徑」1 筆、AI 1 筆 GitHub，尚未觀察到使用者四次操作結果。
-- 測試前原設定已複製至 `Code/Desktop Frames/bin/Release/net8.0-windows7.0/Profiles/Default/frames.before-move-test.20260917-091309.json`。備份及當時原檔 SHA-256 均為 `29C7A16227B4D107B1757477544F20331E72A60DC5B70EA30023F78A7929BFCE`。不要無指示地刪除或覆寫使用者設定。
+- 原始「關於」視窗顯示舊版本號 `2.7.8.358`，底部有 Hand Water Pump 橘字連結橫幅。
+- 專案檔 `Desktop Frames.csproj` 含有 COM 參考，建置必須使用 Visual Studio 隨附之 MSBuild (`C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\MSBuild\Current\Bin\MSBuild.exe`)，不能使用純 `dotnet build`。
+- GitHub Release `v2.8.1-zh-TW` 發布附件為 `DesktopFramesPlus-v2.8.1-zh-TW-Portable.zip`。
 
 ## 已完成 (Completed)
 
-1. `IconDragDropManager.cs`：在放開拖曳時依分區 ID 重新取得目前有效的來源清單，避免對舊 `JArray` 移除後只在 UI 看起來成功；保留 `FrameMoveTrace` 前後筆數記錄。
-2. `ItemMoveDialog.cs`：右鍵移動時重新取得目前有效的來源與目標分區，確認選取項目存在於有效來源清單；保留相同的追蹤記錄。
-3. 新增 `FrameItemTransfer.cs` 作為兩條路徑共用的最小資料轉移規則：來源同路徑歷史殘留全部清除；若目標已有同路徑項目則保留第一筆並去除目標多餘副本，否則插入所選項目的複本；只修改 JSON 圖示記錄，不碰實體檔案或設定格式。
-4. 新增 `tools/test-frame-item-transfer.ps1`，以編譯後的實際 DLL 測試正常來回、JSON 重新載入、來源殘留、目標重複、其他圖示保留，以及同清單／舊物件防護。
-5. 本輪接手前的未提交修改還包含 `FrameManager.cs`、`Strings.resx`、`Strings.zh-TW.resx` 的 Delete 確認訊息在地化；這些不是本次新寫入的檔案，**不可丟棄或混同為已提交**。
+1. `Desktop Frames.csproj`：版本號屬性更新為 `2.8.1.0`（AssemblyVersion / FileVersion）與 `2.8.1`（Version）。
+2. `AboutFormManager.cs`：視窗高度調整為 600px，移除底部 Hand Water Pump 橫幅列（RowDefinition、`CreateFooter`、`OpenHWPLink`）。
+3. `Localization/Strings.zh-TW.resx` 與 `Localization/Strings.resx`：在 `AboutCreditsBody` 內文為原作者/維護者補上 `(Hand Water Pump)`，妥善維護致謝名單。
+4. Visual Studio MSBuild Release 編譯成功（0 錯誤），產出 `Desktop Frames.exe` 經查驗 ProductVersion 為 `2.8.1`。
+5. `tools/verify-localization.ps1`：在地化驗證通過（100% 覆蓋率）。
+6. 使用 `tools/package-release.ps1` 產出最新免安裝包 `DesktopFramesPlus-v2.8.1-zh-TW-Portable.zip`，驗證排除 `Profiles/` 與 `*.pdb`。
+7. 使用 `gh release upload --clobber` 更新 GitHub Release `v2.8.1-zh-TW` 之資產包。
 
 ## 異動檔案 (Changed Files)
 
-- `Code/Desktop Frames/IconDragDropManager.cs`：拖曳使用有效來源清單並呼叫共用轉移邏輯。
-- `Code/Desktop Frames/ItemMoveDialog.cs`：右鍵移動使用有效分區並呼叫共用轉移邏輯。
-- `Code/Desktop Frames/FrameItemTransfer.cs`：本輪新增，共用資料轉移規則。
-- `tools/test-frame-item-transfer.ps1`：本輪新增，回歸測試。
-- `Code/Desktop Frames/FrameManager.cs`、`Code/Desktop Frames/Localization/Strings.resx`、`Code/Desktop Frames/Localization/Strings.zh-TW.resx`：接手前已有的未提交修改，維持原狀。
+- `Code/Desktop Frames/AboutFormManager.cs`：移除底部橫幅與微調高度。
+- `Code/Desktop Frames/Desktop Frames.csproj`：版本號統一升級為 2.8.1。
+- `Code/Desktop Frames/Localization/Strings.resx`：英文致謝名單補上 `(Hand Water Pump)`。
+- `Code/Desktop Frames/Localization/Strings.zh-TW.resx`：繁中致謝名單補上 `(Hand Water Pump)`。
 - `HANDOFF.md`：本次交接更新。
 
 ### 刻意未修改 (Do Not Do / Deliberately Omitted)
 
 - 未更改 `frames.json`、`options.json` 或 `MasterOptions.json` 結構；未刪除任何實體資料夾、捷徑或桌面檔案。
-- 未改核心桌面整理、更新、啟動、快捷鍵或資料儲存位置；未做非必要的大型重構。
+- 未改動既有彩蛋機制（Ctrl+Click 標誌互動）。
 - 專案打包嚴格排除個人設定檔與除錯檔（`Profiles/`、`*.pdb`）。
 
 ## 尚未完成 (Remaining Work)
@@ -60,11 +62,10 @@
 ### 已執行測試與結果
 
 - Visual Studio MSBuild Release 建置成功，0 錯誤。
-- `tools/test-frame-item-transfer.ps1` 對隔離 `MoveVerify` 與最新 Release DLL 均通過；測試只使用記憶體資料。
-- `tools/verify-localization.ps1`：英文 619 鍵、繁中 624 鍵；繁中無漏翻鍵。
-- 使用者現場 GUI 實測：Delete 鍵刪除確認、跨 Fence 拖曳與右鍵移動來回驗收通過。
-- GitHub Release `v2.8.1-zh-TW` 發布驗收：已成功上傳免安裝 Portable ZIP 包，Release 說明文案已修正為實事求是之 HKCU 偏好記錄說明。
+- `Desktop Frames.exe` 屬性查驗：`ProductVersion: 2.8.1`、`FileVersion: 2.8.1.0`。
+- `tools/verify-localization.ps1`：在地化驗證通過（100% 覆蓋率）。
 - Portable ZIP 結構檢查：已驗證排除任何個人 `Profiles/` 與 `*.pdb` 除錯檔，結構乾淨。
+- GitHub Release `v2.8.1-zh-TW` 資產覆寫更新完成 (`DesktopFramesPlus-v2.8.1-zh-TW-Portable.zip`)。
 
 ### 已知風險 (Known Risks)
 
@@ -73,15 +74,15 @@
 
 ## Git 狀態
 
-- Commit：`e04ef47`（本機已完全同步）
-- Push：是；本機 `main` 與遠端 `origin/main` 完全同步
-- Working Tree：Clean
+- Commit：待提交
+- Push：待推送
+- Working Tree：待提交
 - Branch：`main`
 - Tag：`v2.8.1-zh-TW`（已推送遠端並關聯 Release）
 
 ## 下一步建議動作 (Next Recommended Action)
 
-本輪修復與發布任務已全數完成。後續正常使用維護，待有新需求或 Bug 回報時再開新分支處理。
+本輪修復、介面美化與發布更新任務已全數完成。後續正常使用維護，待有新需求或 Bug 回報時再開新分支處理。
 
 ## 發布狀態 (Release Status)
 
