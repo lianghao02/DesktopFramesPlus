@@ -1599,6 +1599,49 @@
   <data name="LblNoteDefaultColor" xml:space="preserve">
     <value>預設底色：</value>
   </data>
+  <data name="NoteLocked" xml:space="preserve">
+    <value>已鎖定</value>
+  </data>
+  <data name="NoteMenuLock" xml:space="preserve">
+    <value>鎖定位置與尺寸</value>
+  </data>
+  <data name="NoteMenuColor" xml:space="preserve">
+    <value>變更顏色</value>
+  </data>
+  <data name="NoteMenuFontSize" xml:space="preserve">
+    <value>字體大小</value>
+  </data>
+  <data name="NoteMenuFontFamily" xml:space="preserve">
+    <value>字型</value>
+  </data>
+  <data name="NoteMenuDelete" xml:space="preserve">
+    <value>刪除便箋</value>
+  </data>
+  <data name="NoteDlgDeleteTitle" xml:space="preserve">
+    <value>刪除便箋</value>
+  </data>
+  <data name="NoteMsgConfirmDelete" xml:space="preserve">
+    <value>確定要刪除這張便箋嗎？
+刪除後將無法還原。</value>
+  </data>
+  <data name="NoteTooltipPin" xml:space="preserve">
+    <value>永遠置頂</value>
+  </data>
+  <data name="NoteTooltipUnpin" xml:space="preserve">
+    <value>取消置頂</value>
+  </data>
+  <data name="NoteTooltipOptions" xml:space="preserve">
+    <value>選項</value>
+  </data>
+  <data name="NoteTooltipHide" xml:space="preserve">
+    <value>暫時隱藏便箋</value>
+  </data>
+  <data name="NoteOptDirect" xml:space="preserve">
+    <value>便箋設定與選項...</value>
+  </data>
+  <data name="NoteFontSystemDefault" xml:space="preserve">
+    <value>系統預設</value>
+  </data>
   <data name="SecProfileManagement" xml:space="preserve">
     <value>設定檔管理</value>
   </data>

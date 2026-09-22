@@ -5,6 +5,7 @@ using System.Windows;
 using System.Windows.Forms;
 using Desktop_Frames.Notes.Models;
 using Desktop_Frames.Notes.Views;
+using Desktop_Frames.Localization;
 using MessageBox = System.Windows.MessageBox;
 
 namespace Desktop_Frames.Notes.Services
@@ -50,10 +51,8 @@ namespace Desktop_Frames.Notes.Services
 
                     _windows[note.Id] = window;
 
-                    if (note.IsVisible)
-                    {
-                        window.Show();
-                    }
+                    // Always show all existing notes on application startup (like Fences)
+                    window.Show();
                 }
 
                 LogManager.Log(LogManager.LogLevel.Info, LogManager.LogCategory.General,
@@ -167,8 +166,8 @@ namespace Desktop_Frames.Notes.Services
         private void OnNoteRequestDelete(NoteItem note)
         {
             var result = MessageBox.Show(
-                "確定要刪除這張便箋嗎？\n刪除後將無法還原。",
-                "刪除便箋",
+                Strings.NoteMsgConfirmDelete,
+                Strings.NoteDlgDeleteTitle,
                 MessageBoxButton.YesNo,
                 MessageBoxImage.Question);
 

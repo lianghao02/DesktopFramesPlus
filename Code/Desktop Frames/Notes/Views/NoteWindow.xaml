@@ -20,24 +20,24 @@
             <Border x:Name="HeaderBorder" Grid.Row="0" MouseLeftButtonDown="Header_MouseLeftButtonDown">
                 <DockPanel LastChildFill="True">
                     <!-- Right Actions StackPanel -->
-                    <StackPanel Orientation="Horizontal" DockPanel.Dock="Right" VerticalAlignment="Center" Margin="0,0,4,0">
+                    <StackPanel Orientation="Horizontal" DockPanel.Dock="Right" VerticalAlignment="Center" Margin="0,0,2,0">
                         <!-- Pin (Topmost) Button -->
-                        <Button x:Name="PinButton" Width="24" Height="22"
+                        <Button x:Name="PinButton" Width="28" Height="24"
                                 ToolTip="永遠置頂"
                                 Click="PinButton_Click"
                                 Style="{DynamicResource HeaderButtonStyle}"
                                 Content="📌" FontSize="11" Opacity="0.5"/>
 
                         <!-- More Menu Button -->
-                        <Button x:Name="MoreButton" Width="24" Height="22"
+                        <Button x:Name="MoreButton" Width="28" Height="24"
                                 ToolTip="選項"
                                 Click="MoreButton_Click"
                                 Style="{DynamicResource HeaderButtonStyle}"
                                 Content="⋯" FontSize="13" FontWeight="Bold"/>
 
                         <!-- Close (Hide) Button -->
-                        <Button x:Name="CloseButton" Width="24" Height="22"
-                                ToolTip="隱藏便箋"
+                        <Button x:Name="CloseButton" Width="28" Height="24"
+                                ToolTip="暫時隱藏便箋"
                                 Click="CloseButton_Click"
                                 Style="{DynamicResource HeaderButtonStyle}"
                                 Content="✕" FontSize="11"/>
@@ -57,8 +57,8 @@
                      VerticalScrollBarVisibility="Auto"
                      HorizontalScrollBarVisibility="Disabled"
                      BorderThickness="0"
-                     Margin="6,4,6,6"
-                     Padding="2"
+                     Margin="6,2,6,6"
+                     Padding="6,4,8,6"
                      FontSize="13"
                      FontFamily="Segoe UI, Microsoft JhengHei, PingFang TC"
                      TextChanged="ContentTextBox_TextChanged"/>

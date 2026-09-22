@@ -5,6 +5,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using Desktop_Frames.Notes.Models;
 using Desktop_Frames.Notes.Services;
+using Desktop_Frames.Localization;
 
 namespace Desktop_Frames.Notes.Views
 {
@@ -41,6 +42,9 @@ namespace Desktop_Frames.Notes.Views
             ApplyFontSize(Item.FontSize > 0 ? Item.FontSize : 14.0);
             ApplyFontFamily(Item.FontFamily);
 
+            MoreButton.ToolTip = Strings.NoteTooltipOptions;
+            CloseButton.ToolTip = Strings.NoteTooltipHide;
+
             LocationChanged += OnWindowLocationChanged;
             SizeChanged += OnWindowSizeChanged;
 
@@ -64,13 +68,17 @@ namespace Desktop_Frames.Notes.Views
             Item.AlwaysOnTop = alwaysOnTop;
             Topmost = alwaysOnTop;
             PinButton.Opacity = alwaysOnTop ? 1.0 : 0.45;
-            PinButton.ToolTip = alwaysOnTop ? "取消置頂" : "永遠置頂";
+            PinButton.ToolTip = alwaysOnTop ? Strings.NoteTooltipUnpin : Strings.NoteTooltipPin;
         }
 
         public void ApplyLock(bool isLocked)
         {
             Item.IsLocked = isLocked;
             ResizeMode = isLocked ? ResizeMode.NoResize : ResizeMode.CanResizeWithGrip;
+
+            // 鎖定狀態回饋：未鎖定時為移動游標，鎖定時恢復一般箭頭並顯示淡雅鎖定提示
+            HeaderBorder.Cursor = isLocked ? Cursors.Arrow : Cursors.SizeAll;
+            DragAreaTitle.Text = isLocked ? Strings.NoteLocked : "";
         }
 
         public void ApplyFontSize(double size)
@@ -184,7 +192,7 @@ namespace Desktop_Frames.Notes.Views
             // Lock MenuItem
             var lockItem = new MenuItem
             {
-                Header = "鎖定位置與尺寸",
+                Header = Strings.NoteMenuLock,
                 IsCheckable = true,
                 IsChecked = Item.IsLocked
             };
@@ -196,7 +204,7 @@ namespace Desktop_Frames.Notes.Views
             menu.Items.Add(lockItem);
 
             // Color MenuItem
-            var colorMenu = new MenuItem { Header = "變更顏色" };
+            var colorMenu = new MenuItem { Header = Strings.NoteMenuColor };
             foreach (var palette in NoteColors.AllPalettes)
             {
                 var colorItem = new MenuItem
@@ -216,7 +224,7 @@ namespace Desktop_Frames.Notes.Views
             menu.Items.Add(colorMenu);
 
             // Font Size MenuItem
-            var fontSizeMenu = new MenuItem { Header = "字體大小" };
+            var fontSizeMenu = new MenuItem { Header = Strings.NoteMenuFontSize };
             double[] sizes = { 12, 14, 16, 18 };
             string[] sizeLabels = { "小（12）", "標準（14）", "大（16）", "特大（18）" };
             for (int i = 0; i < sizes.Length; i++)
@@ -234,13 +242,13 @@ namespace Desktop_Frames.Notes.Views
             menu.Items.Add(fontSizeMenu);
 
             // Font Family MenuItem
-            var fontMenu = new MenuItem { Header = "字型" };
+            var fontMenu = new MenuItem { Header = Strings.NoteMenuFontFamily };
             var fonts = new (string Name, string Value)[]
             {
                 ("微軟正黑體", "Microsoft JhengHei"),
                 ("標楷體", "DFKai-SB"),
                 ("Segoe UI", "Segoe UI"),
-                ("系統預設", "")
+                (Strings.NoteFontSystemDefault, "")
             };
             foreach (var f in fonts)
             {
@@ -260,7 +268,7 @@ namespace Desktop_Frames.Notes.Views
             menu.Items.Add(new Separator());
 
             // Options MenuItem (Open Settings dialog directly, tab 1 = Style & FX)
-            var optionsItem = new MenuItem { Header = "便箋設定與選項..." };
+            var optionsItem = new MenuItem { Header = Strings.NoteOptDirect };
             optionsItem.Click += (s, ev) =>
             {
                 System.Windows.Application.Current?.Dispatcher.BeginInvoke(new Action(() =>
@@ -273,7 +281,7 @@ namespace Desktop_Frames.Notes.Views
             menu.Items.Add(new Separator());
 
             // Delete MenuItem
-            var deleteItem = new MenuItem { Header = "刪除便箋" };
+            var deleteItem = new MenuItem { Header = Strings.NoteMenuDelete };
             deleteItem.Click += (s, ev) =>
             {
                 RequestDelete?.Invoke(Item);
