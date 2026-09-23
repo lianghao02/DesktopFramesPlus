@@ -9266,8 +9266,28 @@ namespace Desktop_Frames
                     }
                 }
 
-                Process.Start(psi);
-                LogManager.Log(LogManager.LogLevel.Info, LogManager.LogCategory.General, $"Launched: {targetPath}");
+                Task.Run(() =>
+                {
+                    try
+                    {
+                        Process.Start(psi);
+                        LogManager.Log(LogManager.LogLevel.Info, LogManager.LogCategory.General, $"Launched: {targetPath}");
+                    }
+                    catch (Exception ex)
+                    {
+                        if (!ex.Message.Contains("canceled"))
+                        {
+                            LogManager.Log(LogManager.LogLevel.Error, LogManager.LogCategory.General, $"Launch Error: {ex.Message}");
+                            if (!SettingsManager.SuppressLaunchWarnings)
+                            {
+                                System.Windows.Application.Current?.Dispatcher.BeginInvoke(new Action(() =>
+                                {
+                                    MessageBoxesManager.ShowOKOnlyMessageBoxForm(Strings.Get("MsgLaunchFailed", ex.Message), Strings.DlgLaunchError);
+                                }));
+                            }
+                        }
+                    }
+                });
             }
             catch (Exception ex)
             {
