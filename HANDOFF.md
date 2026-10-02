@@ -3,7 +3,7 @@
 ## 核心元資料 (Metadata)
 - **Repository**：`lianghao02/DesktopFramesPlus`
 - **Branch**：`main`
-- **Commit SHA**：`898d8cb`（功能實作）
+- **Commit SHA**：`510c91e`（規格與文件整理）
 - **Skill Version**：`lianghao-development v1.0.0`
 - **Task Type**：FEAT / SANDBOX / HANDOFF
 - **Local Path Hint**：`DesktopFramesPlus`
@@ -33,8 +33,11 @@
 3. **穿透外框與拖曳聯動**：實作 `MainWindow.xaml` 與 `MainWindow.xaml.cs`，外框客戶區回傳 `HTTRANSPARENT (-1)` 達成完全穿透；標題列支援拖曳，並在拖曳平移時動態計算 $(\Delta X, \Delta Y)$ 同步更新納管圖示座標。
 4. **自動化檢測套件**：實作 `App.xaml.cs` 支援 `--test` 命令行開關，自動執行 5 大端到端測試，全數通過（5/5 PASS）。
 5. **程式碼零警告修整**：修整沙盒內所有 Nullability 與未使用欄位，Release 建置達到 0 警告、0 錯誤。
+6. **建立架構規格說明書**：整理撰寫 `FARM_FENCE_SPEC.md`，完整記錄修訂方向、操作規格矩陣、開源專案借鑑防線、實機檢測數據與進階邊界處方，並同步更新 `README.md`。
 
 ## 異動檔案 (Changed Files)
+- `FARM_FENCE_SPEC.md`
+- `README.md`
 - `tools/sandbox/FarmFenceSandbox.csproj`
 - `tools/sandbox/App.xaml`
 - `tools/sandbox/App.xaml.cs`
