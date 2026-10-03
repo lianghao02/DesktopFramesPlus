@@ -45,6 +45,8 @@ namespace Desktop_Frames
         private static WrapPanel _sourceWrapPanel = null;
         private static WrapPanel _currentHoverWrapPanel = null;
         private static Window _dragPreviewWindow = null;
+        private static double _currentDpiScaleX = 1.0;
+        private static double _currentDpiScaleY = 1.0;
         private static System.Windows.Point _lastDropIndicatorPosition = new System.Windows.Point(-1, -1);
         private static int _lastDropIndicatorIndex = -1;
         #endregion
@@ -702,10 +704,26 @@ namespace Desktop_Frames
 
         private static double GetDpiScaleFactor(Window window)
         {
-            var screen = System.Windows.Forms.Screen.FromPoint(new System.Drawing.Point((int)window.Left, (int)window.Top));
-            using (var graphics = System.Drawing.Graphics.FromHwnd(IntPtr.Zero))
+            try
             {
-                return graphics.DpiX / 96.0;
+                if (window != null)
+                {
+                    var dpi = VisualTreeHelper.GetDpi(window);
+                    if (dpi.DpiScaleX > 0) return dpi.DpiScaleX;
+                }
+            }
+            catch { }
+
+            try
+            {
+                using (var graphics = System.Drawing.Graphics.FromHwnd(IntPtr.Zero))
+                {
+                    return graphics.DpiX / 96.0;
+                }
+            }
+            catch
+            {
+                return 1.0;
             }
         }
 
@@ -720,7 +738,31 @@ namespace Desktop_Frames
                 }
 
                 NonActivatingWindow parentWindow = FindVisualParent<NonActivatingWindow>(originalIcon);
-                double dpiScale = parentWindow != null ? GetDpiScaleFactor(parentWindow) : 1.0;
+                try
+                {
+                    if (parentWindow != null)
+                    {
+                        var dpi = VisualTreeHelper.GetDpi(parentWindow);
+                        _currentDpiScaleX = dpi.DpiScaleX;
+                        _currentDpiScaleY = dpi.DpiScaleY;
+                    }
+                    else
+                    {
+                        using (var graphics = System.Drawing.Graphics.FromHwnd(IntPtr.Zero))
+                        {
+                            _currentDpiScaleX = graphics.DpiX / 96.0;
+                            _currentDpiScaleY = graphics.DpiY / 96.0;
+                        }
+                    }
+                }
+                catch
+                {
+                    _currentDpiScaleX = 1.0;
+                    _currentDpiScaleY = 1.0;
+                }
+
+                if (_currentDpiScaleX <= 0) _currentDpiScaleX = 1.0;
+                if (_currentDpiScaleY <= 0) _currentDpiScaleY = 1.0;
 
                 _dragPreviewWindow = new Window
                 {
@@ -777,8 +819,8 @@ namespace Desktop_Frames
                 _dragPreviewWindow.Content = previewContent;
 
                 System.Windows.Point cursorPos = GetCursorPosition();
-                _dragPreviewWindow.Left = (cursorPos.X / dpiScale) + 10;
-                _dragPreviewWindow.Top = (cursorPos.Y / dpiScale) - 10;
+                _dragPreviewWindow.Left = (cursorPos.X / _currentDpiScaleX) + 10;
+                _dragPreviewWindow.Top = (cursorPos.Y / _currentDpiScaleY) - 10;
                 _dragPreviewWindow.Show();
             }
             catch { }
@@ -788,9 +830,22 @@ namespace Desktop_Frames
         {
             if (_dragPreviewWindow != null)
             {
-                double dpiScale = 1.0; // Simplified for speed, usually sufficient
-                _dragPreviewWindow.Left = (screenPosition.X / dpiScale) + 10;
-                _dragPreviewWindow.Top = (screenPosition.Y / dpiScale) - 10;
+                try
+                {
+                    if (_dragPreviewWindow.IsLoaded)
+                    {
+                        var dpi = VisualTreeHelper.GetDpi(_dragPreviewWindow);
+                        if (dpi.DpiScaleX > 0) _currentDpiScaleX = dpi.DpiScaleX;
+                        if (dpi.DpiScaleY > 0) _currentDpiScaleY = dpi.DpiScaleY;
+                    }
+                }
+                catch { }
+
+                double scaleX = _currentDpiScaleX > 0 ? _currentDpiScaleX : 1.0;
+                double scaleY = _currentDpiScaleY > 0 ? _currentDpiScaleY : 1.0;
+
+                _dragPreviewWindow.Left = (screenPosition.X / scaleX) + 10;
+                _dragPreviewWindow.Top = (screenPosition.Y / scaleY) - 10;
             }
         }
 

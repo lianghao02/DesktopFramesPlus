@@ -9886,7 +9886,7 @@ namespace Desktop_Frames
 
 
         // Size feedback during resizing
-        private static void ShowSizeFeedback(double width, double height)
+        private static void ShowSizeFeedback(double width, double height, NonActivatingWindow frame = null)
         {
             if (_sizeFeedbackWindow == null)
             {
@@ -9905,9 +9905,12 @@ namespace Desktop_Frames
                 {
                     Content = "",
                     Foreground = System.Windows.Media.Brushes.White,
-                    Background = System.Windows.Media.Brushes.Black,
+                    Background = new SolidColorBrush(System.Windows.Media.Color.FromArgb(200, 20, 20, 20)),
                     HorizontalAlignment = HorizontalAlignment.Center,
-                    VerticalAlignment = VerticalAlignment.Center
+                    VerticalAlignment = VerticalAlignment.Center,
+                    Padding = new Thickness(6, 2, 6, 2),
+                    FontSize = 12,
+                    FontWeight = FontWeights.SemiBold
                 };
                 _sizeFeedbackWindow.Content = label;
             }
@@ -9916,8 +9919,43 @@ namespace Desktop_Frames
             labelContent.Content = $"{Math.Round(width)} x {Math.Round(height)}";
 
             var mousePos = System.Windows.Forms.Cursor.Position;
-            _sizeFeedbackWindow.Left = mousePos.X + 10;
-            _sizeFeedbackWindow.Top = mousePos.Y + 10;
+            double dpiScaleX = 1.0;
+            double dpiScaleY = 1.0;
+
+            try
+            {
+                if (frame != null)
+                {
+                    var dpi = VisualTreeHelper.GetDpi(frame);
+                    dpiScaleX = dpi.DpiScaleX;
+                    dpiScaleY = dpi.DpiScaleY;
+                }
+                else if (_sizeFeedbackWindow != null && _sizeFeedbackWindow.IsLoaded)
+                {
+                    var dpi = VisualTreeHelper.GetDpi(_sizeFeedbackWindow);
+                    dpiScaleX = dpi.DpiScaleX;
+                    dpiScaleY = dpi.DpiScaleY;
+                }
+                else
+                {
+                    using (var graphics = System.Drawing.Graphics.FromHwnd(IntPtr.Zero))
+                    {
+                        dpiScaleX = graphics.DpiX / 96.0;
+                        dpiScaleY = graphics.DpiY / 96.0;
+                    }
+                }
+            }
+            catch
+            {
+                dpiScaleX = 1.0;
+                dpiScaleY = 1.0;
+            }
+
+            if (dpiScaleX <= 0) dpiScaleX = 1.0;
+            if (dpiScaleY <= 0) dpiScaleY = 1.0;
+
+            _sizeFeedbackWindow.Left = (mousePos.X / dpiScaleX) + 12;
+            _sizeFeedbackWindow.Top = (mousePos.Y / dpiScaleY) + 12;
 
             _sizeFeedbackWindow.Show();
 
@@ -9953,7 +9991,7 @@ namespace Desktop_Frames
             if (SettingsManager.EnableDimensionSnap)
             {
                 frame.SizeChanged += UpdateSizeFeedback;
-                ShowSizeFeedback(frame.Width, frame.Height);
+                ShowSizeFeedback(frame.Width, frame.Height, frame);
             }
         }
 
@@ -9978,7 +10016,7 @@ namespace Desktop_Frames
                 }
 
                 // Show one last time. The unified timer in ShowSizeFeedback will clean it up automatically.
-                ShowSizeFeedback(snappedWidth, snappedHeight);
+                ShowSizeFeedback(snappedWidth, snappedHeight, frame);
             }
         }
 
@@ -10106,7 +10144,7 @@ namespace Desktop_Frames
                 string frameId = frame.Tag?.ToString();
                 if (!string.IsNullOrEmpty(frameId) && _framesInTransition.Contains(frameId)) return;
 
-                ShowSizeFeedback(frame.Width, frame.Height);
+                ShowSizeFeedback(frame.Width, frame.Height, frame);
             }
         }
 
