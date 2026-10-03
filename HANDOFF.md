@@ -3,12 +3,12 @@
 ## 核心元資料
 - Repository：`lianghao02/DesktopFramesPlus`
 - Branch：`main`
-- Commit SHA：待提交
+- Commit SHA：`03503a6`
 - Task Type：FEAT / BUGFIX / REFACTOR / UI
 - Local Path Hint：`16_DesktopFramesPlus`
 
 ## 目前狀態
-可交付／已完成「高 DPI 縮放下的尺寸提示視窗與拖曳預覽視窗嚴重偏移修正」、「公用桌面智慧授權與拖曳保護」、「設定頁面各項內容正確群組分類」、「台灣繁體在地化用語修正（資源回收筒、面板、閒置、日誌層級）」、「浮動圓點控制開關整合」，MSBuild Release 編譯（0 錯誤），整合測試 18 項全數 PASS。
+可交付／已完成「高 DPI 縮放下的尺寸提示視窗與拖曳預覽視窗嚴重偏移修正」、「公用桌面智慧授權與拖曳保護」、「設定頁面各項內容正確群組分類」、「台灣繁體在地化用語修正（資源回收筒、面板、閒置、日誌層級）」、「浮動圓點控制開關整合」，MSBuild Release 編譯（0 錯誤），整合測試 18 項全數 PASS，已完成遠端推播。
 
 ## 本輪目標
 1. **修復高 DPI 縮放下尺寸提示視窗與圖示拖曳預覽嚴重偏移（`FrameManager.cs`, `IconDragDropManager.cs`）**：
@@ -61,9 +61,9 @@
 - 無。
 
 ## Git 狀態
-- Commit：待提交
-- Push：否（即將執行）
-- Working Tree：Modified
+- Commit：`03503a6`
+- Push：是
+- Working Tree：Clean
 - Branch：main
 
 ## 下一步
