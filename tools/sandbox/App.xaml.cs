@@ -58,7 +58,8 @@ namespace FarmFenceSandbox
                         Log($"    - {dir} (存在: {Directory.Exists(dir)})");
                     }
 
-                    // 3. 讀取原生圖示列表與座標
+
+
                     Log("\n[3] 讀取桌面原生圖示清單與螢幕物理座標:");
                     var icons = DesktopInterop.GetAllDesktopIcons();
                     Log($"    共讀取到 {icons.Count} 個項目：");

@@ -25,9 +25,11 @@ namespace FarmFenceSandbox
     {
         private readonly List<FenceWindow> _fences = new List<FenceWindow>();
         private readonly Dictionary<string, string> _assignedIcons = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        private readonly Dictionary<string, Point> _lastKnownIconPositions = new Dictionary<string, Point>(StringComparer.OrdinalIgnoreCase);
         private readonly DispatcherTimer _syncTimer;
         private readonly string _stateFilePath;
         private bool _isUpdatingPositions = false;
+        private bool _isBaselineInitialized = false;
 
         public event Action<string>? LogMessage;
         public event Action? FencesChanged;
@@ -41,7 +43,7 @@ namespace FarmFenceSandbox
 
             _syncTimer = new DispatcherTimer
             {
-                Interval = TimeSpan.FromMilliseconds(400)
+                Interval = TimeSpan.FromMilliseconds(300)
             };
             _syncTimer.Tick += OnSyncTimerTick;
         }
@@ -49,10 +51,27 @@ namespace FarmFenceSandbox
         public void Initialize()
         {
             LoadOrCreateFences();
+
+            // 建立所有原生圖示初始物理座標基準，避免初次啟動時因任何柵欄剛好覆蓋底下的圖示而自動收編！
+            try
+            {
+                var initialIcons = DesktopInterop.GetAllDesktopIcons();
+                foreach (var icon in initialIcons)
+                {
+                    string key = !string.IsNullOrEmpty(icon.ResolvedPath) ? icon.ResolvedPath : icon.Name;
+                    _lastKnownIconPositions[key] = icon.ScreenPoint;
+                }
+            }
+            catch (Exception ex)
+            {
+                LogMessage?.Invoke($"建立桌面圖示初始基準例外: {ex.Message}");
+            }
+
+            _isBaselineInitialized = true;
             SaveState();
 
             _syncTimer.Start();
-            LogMessage?.Invoke($"農場柵欄引擎啟動完成，目前載入 {_fences.Count} 個柵欄，開始定時偵測圖示歸屬。");
+            LogMessage?.Invoke($"農場柵欄引擎啟動完成，目前載入 {_fences.Count} 個柵欄，僅管理使用者手動拖入之項目。");
         }
 
         /// <summary>
@@ -196,7 +215,11 @@ namespace FarmFenceSandbox
                     {
                         Point newPt = new Point(icon.ScreenPoint.X + deltaX, icon.ScreenPoint.Y + deltaY);
                         bool ok = DesktopInterop.SetIconPositionByScreenPoint(icon.Index, newPt);
-                        if (!ok)
+                        if (ok)
+                        {
+                            _lastKnownIconPositions[key] = newPt;
+                        }
+                        else
                         {
                             LogMessage?.Invoke($"[移動警告] 圖示 '{icon.Name}' 移動未達標，可能受 Windows 自動排列圖示限制。");
                         }
@@ -232,15 +255,17 @@ namespace FarmFenceSandbox
         }
 
         /// <summary>
-        /// 定時掃描桌面原生圖示座標與物理邊界命中：
-        /// 1. 僅在柵欄「靜止」狀態下進行歸屬判定，避免移動外框掃過圖示時誤判為使用者手動拖入！
-        /// 2. 使用 PointToScreen 換算之真實物理像素矩形判定，排除標題列誤觸。
+        /// 定時掃描桌面原生圖示狀態：
+        /// 1. 柵欄只管理使用者「親手拖入」的桌面項目！
+        /// 2. 建立、移動或放大柵欄碰到的圖示，位移為 0，絕對不自動收集！
+        /// 3. 圖示只有在產生實質位移 (>= 15 物理像素) 且新座標落在柵欄內時，才判定為手動拖入或跨柵欄移動。
+        /// 4. 柵欄內的圖示被使用者拖到柵欄外 (>= 15 物理像素) 且新座標在所有柵欄外時，才判定為手動拖出。
         /// </summary>
         private void OnSyncTimerTick(object? sender, EventArgs e)
         {
-            if (_isUpdatingPositions) return;
+            if (!_isBaselineInitialized || _isUpdatingPositions) return;
 
-            // 關鍵防護：任何柵欄正在被使用者拖動時，不執行新圖示歸入判定
+            // 關鍵防護：任何柵欄正在被使用者拖動或調整大小時，不執行新圖示歸入判定
             if (_fences.Any(f => f.IsUserMoving)) return;
 
             try
@@ -252,42 +277,61 @@ namespace FarmFenceSandbox
                 foreach (var icon in icons)
                 {
                     string key = !string.IsNullOrEmpty(icon.ResolvedPath) ? icon.ResolvedPath : icon.Name;
+                    Point currPt = icon.ScreenPoint;
 
-                    // 取圖示中心點進行命中判定 (物理像素，圖示標準尺寸約 72x72)
-                    Point center = new Point(icon.ScreenPoint.X + 36, icon.ScreenPoint.Y + 36);
-
-                    FenceWindow? targetFence = null;
-                    foreach (var fence in _fences)
+                    if (_lastKnownIconPositions.TryGetValue(key, out Point prevPt))
                     {
-                        // 取得工作區物理矩形 (扣除標題列)
-                        Rect contentBounds = fence.GetPhysicalContentBounds();
-                        if (contentBounds.Contains(center))
+                        // 計算此圖示在桌面上的實際物理位移距離 (Pixels)
+                        double dist = Math.Sqrt(Math.Pow(currPt.X - prevPt.X, 2) + Math.Pow(currPt.Y - prevPt.Y, 2));
+
+                        // 核心準則：只有使用者親手拖動圖示產生實質位移 (>= 15 像素)，才進行手動拖入或拖出判定！
+                        // 建立、移動或放大柵欄碰到的圖示，位移為 0，絕不自動收集！
+                        if (dist >= 15)
                         {
-                            targetFence = fence;
-                            break;
+                            Point center = new Point(currPt.X + 36, currPt.Y + 36);
+
+                            FenceWindow? targetFence = null;
+                            foreach (var fence in _fences)
+                            {
+                                Rect contentBounds = fence.GetPhysicalContentBounds();
+                                if (contentBounds.Contains(center))
+                                {
+                                    targetFence = fence;
+                                    break;
+                                }
+                            }
+
+                            if (targetFence != null)
+                            {
+                                // 使用者親手把圖示拖入某個柵欄
+                                if (!_assignedIcons.TryGetValue(key, out string? prevFenceId) || prevFenceId != targetFence.FenceId)
+                                {
+                                    _assignedIcons[key] = targetFence.FenceId;
+                                    hasChanges = true;
+                                    LogMessage?.Invoke($"[手動拖入] 使用者將圖示 '{icon.Name}' 拖入 [{targetFence.FenceTitle}]。");
+                                }
+                            }
+                            else
+                            {
+                                // 使用者親手把圖示拖出柵欄回到一般桌面
+                                if (_assignedIcons.TryGetValue(key, out string? prevFenceId))
+                                {
+                                    _assignedIcons.Remove(key);
+                                    hasChanges = true;
+                                    LogMessage?.Invoke($"[手動拖出] 使用者將圖示 '{icon.Name}' 拖出柵欄，回到一般桌面。");
+                                }
+                            }
                         }
+                        // 若 dist < 15，圖示未被使用者拖動，絕對維持原有歸屬狀態，不作任何變更
                     }
 
-                    if (targetFence != null)
+                    // 更新此圖示最新已知位置
+                    _lastKnownIconPositions[key] = currPt;
+
+                    // 統計該圖示所屬柵欄的圖示計數
+                    if (_assignedIcons.TryGetValue(key, out string? assignedFenceId) && fenceCounts.ContainsKey(assignedFenceId))
                     {
-                        // 圖示位於某個柵欄內部
-                        if (!_assignedIcons.TryGetValue(key, out string? prevFenceId) || prevFenceId != targetFence.FenceId)
-                        {
-                            _assignedIcons[key] = targetFence.FenceId;
-                            hasChanges = true;
-                            LogMessage?.Invoke($"[手動歸入] 圖示 '{icon.Name}' 進入 [{targetFence.FenceTitle}]，完成納管。");
-                        }
-                        fenceCounts[targetFence.FenceId]++;
-                    }
-                    else
-                    {
-                        // 圖示不在任何柵欄內部 (拖出柵欄回到一般桌面)
-                        if (_assignedIcons.TryGetValue(key, out string? prevFenceId))
-                        {
-                            _assignedIcons.Remove(key);
-                            hasChanges = true;
-                            LogMessage?.Invoke($"[拖出解除] 圖示 '{icon.Name}' 已拖出柵欄，回到一般桌面。");
-                        }
+                        fenceCounts[assignedFenceId]++;
                     }
                 }
 

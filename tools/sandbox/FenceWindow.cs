@@ -14,6 +14,7 @@ namespace FarmFenceSandbox
         private const int WM_NCHITTEST = 0x0084;
         private const int WM_NCLBUTTONDOWN = 0x00A1;
         private const int WM_NCLBUTTONUP = 0x00A2;
+        private const int WM_ENTERSIZEMOVE = 0x0231;
         private const int WM_EXITSIZEMOVE = 0x0232;
 
         private const int HTTRANSPARENT = -1;
@@ -242,7 +243,7 @@ namespace FarmFenceSandbox
         /// </summary>
         private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
         {
-            if (msg == WM_NCLBUTTONDOWN && (int)wParam == HTCAPTION)
+            if (msg == WM_ENTERSIZEMOVE || (msg == WM_NCLBUTTONDOWN && (int)wParam == HTCAPTION))
             {
                 IsUserMoving = true;
             }

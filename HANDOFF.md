@@ -3,7 +3,7 @@
 ## 核心元資料 (Metadata)
 - **Repository**：`lianghao02/DesktopFramesPlus`
 - **Branch**：`main`
-- **Commit SHA**：`12007cc`
+- **Commit SHA**：`c7f65cc`
 - **Skill Version**：`lianghao-development v1.0.0`
 - **Task Type**：FEAT / SANDBOX / REFACTOR / HANDOFF
 - **Local Path Hint**：`DesktopFramesPlus`
@@ -13,13 +13,14 @@
 ## 目前狀態
 **農場柵欄最小操作原型（修訂版）實作與實測完成，符合驗收標準，目前版本可交付。**
 - 正式主程式（`Code/Desktop Frames`）**100% 保持 0 侵入、0 變更**，完全不影響既有主程式。
-- 專注於 `tools/sandbox/`，依據 Codex 審查意見全面修復 6 大核心問題：
-  1. **徹底解決順序硬配**：廢除以檔案目錄字母順序猜測圖示的錯誤做法，改採 SysListView32 的同源索引與螢幕物理座標作為唯一可信錨點，移動時以真實索引調度，絕不把檔案 A 誤當成檔案 B。
-  2. **支援動態數量與單一柵欄保留**：移除 `>= 2` 限制，完整支援 0/1/N 個柵欄的載入、儲存與恢復，刪除單一柵欄重開不再被重設回預設 2 個，控制台新增「➕ 新增柵欄」按鈕。
-  3. **高 DPI 物理像素統一換算**：引入 `PointToScreen` 換算外框真實物理螢幕像素邊界（扣除標題列物理高度），解決 125%、150% 等高 DPI 螢幕縮放時的判定錯位。
-  4. **圖示移動讀回驗證（Read-Back Verification）**：發送 `LVM_SETITEMPOSITION` 後立即透過 `LVM_GETITEMPOSITION` 讀回校驗，位移誤差 > 10 像素（例如被 Windows「自動排列圖示」強制拉回）時判定失敗並記錄警告日誌。
-  5. **拖曳外框防誤吸（`IsUserMoving`）**：攔截 `WM_NCLBUTTONDOWN` 與 `WM_EXITSIZEMOVE`，外框被拖動期間暫停圖示歸入判定，路過圖示時不誤吸。
-  6. **長駐 STA 執行緒與資源安全釋放**：改用單一長駐背景 STA 代理執行緒 `DesktopWorker` 與任務佇列，避免頻繁建立執行緒與資源洩漏，退出時正確調用 `CloseDesktop`。
+- 專注於 `tools/sandbox/`，依據 Codex 審查意見全面修復核心偏離與技術問題：
+  1. **徹底消滅「依範圍自動收進來」偏離**：引進圖示位移追蹤（$\ge 15$ 物理像素）與初始基準建立（Initial Baseline）。建立、移動或放大柵欄碰到的圖示位移為 0，絕對不自動收集；只有使用者親手拖動圖示放置於柵欄內，才判定為手動拖入；拖出柵欄外才判定為手動移出。
+  2. **徹底解決順序硬配**：廢除以檔案目錄字母順序猜測圖示的錯誤做法，改採 SysListView32 的同源索引與螢幕物理座標作為唯一可信錨點，移動時以真實索引調度，絕不把檔案 A 誤當成檔案 B。
+  3. **支援動態數量與單一柵欄保留**：移除 `>= 2` 限制，完整支援 0/1/N 個柵欄的載入、儲存與恢復，刪除單一柵欄重開不再被重設回預設 2 個，控制台新增「➕ 新增柵欄」按鈕。
+  4. **高 DPI 物理像素統一換算**：引入 `PointToScreen` 換算外框真實物理螢幕像素邊界（扣除標題列物理高度），解決 125%、150% 等高 DPI 螢幕縮放時的判定錯位。
+  5. **圖示移動讀回驗證（Read-Back Verification）**：發送 `LVM_SETITEMPOSITION` 後立即透過 `LVM_GETITEMPOSITION` 讀回校驗，位移誤差 > 10 像素（例如被 Windows「自動排列圖示」強制拉回）時判定失敗並記錄警告日誌。
+  6. **外框移動/縮放防誤吸（`WM_ENTERSIZEMOVE`）**：攔截 `WM_ENTERSIZEMOVE`、`WM_NCLBUTTONDOWN` 與 `WM_EXITSIZEMOVE`，外框被拖動或拉伸調整大小期間暫停圖示判定，路過圖示時不誤吸。
+  7. **長駐 STA 執行緒與資源安全釋放**：改用單一長駐背景 STA 代理執行緒 `DesktopWorker` 與任務佇列，避免頻繁建立執行緒與資源洩漏，退出時正確調用 `CloseDesktop`。
 
 ---
 
