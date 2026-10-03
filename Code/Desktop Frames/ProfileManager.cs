@@ -410,6 +410,7 @@ namespace Desktop_Frames
             }
             // ----------------------------------------
 
+            Desktop_Frames.FarmFences.FarmFenceHost.Stop();
             _currentProfileName = profileName;
             SaveConfigInternal();
 
@@ -428,6 +429,7 @@ namespace Desktop_Frames
 
             // 2. NOW load the new fences (which will re-populate the list correctly)
             Framemanager.ReloadFrames();
+            Desktop_Frames.FarmFences.FarmFenceHost.Start();
             // -----------------------------------------
 
             if (TrayManager.Instance != null)

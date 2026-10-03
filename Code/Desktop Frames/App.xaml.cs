@@ -174,6 +174,8 @@ namespace Desktop_Frames
                     }
 
                     // --- NEW: Direct Draw Mode Check ---
+                    FarmFences.FarmFenceHost.Start();
+
                     // If this MAIN instance was started via Context Menu, trigger draw mode now.
                     // Use the same robust check as above.
                     var allArgs = Environment.GetCommandLineArgs();
@@ -196,6 +198,8 @@ namespace Desktop_Frames
 
         protected override void OnExit(ExitEventArgs e)
         {
+            FarmFences.FarmFenceHost.Stop();
+            FarmFences.DesktopInterop.ShutdownWorker();
             try
             {
                 Desktop_Frames.Notes.Services.NoteManager.Instance?.FlushAndCloseAll();

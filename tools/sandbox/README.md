@@ -1,5 +1,9 @@
 # 🌾 農場柵欄最小操作原型 (Farm Fence Sandbox)
 
+> **2026-10-03 接續提醒**：核心已移至 `Code/Desktop Frames/FarmFences/`，此沙盒以 Compile link 共用正式核心。下方為前一輪原型紀錄，其中「正式程式零變更」、15px 位移判斷、永久索引身分及全數驗收完成等描述已不適用；目前狀態以根目錄 `HANDOFF.md` 與實際程式碼為準。
+>
+> 建置：`dotnet build tools/sandbox/FarmFenceSandbox.csproj -c Release`（在 Repository 根目錄）。測試入口：`--test`、`--test-move`、`--test-state`。未指定參數才開啟操作控制台。框內排隊、向下自動增高與防重疊尚未實作。
+
 > **定位**：驗證「農場柵欄（手動拖入、原生圖示留存、原檔不變、不重複、拆除還原）」之獨立最小操作原型。  
 > **隔離邊界**：本原型完全隔離於 `tools/sandbox/`，**正式主程式（`Code/Desktop Frames`）保持 0 侵入、0 變更**。
 

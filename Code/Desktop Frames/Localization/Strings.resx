@@ -1968,4 +1968,13 @@ This cannot be undone.</value>
   <data name="MsgFrameAlreadyContainsItem" xml:space="preserve">
     <value>This frame already contains this item. Nothing was moved.</value>
   </data>
+  <data name="FarmNew" xml:space="preserve"><value>Create Farm Fence</value></data>
+  <data name="FarmName" xml:space="preserve"><value>Farm Fence {0}</value></data>
+  <data name="FarmRename" xml:space="preserve"><value>Rename</value></data>
+  <data name="FarmCancel" xml:space="preserve"><value>Remove Fence (keep desktop icons)</value></data>
+  <data name="FarmNameLabel" xml:space="preserve"><value>Fence name</value></data>
+  <data name="FarmSave" xml:space="preserve"><value>Save</value></data>
+  <data name="FarmLoadFailed" xml:space="preserve"><value>Farm fence settings could not be read. The original settings are protected from being overwritten.</value></data>
+  <data name="FarmOperationFailed" xml:space="preserve"><value>The farm fence operation could not be completed. Original icons remain on the desktop. See the diagnostic log.</value></data>
+  <data name="FarmSaveFailed" xml:space="preserve"><value>Farm fence settings could not be saved. Check the folder's write permissions.</value></data>
 </root>

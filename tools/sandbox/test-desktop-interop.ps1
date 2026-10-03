@@ -14,7 +14,7 @@ if (-not (Test-Path $assemblyPath)) {
 $scriptBlock = {
     param($dll)
     [System.Reflection.Assembly]::LoadFrom($dll) | Out-Null
-    $interopType = [System.Type]::GetType('FarmFenceSandbox.DesktopInterop, FarmFenceSandbox', $true)
+    $interopType = [System.Type]::GetType('Desktop_Frames.FarmFences.DesktopInterop, FarmFenceSandbox', $true)
 
     Write-Host "=== 1. 測試桌面視窗控制代碼 (HWND) 取得 ===" -ForegroundColor Cyan
     $getHwndMethod = $interopType.GetMethod('GetDesktopListViewHwnd', [System.Reflection.BindingFlags]'Public, Static')

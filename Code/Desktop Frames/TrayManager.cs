@@ -246,6 +246,8 @@ namespace Desktop_Frames
             _profilesMenuItem = new ToolStripMenuItem(Strings.MenuDesktopLayouts);
             trayMenu.Items.Add(_profilesMenuItem);
             trayMenu.Items.Add(Strings.MenuDrawFrame, null, (s, e) => Framemanager.StartDrawMode());
+            trayMenu.Items.Add(Strings.Get("FarmNew"), null, (s, e) =>
+                System.Windows.Application.Current.Dispatcher.BeginInvoke(new Action(Desktop_Frames.FarmFences.FarmFenceHost.Create)));
 
             // Desktop Sticky Notes Submenu
             var notesMenuItem = new ToolStripMenuItem(Strings.Get("MenuDesktopNotes", "桌面便箋"));
@@ -561,6 +563,15 @@ namespace Desktop_Frames
             }
         }
 
+
+        public void ShowFarmFenceWarning(string message)
+        {
+            if (_trayIcon == null) return;
+            _trayIcon.BalloonTipTitle = "Desktop Frames +";
+            _trayIcon.BalloonTipText = message;
+            _trayIcon.BalloonTipIcon = ToolTipIcon.Warning;
+            _trayIcon.ShowBalloonTip(4000);
+        }
 
         public void UpdateProfilesMenu()
         {

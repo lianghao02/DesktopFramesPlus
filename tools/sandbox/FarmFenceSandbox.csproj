@@ -10,4 +10,11 @@
     <AssemblyName>FarmFenceSandbox</AssemblyName>
   </PropertyGroup>
 
+  <ItemGroup>
+    <Compile Include="..\..\Code\Desktop Frames\FarmFences\DesktopInterop.cs" Link="DesktopInterop.cs" />
+    <Compile Include="..\..\Code\Desktop Frames\FarmFences\DesktopDragMonitor.cs" Link="DesktopDragMonitor.cs" />
+    <Compile Include="..\..\Code\Desktop Frames\FarmFences\FenceManager.cs" Link="FenceManager.cs" />
+    <Compile Include="..\..\Code\Desktop Frames\FarmFences\FenceWindow.cs" Link="FenceWindow.cs" />
+    <Compile Include="..\..\Code\Desktop Frames\FarmFences\FenceText.cs" Link="FenceText.cs" />
+  </ItemGroup>
 </Project>

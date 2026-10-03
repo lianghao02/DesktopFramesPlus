@@ -1984,4 +1984,13 @@
   <data name="MsgFrameAlreadyContainsItem" xml:space="preserve">
     <value>此分區已有相同項目，因此未移動任何項目。</value>
   </data>
+  <data name="FarmNew" xml:space="preserve"><value>新增農場柵欄</value></data>
+  <data name="FarmName" xml:space="preserve"><value>農場柵欄 {0}</value></data>
+  <data name="FarmRename" xml:space="preserve"><value>重新命名</value></data>
+  <data name="FarmCancel" xml:space="preserve"><value>取消柵欄（圖示保留在桌面）</value></data>
+  <data name="FarmNameLabel" xml:space="preserve"><value>柵欄名稱</value></data>
+  <data name="FarmSave" xml:space="preserve"><value>儲存</value></data>
+  <data name="FarmLoadFailed" xml:space="preserve"><value>農場柵欄設定讀取失敗，已保護原設定不被覆寫。</value></data>
+  <data name="FarmOperationFailed" xml:space="preserve"><value>農場柵欄操作未完成；原圖示仍留在桌面。請查看診斷記錄。</value></data>
+  <data name="FarmSaveFailed" xml:space="preserve"><value>農場柵欄設定無法儲存。請檢查資料夾寫入權限。</value></data>
 </root>
