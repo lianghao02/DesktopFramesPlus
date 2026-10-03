@@ -3,53 +3,58 @@
 ## 核心元資料
 - Repository：`lianghao02/DesktopFramesPlus`
 - Branch：`main`
-- Commit SHA：`03503a6`
-- Task Type：FEAT / BUGFIX / REFACTOR / UI
+- Commit SHA：待提交
+- Task Type：FEAT / BUGFIX / REFACTOR / UI / DOCS
 - Local Path Hint：`16_DesktopFramesPlus`
 
 ## 目前狀態
-可交付／已完成「高 DPI 縮放下的尺寸提示視窗與拖曳預覽視窗嚴重偏移修正」、「公用桌面智慧授權與拖曳保護」、「設定頁面各項內容正確群組分類」、「台灣繁體在地化用語修正（資源回收筒、面板、閒置、日誌層級）」、「浮動圓點控制開關整合」，MSBuild Release 編譯（0 錯誤），整合測試 18 項全數 PASS，已完成遠端推播。
+可交付／已完成「設定視窗全 7 大分頁現代化卡片式群組分類（一般、樣式與效果、工具、工作區、快捷鍵、智慧桌面、高階日誌）」、「泛型視覺樹控制項查找架構（FindDescendants<T>）」、「多語系資源檔補充同步（zh-TW, en, zh-Hans）」、「更新 README.md 與新版 CHANGELOG.md」，MSBuild Release 編譯（0 錯誤），整合測試 18 項全數 PASS。
 
 ## 本輪目標
-1. **修復高 DPI 縮放下尺寸提示視窗與圖示拖曳預覽嚴重偏移（`FrameManager.cs`, `IconDragDropManager.cs`）**：
-   - 解決調整面板寬高時，尺寸數字「跑到螢幕右下角好遠」的 Bug（原程式直接將 Win32 實體游標像素賦予 WPF Window.Left/Top，在高 DPI 縮放下被二次放大產生巨大偏移）。
-   - 解決從柵欄拖曳圖示時，浮動半透明圖示「跑超遠飛出面板」的 Bug（原程式在 `UpdateDragPreviewPosition` 將 `dpiScale` 硬編碼為 `1.0`，導致實體像素未換算為 WPF DIPs）。
-   - 全面引入 `VisualTreeHelper.GetDpi` 動態感知面板與視窗所在的 Per-Monitor DPI，精準將滑鼠實體像素轉換為 WPF DIPs，使尺寸提示與拖曳預覽寸步不離地緊隨滑鼠游標。
-2. **公用桌面智慧授權與拖曳保護（JIT 授權）**：
-   - 解決主程式以管理員執行時觸發 Windows UIPI 阻斷桌面拖曳的死結。
-   - 主程式維持標準使用者權限（Medium Integrity），徹底杜絕拖曳阻斷。
-   - 在 `FenceInventoryManager.cs` 與 `FrameManager.cs` 新增即時偵測：拖入位於 `C:\Users\Public\Desktop` 的捷徑（如 Steam、PotPlayer）時，自動跳出對話框說明原因並詢問是否授權。使用者確認後透過 `icacls` 完成單次提權，並**立即自動接續完成收納**（無需使用者重複拖曳）。
-3. **設定頁面內容正確群組分類（`OptionsFormManager.cs`）**：
-   - 「一般」頁籤徹底重構為 5 個專屬區塊：【語言】、【系統與啟動】、【操作與吸附】、【資料夾鏡像面板】與【公用桌面收納權限】。
-   - 「樣式與效果」頁籤：補上「桌面圖示隱藏時在底部顯示浮動圓點」開關（`ShowDesktopDot`），並修正「空閒」為「閒置」。
-   - 「高階」頁籤：修復未翻譯英文代碼 `LogCategoryFrameCreation` 為「面板建立」，`框架更新` 改為「面板更新」、`日誌配置` 改為「日誌層級」。
-4. **繁體在地化用語全面統一（`Strings.*.resx`）**：
-   - 修正大陸用語：「回收站」→「資源回收筒」、「專案」→「項目」、「框架」→「面板」、「空閒」→「閒置」。
+1. **設定視窗所有分頁群組化分類重構（`OptionsFormManager.cs`）**：
+   - 解決過去設定項目平鋪堆疊、分類模糊、各分頁樣式不一的問題。
+   - 打造標準化 `CreateGroupCard` 現代圓角邊框卡片，左側帶有分頁主題專屬強調色條與副標題說明。
+   - 7 大分頁完整分類：
+     - **一般 (General)**：【語言】、【系統與啟動】、【操作與吸附】、【資料夾鏡像面板】、【公用桌面收納權限】。
+     - **樣式與效果 (Style & Effects)**：【外觀主題與色彩】、【自動隱藏與閒置效果】、【桌面圖示顯示行為】、【面板按鈕圖示樣式】、【便箋預設樣式】。
+     - **工具 (Tools)**：【資料備份與還原】、【面板邊界維護】、【系統重設與清除】。
+     - **工作區 (Profiles)**：【工作區版面管理】、【智慧情境自動化】。
+     - **快捷鍵 (Hotkeys)**：【工作區切換快捷鍵】、【輔助與搜尋快捷鍵】。
+     - **智慧桌面 (Smart Desktop)**：【自動整理引擎】、【分類規則與手動執行】。
+     - **高階 (Look Deeper)**：【診斷日誌】、【日誌層級】、【追蹤分類】。
+2. **泛型視覺樹查找架構（`FindDescendants<T>`）**：
+   - 解決容器巢狀嵌套時 `SaveOptions()` 無法讀取子孫元素控制項的致命缺陷。
+   - 遍歷所有 `Panel`、`ContentControl`、`Border`、`ScrollViewer`，確保卡片重構後 100% 正確存取所有設定。
+3. **文件與日誌全面更新**：
+   - 建立並維護 `CHANGELOG.md`，詳述 v2.4.0 核心更新歷程。
+   - 更新 `README.md`，同步核心特色與卡片式設定說明。
+   - 補充 `Strings.zh-TW.resx`、`Strings.resx`、`Strings.zh-Hans.resx` 新增之群組多語系鍵。
 
 ## 已完成
-1. **FrameManager.cs DPI 縮放修正**：
-   - `ShowSizeFeedback` 接收 `frame` 參數，透過 `VisualTreeHelper.GetDpi` 動態獲取螢幕 DPI Scale，將滑鼠座標除以 `dpiScaleX` / `dpiScaleY`，精準定位在游標右下方 12 像素處。
-2. **IconDragDropManager.cs 拖曳預覽 DPI 縮放修正**：
-   - 移除 `UpdateDragPreviewPosition` 中硬編碼的 `dpiScale = 1.0`，保存並動態更新 `_currentDpiScaleX` 與 `_currentDpiScaleY`，確保拖曳移動時預覽圖示精準吸附於游標右下方 10 像素處。
-3. **公用桌面權限與 JIT 即時授權**：
-   - 實作 `HasCommonDesktopWritePermission()` 與 `GrantCommonDesktopPermission()`。
-   - `win.Drop` 事件攔截與無縫接續接管。
-4. **設定視窗分類與多語系同步**：
-   - 依功能邊界劃分 5 大區塊，新增公用桌面收納權限專區。
-   - 同步更新 zh-TW、en、zh-Hans 資源檔。
+1. **OptionsFormManager.cs 現代化卡片分組重構**：
+   - 實作 `CreateGroupCard` 與 `FindDescendants<T>`。
+   - 全 7 大分頁邏輯卡片化組裝完成。
+   - `SaveOptions()` 全面升級為泛型視覺樹查找，持久化存取穩定可靠。
+2. **多語系資源檔同步**：
+   - `SecBackup`、`SecReset`、`SecProfileLayouts`、`SecProfileAutomation`、`SecSmartDesktopRules` 已同步於繁中、英文、簡中三檔。
+3. **文件與變更日誌**：
+   - 新增 `CHANGELOG.md`。
+   - 更新 `README.md`。
+4. **建置與回歸驗證**：
+   - MSBuild Release 建置通過（0 錯誤）。
+   - `tools/rescue/Test-FenceInventory.ps1` 18 項測試全數 PASS。
 
 ## 刻意未修改
-- 未修改既有 `options.json`、`frames.json` 核心儲存架構，確保向下相容性與免安裝可攜性。
-- 未破壞 `SaveOptions` 扁平遍歷架構，確保所有設定控制項持久化正常。
+- 未修改既有 `options.json`、`frames.json` 核心儲存鍵值結構，確保向前與向後相容性。
 
 ## 尚未完成
-- 邀請使用者啟動程式進行端到端人工操作驗收。
+- 邀請使用者啟動 `Desktop Frames.exe` 進行設定視窗全分頁視覺驗收。
 
 ## 驗證結果
 ### 已執行
 1. **正式 MSBuild 建置**：
    - 指令：`MSBuild.exe "Code\Desktop Frames\Desktop Frames.csproj" /p:Configuration=Release`
-   - 結果：建置成功，0 個錯誤（Exit code 0）。產出最新 `Desktop Frames.exe`。
+   - 結果：建置成功，0 個錯誤（Exit code 0）。
 2. **自動化整合驗證腳本**：
    - 指令：`pwsh.exe tools\rescue\Test-FenceInventory.ps1`
    - 結果：18 項斷言全數 PASS，0 項 FAIL（Exit code 0）。
@@ -61,11 +66,11 @@
 - 無。
 
 ## Git 狀態
-- Commit：`03503a6`
-- Push：是
-- Working Tree：Clean
+- Commit：待提交
+- Push：否（即將執行）
+- Working Tree：Modified
 - Branch：main
 
 ## 下一步
-1. 提交 Git Commit 並推播至 `origin/main`。
-2. 邀請使用者啟動 `Desktop Frames.exe` 驗收邊界拉動數字與圖示拖曳預覽是否完美貼齊游標。
+1. 執行 `git add`、`git commit` 與 `git push` 推送至 GitHub 遠端儲存庫。
+2. 向使用者說明全分頁分類成果與文件更新。

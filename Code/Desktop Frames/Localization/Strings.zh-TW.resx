@@ -2024,4 +2024,19 @@
   <data name="DescPublicDesktop" xml:space="preserve">
     <value>Windows 系統預設限制一般權限搬移「公用桌面」的捷徑（如 Steam、PotPlayer）。授權後即可在一般使用者權限下直接拖入柵欄收納，且不會受到 UIPI 阻斷拖曳。</value>
   </data>
+  <data name="SecBackup" xml:space="preserve">
+    <value>資料備份與還原</value>
+  </data>
+  <data name="SecReset" xml:space="preserve">
+    <value>系統重設與清除</value>
+  </data>
+  <data name="SecProfileLayouts" xml:space="preserve">
+    <value>工作區版面管理</value>
+  </data>
+  <data name="SecProfileAutomation" xml:space="preserve">
+    <value>智慧情境自動化</value>
+  </data>
+  <data name="SecSmartDesktopRules" xml:space="preserve">
+    <value>分類規則與執行</value>
+  </data>
 </root>

@@ -2011,4 +2011,19 @@ This cannot be undone.</value>
   <data name="DescPublicDesktop" xml:space="preserve">
     <value>Windows restricts moving shortcuts from the Public Desktop (like Steam, PotPlayer). Granting permission allows DesktopFrames to adopt them safely under standard user rights without UIPI conflicts.</value>
   </data>
+  <data name="SecBackup" xml:space="preserve">
+    <value>Data Backup &amp; Restore</value>
+  </data>
+  <data name="SecReset" xml:space="preserve">
+    <value>System Reset &amp; Defaults</value>
+  </data>
+  <data name="SecProfileLayouts" xml:space="preserve">
+    <value>Profile Layout Management</value>
+  </data>
+  <data name="SecProfileAutomation" xml:space="preserve">
+    <value>Profile Context Automation</value>
+  </data>
+  <data name="SecSmartDesktopRules" xml:space="preserve">
+    <value>Rules &amp; Execution</value>
+  </data>
 </root>

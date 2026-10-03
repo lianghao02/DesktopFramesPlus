@@ -522,13 +522,110 @@ namespace Desktop_Frames
             }
         }
 
+        private static StackPanel CreateGroupCard(StackPanel parent, string title, Color themeColor, string subtitle = null)
+        {
+            Border card = new Border
+            {
+                Background = Brushes.White,
+                BorderBrush = new SolidColorBrush(Color.FromRgb(225, 228, 232)),
+                BorderThickness = new Thickness(1),
+                CornerRadius = new CornerRadius(6),
+                Margin = new Thickness(8, 4, 8, 14),
+                Padding = new Thickness(14, 10, 14, 12)
+            };
+
+            StackPanel cardContent = new StackPanel();
+
+            Grid titleGrid = new Grid { Margin = new Thickness(0, 0, 0, 10) };
+            titleGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(4) });
+            titleGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(8) });
+            titleGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+
+            Border accentBar = new Border
+            {
+                Background = new SolidColorBrush(themeColor),
+                CornerRadius = new CornerRadius(2),
+                Height = 16,
+                VerticalAlignment = VerticalAlignment.Center
+            };
+            Grid.SetColumn(accentBar, 0);
+            titleGrid.Children.Add(accentBar);
+
+            StackPanel titleTextPanel = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
+            TextBlock titleText = new TextBlock
+            {
+                Text = title,
+                FontFamily = new FontFamily("Segoe UI"),
+                FontSize = 14,
+                FontWeight = FontWeights.Bold,
+                Foreground = new SolidColorBrush(Color.FromRgb(33, 37, 41))
+            };
+            titleTextPanel.Children.Add(titleText);
+
+            if (!string.IsNullOrEmpty(subtitle))
+            {
+                TextBlock subtitleText = new TextBlock
+                {
+                    Text = subtitle,
+                    FontFamily = new FontFamily("Segoe UI"),
+                    FontSize = 11,
+                    Foreground = new SolidColorBrush(Color.FromRgb(120, 120, 120)),
+                    Margin = new Thickness(0, 2, 0, 0),
+                    TextWrapping = TextWrapping.Wrap
+                };
+                titleTextPanel.Children.Add(subtitleText);
+            }
+
+            Grid.SetColumn(titleTextPanel, 2);
+            titleGrid.Children.Add(titleTextPanel);
+
+            cardContent.Children.Add(titleGrid);
+            card.Child = cardContent;
+            parent.Children.Add(card);
+
+            return cardContent;
+        }
+
+        private static List<T> FindDescendants<T>(DependencyObject parent) where T : DependencyObject
+        {
+            var list = new List<T>();
+            if (parent == null) return list;
+
+            if (parent is Panel panel)
+            {
+                foreach (UIElement child in panel.Children)
+                {
+                    if (child is T typed) list.Add(typed);
+                    list.AddRange(FindDescendants<T>(child));
+                }
+            }
+            else if (parent is ContentControl cc && cc.Content is DependencyObject content)
+            {
+                if (content is T typed) list.Add(typed);
+                list.AddRange(FindDescendants<T>(content));
+            }
+            else if (parent is Border border && border.Child != null)
+            {
+                if (border.Child is T typed) list.Add(typed);
+                list.AddRange(FindDescendants<T>(border.Child));
+            }
+            else if (parent is ScrollViewer sv && sv.Content is DependencyObject svContent)
+            {
+                if (svContent is T typed) list.Add(typed);
+                list.AddRange(FindDescendants<T>(svContent));
+            }
+            return list;
+        }
+
         private static void CreateGeneralTab()
         {
             TabItem t = new TabItem();
             StackPanel c = new StackPanel();
-            CreateSectionHeader(c, Strings.SecLanguage, _userAccentColor);
-            CreateLanguageRow(c);
-            c.Children.Add(new TextBlock
+
+            // 1. 語言
+            var cardLang = CreateGroupCard(c, Strings.SecLanguage, _userAccentColor);
+            CreateLanguageRow(cardLang);
+            cardLang.Children.Add(new TextBlock
             {
                 Text = Strings.NoteLanguageRestart,
                 FontFamily = new FontFamily("Segoe UI"),
@@ -536,31 +633,28 @@ namespace Desktop_Frames
                 FontStyle = FontStyles.Italic,
                 Foreground = new SolidColorBrush(Color.FromRgb(120, 120, 120)),
                 TextWrapping = TextWrapping.Wrap,
-                Margin = new Thickness(15, 0, 15, 10)
+                Margin = new Thickness(6, 0, 6, 4)
             });
 
-            CreateSectionHeader(c, Strings.SecStartup, _userAccentColor);
-            CreateCheckBox(c, Strings.OptStartWithWindows, "StartWithWindows", TrayManager.IsStartWithWindows);
-            CreateCheckBox(c, Strings.OptTrayIcon, "EnableTrayIcon", SettingsManager.ShowInTray);
-            CreateCheckBox(c, Strings.OptNewFrameContextMenu, "EnableContextMenu", SettingsManager.EnableContextMenu);
-            CreateCheckBox(c, Strings.OptDisableScrollbars, "DisableFrameScrollbars", SettingsManager.DisableFrameScrollbars);
+            // 2. 系統與啟動
+            var cardStartup = CreateGroupCard(c, Strings.SecStartup, _userAccentColor);
+            CreateCheckBox(cardStartup, Strings.OptStartWithWindows, "StartWithWindows", TrayManager.IsStartWithWindows);
+            CreateCheckBox(cardStartup, Strings.OptTrayIcon, "EnableTrayIcon", SettingsManager.ShowInTray);
+            CreateCheckBox(cardStartup, Strings.OptNewFrameContextMenu, "EnableContextMenu", SettingsManager.EnableContextMenu);
+            CreateCheckBox(cardStartup, Strings.OptDisableScrollbars, "DisableFrameScrollbars", SettingsManager.DisableFrameScrollbars);
 
             // 3. 操作與吸附
-            CreateSectionHeader(c, Strings.Get("SecInteractions"), _userAccentColor);
-            CreateCheckBox(c, Strings.OptSingleClick, "SingleClickToLaunch", SettingsManager.SingleClickToLaunch);
-            CreateCheckBox(c, Strings.OptSnapNearFrames, "EnableSnapNearFrames", SettingsManager.IsSnapEnabled);
-            CreateCheckBox(c, Strings.OptDimensionSnap, "EnableDimensionSnap", SettingsManager.EnableDimensionSnap);
+            var cardInteractions = CreateGroupCard(c, Strings.Get("SecInteractions"), _userAccentColor);
+            CreateCheckBox(cardInteractions, Strings.OptSingleClick, "SingleClickToLaunch", SettingsManager.SingleClickToLaunch);
+            CreateCheckBox(cardInteractions, Strings.OptSnapNearFrames, "EnableSnapNearFrames", SettingsManager.IsSnapEnabled);
+            CreateCheckBox(cardInteractions, Strings.OptDimensionSnap, "EnableDimensionSnap", SettingsManager.EnableDimensionSnap);
 
-            // 音效設定
-            CheckBox cbSounds = CreateCheckBoxReturn(c, Strings.OptEnableSounds, "EnableSounds", SettingsManager.EnableSounds);
-
-            Grid soundGrid = new Grid { Margin = new Thickness(35, 0, 0, 8) }; // Indented to show parent/child relationship
+            CheckBox cbSounds = CreateCheckBoxReturn(cardInteractions, Strings.OptEnableSounds, "EnableSounds", SettingsManager.EnableSounds);
+            Grid soundGrid = new Grid { Margin = new Thickness(26, 2, 0, 6) };
             soundGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(140) });
             soundGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(200) });
-
             TextBlock lblSound = new TextBlock { Text = Strings.LblNotificationSound, FontFamily = new FontFamily("Segoe UI"), FontSize = 13, VerticalAlignment = VerticalAlignment.Center };
             Grid.SetColumn(lblSound, 0);
-
             ComboBox cbSoundType = new ComboBox { Name = "NotificationSoundComboBox", Height = 25, FontFamily = new FontFamily("Segoe UI"), FontSize = 13, VerticalAlignment = VerticalAlignment.Center };
             cbSoundType.Items.Add(Strings.SndDefault);
             cbSoundType.Items.Add(Strings.SndDoubleDing);
@@ -568,8 +662,6 @@ namespace Desktop_Frames
             cbSoundType.Items.Add(Strings.SndMessageDing);
             cbSoundType.Items.Add(Strings.SndGentleDing);
             cbSoundType.Items.Add(Strings.SndSoftDing);
-
-            // Map the current Enum back to the UI index
             cbSoundType.SelectedIndex = SettingsManager.NotificationSound switch
             {
                 NotificationSound.DoubleDing => 1,
@@ -582,51 +674,42 @@ namespace Desktop_Frames
             Grid.SetColumn(cbSoundType, 1);
             soundGrid.Children.Add(lblSound);
             soundGrid.Children.Add(cbSoundType);
-            c.Children.Add(soundGrid);
-
-            // Live-toggle the combobox based on the checkbox state
+            cardInteractions.Children.Add(soundGrid);
             soundGrid.IsEnabled = cbSounds.IsChecked == true;
             cbSounds.Click += (s, e) => soundGrid.IsEnabled = cbSounds.IsChecked == true;
 
-            // 4. 資料夾鏡像面板 (Folder Portal)
-            CreateSectionHeader(c, Strings.Get("SecFolderPortals"), _userAccentColor);
-
-            Grid portalViewGrid = new Grid { Margin = new Thickness(15, 8, 0, 8) };
+            // 4. 資料夾鏡像面板
+            var cardPortals = CreateGroupCard(c, Strings.Get("SecFolderPortals"), _userAccentColor);
+            Grid portalViewGrid = new Grid { Margin = new Thickness(6, 4, 0, 6) };
             portalViewGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(140) });
             portalViewGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(150) });
-
             TextBlock lblPortalView = new TextBlock { Text = Strings.LblDefaultPortalView, FontFamily = new FontFamily("Segoe UI"), FontSize = 13, VerticalAlignment = VerticalAlignment.Center };
             Grid.SetColumn(lblPortalView, 0);
-
             ComboBox cbPortalView = new ComboBox { Name = "DefaultPortalViewComboBox", Height = 25, FontFamily = new FontFamily("Segoe UI"), FontSize = 13, VerticalAlignment = VerticalAlignment.Center };
             cbPortalView.Items.Add(new ComboBoxItem { Content = Strings.ViewIcons, Tag = "Icons" });
             cbPortalView.Items.Add(new ComboBoxItem { Content = Strings.ViewDetails, Tag = "Details" });
             cbPortalView.SelectedIndex = string.Equals(SettingsManager.DefaultPortalView, "Details", StringComparison.OrdinalIgnoreCase) ? 1 : 0;
             Grid.SetColumn(cbPortalView, 1);
-
             portalViewGrid.Children.Add(lblPortalView);
             portalViewGrid.Children.Add(cbPortalView);
-            c.Children.Add(portalViewGrid);
+            cardPortals.Children.Add(portalViewGrid);
+            CreateCheckBox(cardPortals, Strings.OptPortalWatermark, "EnablePortalWatermark", SettingsManager.ShowBackgroundImageOnPortalFrames);
+            CreateCheckBox(cardPortals, Strings.OptRecycleBin, "UseRecycleBin", SettingsManager.UseRecycleBin);
 
-            CreateCheckBox(c, Strings.OptPortalWatermark, "EnablePortalWatermark", SettingsManager.ShowBackgroundImageOnPortalFrames);
-            CreateCheckBox(c, Strings.OptRecycleBin, "UseRecycleBin", SettingsManager.UseRecycleBin);
-
-            // 5. 公用桌面收納權限 (Public Desktop)
-            CreateSectionHeader(c, Strings.Get("SecPublicDesktop"), _userAccentColor);
-            c.Children.Add(new TextBlock
+            // 5. 公用桌面收納權限
+            var cardPublicDesktop = CreateGroupCard(c, Strings.Get("SecPublicDesktop"), _userAccentColor);
+            cardPublicDesktop.Children.Add(new TextBlock
             {
                 Text = Strings.Get("DescPublicDesktop"),
                 FontSize = 12,
                 Foreground = new SolidColorBrush(Color.FromRgb(110, 110, 110)),
                 TextWrapping = TextWrapping.Wrap,
-                Margin = new Thickness(15, 0, 15, 8)
+                Margin = new Thickness(6, 0, 6, 8)
             });
-
             bool isCommonGranted = Services.FenceInventoryManager.HasCommonDesktopWritePermission();
-            Grid publicDesktopGrid = new Grid { Margin = new Thickness(15, 4, 15, 15) };
+            Grid publicDesktopGrid = new Grid { Margin = new Thickness(6, 4, 6, 6) };
             publicDesktopGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
             publicDesktopGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(160) });
-
             TextBlock lblCommonStatus = new TextBlock
             {
                 Text = isCommonGranted ? Strings.Get("LblPublicDesktopGranted") : Strings.Get("LblPublicDesktopNotGranted"),
@@ -637,7 +720,6 @@ namespace Desktop_Frames
                 TextWrapping = TextWrapping.Wrap
             };
             Grid.SetColumn(lblCommonStatus, 0);
-
             Button btnGrant = new Button
             {
                 Content = isCommonGranted ? "✓ 已完成授權" : Strings.Get("BtnGrantPublicDesktop"),
@@ -652,7 +734,6 @@ namespace Desktop_Frames
                 Margin = new Thickness(10, 0, 0, 0)
             };
             Grid.SetColumn(btnGrant, 1);
-
             btnGrant.Click += (s, e) =>
             {
                 bool success = Services.FenceInventoryManager.GrantCommonDesktopPermission();
@@ -672,10 +753,10 @@ namespace Desktop_Frames
                     MessageBoxesManager.ShowOKOnlyMessageBoxForm("未取得系統管理員授權或已取消確認。", Strings.DlgInfo);
                 }
             };
-
             publicDesktopGrid.Children.Add(lblCommonStatus);
             publicDesktopGrid.Children.Add(btnGrant);
-            c.Children.Add(publicDesktopGrid);
+            cardPublicDesktop.Children.Add(publicDesktopGrid);
+
             t.Content = new ScrollViewer { Content = c, VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
             _tabControl.Items.Add(t);
         }
@@ -685,165 +766,111 @@ namespace Desktop_Frames
             TabItem t = new TabItem();
             StackPanel c = new StackPanel();
 
-            CreateSectionHeader(c, Strings.SecAppearance, ColorStyle);
-
-            // --- CHAMELEON TOGGLE ---
-            var chamCb = CreateCheckBoxReturn(c, Strings.OptChameleon, "EnableChameleon", SettingsManager.EnableChameleonMode);
+            // 1. 外觀主題與色彩
+            var cardAppearance = CreateGroupCard(c, Strings.SecAppearance, ColorStyle);
+            var chamCb = CreateCheckBoxReturn(cardAppearance, Strings.OptChameleon, "EnableChameleon", SettingsManager.EnableChameleonMode);
             chamCb.ToolTip = Strings.TooltipChameleon;
+            CreateSliderControl(cardAppearance, Strings.SldFrameTint, "TintSlider", SettingsManager.TintValue);
+            CreateSliderControl(cardAppearance, Strings.SldMenuTint, "MenuTintSlider", SettingsManager.MenuTintValue);
+            CreateColorAndEffectComboBoxes(cardAppearance, chamCb);
+            CreateCheckBox(cardAppearance, Strings.OptFrameTint, "ApplyTintToIcons", SettingsManager.ApplyTintToIcons);
 
-            CreateSliderControl(c, Strings.SldFrameTint, "TintSlider", SettingsManager.TintValue);
-            CreateSliderControl(c, Strings.SldMenuTint, "MenuTintSlider", SettingsManager.MenuTintValue);
+            // 2. 自動隱藏與閒置效果
+            var cardAutoHide = CreateGroupCard(c, Strings.SecAutoHideFrames, ColorStyle);
+            CreateCheckBox(cardAutoHide, Strings.OptAutoHideFrames, "AutoHideFrames", SettingsManager.AutoHideFrames);
+            CreateSliderControl(cardAutoHide, Strings.SldAutoHideTime, "AutoHideTimeSlider", SettingsManager.AutoHideTime, 300);
 
-            // Pass the chamCb reference so we can wire up the toggle event
-            CreateColorAndEffectComboBoxes(c, chamCb);
+            cardAutoHide.Children.Add(new Separator { Margin = new Thickness(6, 8, 6, 8), Background = new SolidColorBrush(Color.FromRgb(235, 235, 235)) });
+            CreateCheckBox(cardAutoHide, Strings.OptIdleFadeOut, "FramesFadeOutFx", SettingsManager.FramesFadeOutFx);
+            CreateSliderControl(cardAutoHide, Strings.SldIdleTime, "FadeOutTimeSlider", SettingsManager.FadeOutTime, 300);
+            CreateSliderControl(cardAutoHide, Strings.SldFadeTargetOpacity, "FadeOutAlphaSlider", (int)(SettingsManager.FadeOutFxTargetAlpha * 100), 100);
 
-            CreateCheckBox(c, Strings.OptFrameTint, "ApplyTintToIcons", SettingsManager.ApplyTintToIcons);
-
-            // --- Moved from General Tab (Auto-Hide Options) ---
-            CreateSectionHeader(c, Strings.SecAutoHideFrames, ColorStyle);
-            CreateCheckBox(c, Strings.OptAutoHideFrames, "AutoHideFrames", SettingsManager.AutoHideFrames);
-            CreateSliderControl(c, Strings.SldAutoHideTime, "AutoHideTimeSlider", SettingsManager.AutoHideTime, 300);
-
-            // --- Moved from General Tab (Idle Fade-Out Options) ---
-            CreateSectionHeader(c, Strings.SecIdleFadeOut, ColorStyle);
-            CreateCheckBox(c, Strings.OptIdleFadeOut, "FramesFadeOutFx", SettingsManager.FramesFadeOutFx);
-            CreateSliderControl(c, Strings.SldIdleTime, "FadeOutTimeSlider", SettingsManager.FadeOutTime, 300);
-            CreateSliderControl(c, Strings.SldFadeTargetOpacity, "FadeOutAlphaSlider", (int)(SettingsManager.FadeOutFxTargetAlpha * 100), 100);
-
-            // --- Moved from General Tab (Idle Auto-Roll Options) ---
-            CreateSectionHeader(c, Strings.SecIdleAutoRoll, ColorStyle);
-
-            // --- NEW: Contextual Help Text ---
-            c.Children.Add(new TextBlock
+            cardAutoHide.Children.Add(new Separator { Margin = new Thickness(6, 8, 6, 8), Background = new SolidColorBrush(Color.FromRgb(235, 235, 235)) });
+            cardAutoHide.Children.Add(new TextBlock
             {
-                Text = Strings.NoteAutoRoll,
+                Text = Strings.SecIdleAutoRoll + "：" + Strings.NoteAutoRoll,
                 FontStyle = FontStyles.Italic,
                 Foreground = Brushes.Gray,
                 FontSize = 12,
-                Margin = new Thickness(15, -10, 0, 10), // Negative top margin pulls it closer to the header
+                Margin = new Thickness(6, 2, 6, 6),
                 TextWrapping = TextWrapping.Wrap
             });
+            CreateSliderControl(cardAutoHide, Strings.SldIdleTime, "AutoRollTimeSlider", SettingsManager.AutoRollTime, 300);
 
-            CreateSliderControl(c, Strings.SldIdleTime, "AutoRollTimeSlider", SettingsManager.AutoRollTime, 300);
+            // 3. 桌面圖示顯示行為
+            var cardDesktopIcons = CreateGroupCard(c, Strings.SecDesktopIconVisibility, ColorStyle);
+            CreateCheckBox(cardDesktopIcons, Strings.OptHideIconsRunning, "HideDesktopElementsOnStart", SettingsManager.HideDesktopElementsOnStart);
+            CreateCheckBox(cardDesktopIcons, Strings.OptHideIconsWhenHidden, "HideDesktopElementsOnAllFramesHide", SettingsManager.HideDesktopElementsOnAllFramesHide);
+            CreateCheckBox(cardDesktopIcons, Strings.Get("OptShowDesktopDot"), "ShowDesktopDot", SettingsManager.ShowDesktopDot);
 
-
-            // --- NEW: Desktop Icon Visibility ---
-            CreateSectionHeader(c, Strings.SecDesktopIconVisibility, ColorStyle);
-            CreateCheckBox(c, Strings.OptHideIconsRunning, "HideDesktopElementsOnStart", SettingsManager.HideDesktopElementsOnStart);
-            CreateCheckBox(c, Strings.OptHideIconsWhenHidden, "HideDesktopElementsOnAllFramesHide", SettingsManager.HideDesktopElementsOnAllFramesHide);
-            CreateCheckBox(c, Strings.Get("OptShowDesktopDot"), "ShowDesktopDot", SettingsManager.ShowDesktopDot);
-
-
-
-            // --- Icons Section ---
-            CreateSectionHeader(c, Strings.SecIcons, ColorStyle);
-            Grid iconGrid = new Grid { Margin = new Thickness(15, 5, 0, 15) };
+            // 4. 面板按鈕圖示樣式
+            var cardIcons = CreateGroupCard(c, Strings.SecIcons, ColorStyle);
+            Grid iconGrid = new Grid { Margin = new Thickness(6, 4, 0, 8) };
             iconGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
             iconGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
 
             StackPanel menuIconPanel = new StackPanel();
-            menuIconPanel.Children.Add(new TextBlock { Text = Strings.LblMenuIcon, FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 0, 0, 0) });
+            menuIconPanel.Children.Add(new TextBlock { Text = Strings.LblMenuIcon, FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 0, 0, 4) });
             CreateIconRadioButtonGroup(menuIconPanel, "MenuIconGroup", new Dictionary<string, int> { { "♥", 0 }, { "☰", 1 }, { "≣", 2 }, { "𓃑", 3 } }, SettingsManager.MenuIcon);
 
             StackPanel lockIconPanel = new StackPanel();
-            lockIconPanel.Children.Add(new TextBlock { Text = Strings.LblLockIcon, FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 0, 0, 0) });
+            lockIconPanel.Children.Add(new TextBlock { Text = Strings.LblLockIcon, FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 0, 0, 4) });
             CreateIconRadioButtonGroup(lockIconPanel, "LockIconGroup", new Dictionary<string, int> { { "🛡️", 0 }, { "🔑", 1 }, { "🔐", 2 }, { "🔒", 3 } }, SettingsManager.LockIcon);
 
             Grid.SetColumn(menuIconPanel, 0);
             Grid.SetColumn(lockIconPanel, 1);
             iconGrid.Children.Add(menuIconPanel);
             iconGrid.Children.Add(lockIconPanel);
-            c.Children.Add(iconGrid);
+            cardIcons.Children.Add(iconGrid);
 
-            // --- NEW: Note Default Style Section ---
-            CreateSectionHeader(c, Strings.SecNotePreferences, ColorStyle);
-
-            Grid noteStyleGrid = new Grid { Margin = new Thickness(15, 5, 0, 15) };
+            // 5. 便箋預設樣式
+            var cardNotes = CreateGroupCard(c, Strings.SecNotePreferences, ColorStyle);
+            Grid noteStyleGrid = new Grid { Margin = new Thickness(6, 4, 0, 8) };
             noteStyleGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(140) });
             noteStyleGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(200) });
             noteStyleGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(32) });
             noteStyleGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(32) });
             noteStyleGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(32) });
 
-            // 1. Default Font Family
-            TextBlock lblNoteFont = new TextBlock
-            {
-                Text = Strings.LblNoteDefaultFont,
-                FontSize = 13,
-                VerticalAlignment = VerticalAlignment.Center
-            };
-            _noteDefaultFontCombo = new ComboBox
-            {
-                Name = "NoteDefaultFontComboBox",
-                Height = 25,
-                FontSize = 13,
-                VerticalAlignment = VerticalAlignment.Center
-            };
+            TextBlock lblNoteFont = new TextBlock { Text = Strings.LblNoteDefaultFont, FontSize = 13, VerticalAlignment = VerticalAlignment.Center };
+            _noteDefaultFontCombo = new ComboBox { Name = "NoteDefaultFontComboBox", Height = 25, FontSize = 13, VerticalAlignment = VerticalAlignment.Center };
             _noteDefaultFontCombo.Items.Add(new ComboBoxItem { Content = "微軟正黑體", Tag = "Microsoft JhengHei" });
             _noteDefaultFontCombo.Items.Add(new ComboBoxItem { Content = "標楷體", Tag = "DFKai-SB" });
             _noteDefaultFontCombo.Items.Add(new ComboBoxItem { Content = "Segoe UI", Tag = "Segoe UI" });
             _noteDefaultFontCombo.Items.Add(new ComboBoxItem { Content = "系統預設", Tag = "" });
-            var fontMatch = _noteDefaultFontCombo.Items.OfType<ComboBoxItem>()
-                .FirstOrDefault(i => string.Equals(i.Tag as string, SettingsManager.NoteDefaultFontFamily, StringComparison.OrdinalIgnoreCase));
+            var fontMatch = _noteDefaultFontCombo.Items.OfType<ComboBoxItem>().FirstOrDefault(i => string.Equals(i.Tag as string, SettingsManager.NoteDefaultFontFamily, StringComparison.OrdinalIgnoreCase));
             _noteDefaultFontCombo.SelectedItem = fontMatch ?? _noteDefaultFontCombo.Items[0];
             Grid.SetRow(lblNoteFont, 0); Grid.SetColumn(lblNoteFont, 0);
             Grid.SetRow(_noteDefaultFontCombo, 0); Grid.SetColumn(_noteDefaultFontCombo, 1);
             noteStyleGrid.Children.Add(lblNoteFont);
             noteStyleGrid.Children.Add(_noteDefaultFontCombo);
 
-            // 2. Default Font Size
-            TextBlock lblNoteSize = new TextBlock
-            {
-                Text = Strings.LblNoteDefaultSize,
-                FontSize = 13,
-                VerticalAlignment = VerticalAlignment.Center
-            };
-            _noteDefaultSizeCombo = new ComboBox
-            {
-                Name = "NoteDefaultSizeComboBox",
-                Height = 25,
-                FontSize = 13,
-                VerticalAlignment = VerticalAlignment.Center
-            };
+            TextBlock lblNoteSize = new TextBlock { Text = Strings.LblNoteDefaultSize, FontSize = 13, VerticalAlignment = VerticalAlignment.Center };
+            _noteDefaultSizeCombo = new ComboBox { Name = "NoteDefaultSizeComboBox", Height = 25, FontSize = 13, VerticalAlignment = VerticalAlignment.Center };
             _noteDefaultSizeCombo.Items.Add(new ComboBoxItem { Content = "小（12）", Tag = 12.0 });
             _noteDefaultSizeCombo.Items.Add(new ComboBoxItem { Content = "標準（14）", Tag = 14.0 });
             _noteDefaultSizeCombo.Items.Add(new ComboBoxItem { Content = "大（16）", Tag = 16.0 });
             _noteDefaultSizeCombo.Items.Add(new ComboBoxItem { Content = "特大（18）", Tag = 18.0 });
-            var sizeMatch = _noteDefaultSizeCombo.Items.OfType<ComboBoxItem>()
-                .FirstOrDefault(i => (i.Tag is double d) && Math.Abs(d - SettingsManager.NoteDefaultFontSize) < 0.5);
+            var sizeMatch = _noteDefaultSizeCombo.Items.OfType<ComboBoxItem>().FirstOrDefault(i => (i.Tag is double d) && Math.Abs(d - SettingsManager.NoteDefaultFontSize) < 0.5);
             _noteDefaultSizeCombo.SelectedItem = sizeMatch ?? _noteDefaultSizeCombo.Items[1];
             Grid.SetRow(lblNoteSize, 1); Grid.SetColumn(lblNoteSize, 0);
             Grid.SetRow(_noteDefaultSizeCombo, 1); Grid.SetColumn(_noteDefaultSizeCombo, 1);
             noteStyleGrid.Children.Add(lblNoteSize);
             noteStyleGrid.Children.Add(_noteDefaultSizeCombo);
 
-            // 3. Default Color Palette
-            TextBlock lblNoteColor = new TextBlock
-            {
-                Text = Strings.LblNoteDefaultColor,
-                FontSize = 13,
-                VerticalAlignment = VerticalAlignment.Center
-            };
-            _noteDefaultColorCombo = new ComboBox
-            {
-                Name = "NoteDefaultColorComboBox",
-                Height = 25,
-                FontSize = 13,
-                VerticalAlignment = VerticalAlignment.Center
-            };
+            TextBlock lblNoteColor = new TextBlock { Text = Strings.LblNoteDefaultColor, FontSize = 13, VerticalAlignment = VerticalAlignment.Center };
+            _noteDefaultColorCombo = new ComboBox { Name = "NoteDefaultColorComboBox", Height = 25, FontSize = 13, VerticalAlignment = VerticalAlignment.Center };
             foreach (var pal in Notes.NoteColors.AllPalettes)
             {
                 _noteDefaultColorCombo.Items.Add(new ComboBoxItem { Content = pal.DisplayName, Tag = pal.Key });
             }
-            var colorMatch = _noteDefaultColorCombo.Items.OfType<ComboBoxItem>()
-                .FirstOrDefault(i => string.Equals(i.Tag as string, SettingsManager.NoteDefaultColor, StringComparison.OrdinalIgnoreCase));
+            var colorMatch = _noteDefaultColorCombo.Items.OfType<ComboBoxItem>().FirstOrDefault(i => string.Equals(i.Tag as string, SettingsManager.NoteDefaultColor, StringComparison.OrdinalIgnoreCase));
             _noteDefaultColorCombo.SelectedItem = colorMatch ?? _noteDefaultColorCombo.Items[0];
             Grid.SetRow(lblNoteColor, 2); Grid.SetColumn(lblNoteColor, 0);
             Grid.SetRow(_noteDefaultColorCombo, 2); Grid.SetColumn(_noteDefaultColorCombo, 1);
             noteStyleGrid.Children.Add(lblNoteColor);
             noteStyleGrid.Children.Add(_noteDefaultColorCombo);
-
-            c.Children.Add(noteStyleGrid);
+            cardNotes.Children.Add(noteStyleGrid);
 
             t.Content = new ScrollViewer { Content = c, VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
             _tabControl.Items.Add(t);
@@ -853,15 +880,16 @@ namespace Desktop_Frames
         {
             TabItem t = new TabItem();
             StackPanel c = new StackPanel();
-            CreateSectionHeader(c, Strings.TabTools, ColorTools);
 
-            Grid g = new Grid { Margin = new Thickness(0, 10, 0, 0) };
-            g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(120) });
-            g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(15) });
-            g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(120) });
-            g.RowDefinitions.Add(new RowDefinition { Height = new GridLength(45) });
-            g.RowDefinitions.Add(new RowDefinition { Height = new GridLength(15) });
-            g.RowDefinitions.Add(new RowDefinition { Height = new GridLength(45) });
+            // 1. 資料備份與還原
+            var cardBackup = CreateGroupCard(c, Strings.Get("SecBackup"), ColorTools, "隨時備份所有面板配置、捷徑資料與自訂樣式");
+            Grid g = new Grid { Margin = new Thickness(6, 6, 6, 6) };
+            g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(140) });
+            g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(12) });
+            g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(140) });
+            g.RowDefinitions.Add(new RowDefinition { Height = new GridLength(40) });
+            g.RowDefinitions.Add(new RowDefinition { Height = new GridLength(10) });
+            g.RowDefinitions.Add(new RowDefinition { Height = new GridLength(40) });
 
             Button b1 = CreateStyledButton(Strings.BtnBackup, ColorTools); b1.Click += (s, e) => BackupManager.BackupData();
             Button b2 = CreateStyledButton(Strings.BtnRestore, Color.FromRgb(255, 152, 0)); b2.Click += (s, e) => RestoreBackup();
@@ -870,32 +898,22 @@ namespace Desktop_Frames
             Grid.SetRow(b2, 0); Grid.SetColumn(b2, 2);
             Grid.SetRow(b3, 2); Grid.SetColumn(b3, 0); Grid.SetColumnSpan(b3, 3);
             g.Children.Add(b1); g.Children.Add(b2); g.Children.Add(b3);
-            c.Children.Add(g);
+            cardBackup.Children.Add(g);
+            CreateCheckBox(cardBackup, Strings.OptAutomaticBackup, "EnableAutoBackup", SettingsManager.EnableAutoBackup);
 
-            CreateCheckBox(c, Strings.OptAutomaticBackup, "EnableAutoBackup", SettingsManager.EnableAutoBackup);
-
-
-
-            // --- Maintenance Section ---
-            Color darkPink = Color.FromRgb(199, 21, 133); // MediumVioletRed
-            CreateSectionHeader(c, Strings.SecMaintenance, darkPink);
-
-            Button btnBound = CreateStyledButton(Strings.BtnScreenBoundFrames, darkPink);
-            btnBound.Width = 255;
-            btnBound.Height = 45;
-            btnBound.Margin = new Thickness(0, 0, 0, 15);
+            // 2. 面板邊界維護
+            var cardMaint = CreateGroupCard(c, Strings.SecMaintenance, ColorTools, "多螢幕插拔或更換解析度時，將跑出螢幕外的面板拉回可視範圍");
+            Button btnBound = CreateStyledButton(Strings.BtnScreenBoundFrames, ColorTools);
+            btnBound.Width = 260;
+            btnBound.Height = 40;
+            btnBound.Margin = new Thickness(6, 4, 0, 6);
             btnBound.HorizontalAlignment = HorizontalAlignment.Left;
-
-            // Enable ONLY if Auto-Reposition is OFF (Manual Mode)
             btnBound.IsEnabled = !SettingsManager.AllowAutoReposition;
-
             if (btnBound.IsEnabled)
             {
                 btnBound.Click += (s, e) =>
                 {
-                    // This calls the wrapper that handles the variable flipping
                     Framemanager.ForceRepositionallFrames();
-
                     MessageBoxesManager.ShowOKOnlyMessageBoxForm(Strings.MsgFramesMovedIntoBounds, Strings.DlgSuccess);
                 };
             }
@@ -904,55 +922,40 @@ namespace Desktop_Frames
                 btnBound.Opacity = 0.90;
                 btnBound.ToolTip = Strings.TooltipAutoReposition;
             }
+            cardMaint.Children.Add(btnBound);
 
-            c.Children.Add(btnBound);
-
-
-
-            CreateSectionHeader(c, Strings.BtnReset, Colors.Red);
+            // 3. 系統重設與清除
+            var cardReset = CreateGroupCard(c, Strings.Get("SecReset"), Color.FromRgb(220, 53, 69), "危險操作：重設個人外觀風格或徹底抹除本機資料");
             Button r1 = CreateStyledButton(Strings.BtnResetStyles, Color.FromRgb(108, 117, 125));
-            r1.Width = 255; r1.Height = 45; r1.Margin = new Thickness(0, 0, 0, 15);
+            r1.Width = 260; r1.Height = 38; r1.Margin = new Thickness(6, 4, 0, 10); r1.HorizontalAlignment = HorizontalAlignment.Left;
             r1.Click += (s, e) => { if (MessageBoxesManager.ShowCustomYesNoMessageBox(Strings.MsgConfirmResetCustomizations, Strings.BtnReset)) { Framemanager.ResetAllCustomizations(); _optionsWindow.Close(); } };
 
             Button r2 = CreateStyledButton(Strings.BtnClearAllData, Color.FromRgb(220, 53, 69));
-            r2.Width = 255; r2.Height = 45;
+            r2.Width = 260; r2.Height = 38; r2.Margin = new Thickness(6, 0, 0, 6); r2.HorizontalAlignment = HorizontalAlignment.Left;
             r2.Click += (s, e) => PerformFullFactoryReset();
 
-            StackPanel rs = new StackPanel { HorizontalAlignment = HorizontalAlignment.Left };
-            rs.Children.Add(r1); rs.Children.Add(r2);
-            c.Children.Add(rs);
+            cardReset.Children.Add(r1);
+            cardReset.Children.Add(r2);
 
             t.Content = new ScrollViewer { Content = c, VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
             _tabControl.Items.Add(t);
         }
 
-
-
-
-
         private static void CreateProfilesTab()
         {
             TabItem t = new TabItem();
             StackPanel c = new StackPanel();
-            CreateSectionHeader(c, Strings.SecProfileManagement, ColorProfiles);
 
-            // Button 1: Manage Profiles (Green)
-            Button btnManageProfiles = CreateStyledButton(Strings.BtnManageProfiles, Color.FromRgb(34, 139, 34)); // Tools Green
-            btnManageProfiles.Width = 255; btnManageProfiles.Height = 45; btnManageProfiles.Margin = new Thickness(15, 0, 0, 15);
+            // 1. 工作區版面管理
+            var cardLayout = CreateGroupCard(c, Strings.Get("SecProfileLayouts"), ColorProfiles, "建立、切換與命名多個不同的桌面面板配置（例如：工作、娛樂、開發）");
+            Button btnManageProfiles = CreateStyledButton(Strings.BtnManageProfiles, Color.FromRgb(34, 139, 34));
+            btnManageProfiles.Width = 260; btnManageProfiles.Height = 40; btnManageProfiles.Margin = new Thickness(6, 4, 0, 6);
             btnManageProfiles.HorizontalAlignment = HorizontalAlignment.Left;
             btnManageProfiles.Click += (s, e) => { new ProfileManagerForm().ShowDialog(); };
+            cardLayout.Children.Add(btnManageProfiles);
 
-            // Button 2: Manage Automation (Blue)
-            Button btnManageAutomation = CreateStyledButton(Strings.BtnManageAutomation, Color.FromRgb(0, 123, 191)); // Tools Blue
-            btnManageAutomation.Width = 255; btnManageAutomation.Height = 45; btnManageAutomation.Margin = new Thickness(15, 0, 0, 15);
-            btnManageAutomation.HorizontalAlignment = HorizontalAlignment.Left;
-            btnManageAutomation.Click += (s, e) => { new AutomationRulesForm().ShowDialog(); };
-
-            // Separator and Toggle
-            c.Children.Add(btnManageProfiles);
-            c.Children.Add(btnManageAutomation);
-
-            // Checkbox for Automation (Synchronized with Tray)
+            // 2. 智慧情境自動化
+            var cardAuto = CreateGroupCard(c, Strings.Get("SecProfileAutomation"), ColorProfiles, "當特定前景程式執行時自動切換至相應的工作區版面");
             CheckBox autoCb = new CheckBox
             {
                 Name = "EnableProfileAutomation",
@@ -960,17 +963,22 @@ namespace Desktop_Frames
                 IsChecked = SettingsManager.EnableProfileAutomation,
                 FontFamily = new FontFamily("Segoe UI"),
                 FontSize = 13,
-                Margin = new Thickness(15, 10, 0, 8)
+                Margin = new Thickness(6, 4, 0, 10)
             };
-            // Use Click event to ensure it only fires on user interaction, then SaveSettings immediately
             autoCb.Click += (s, e) => {
                 bool isChecked = autoCb.IsChecked == true;
                 SettingsManager.EnableProfileAutomation = isChecked;
-                SettingsManager.SaveSettings(); // Force write to JSON immediately
+                SettingsManager.SaveSettings();
                 TrayManager.Instance?.UpdateAutomationMenuCheck(isChecked);
                 if (isChecked) AutomationManager.Start();
             };
-            c.Children.Add(autoCb);
+            cardAuto.Children.Add(autoCb);
+
+            Button btnManageAutomation = CreateStyledButton(Strings.BtnManageAutomation, Color.FromRgb(0, 123, 191));
+            btnManageAutomation.Width = 260; btnManageAutomation.Height = 40; btnManageAutomation.Margin = new Thickness(6, 0, 0, 6);
+            btnManageAutomation.HorizontalAlignment = HorizontalAlignment.Left;
+            btnManageAutomation.Click += (s, e) => { new AutomationRulesForm().ShowDialog(); };
+            cardAuto.Children.Add(btnManageAutomation);
 
             t.Content = new ScrollViewer { Content = c, VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
             _tabControl.Items.Add(t);
@@ -989,36 +997,34 @@ namespace Desktop_Frames
             TabItem t = new TabItem();
             StackPanel c = new StackPanel();
 
-            CreateSectionHeader(c, Strings.SecProfileSwitching, ColorHotkeys);
-            CheckBox cbProf = CreateCheckBoxReturn(c, Strings.OptProfileHotkeys, "EnableProfileHotkeys", SettingsManager.EnableProfileHotkeys);
-            Grid gProf1 = CreateHotkeyEditor(c, Strings.HkDirectProfile, "ProfSwitch", SettingsManager.ProfileSwitchModifier, 0, false);
-            Grid gProf2 = CreateHotkeyEditor(c, Strings.HkPreviousProfile, "ProfPrev", SettingsManager.ProfilePrevModifier, SettingsManager.ProfilePrevKey, true);
-            Grid gProf3 = CreateHotkeyEditor(c, Strings.HkNextProfile, "ProfNext", SettingsManager.ProfileNextModifier, SettingsManager.ProfileNextKey, true);
-
-            // Bind initial state and live toggling
+            // 1. 工作區切換快捷鍵
+            var cardProf = CreateGroupCard(c, Strings.SecProfileSwitching, ColorHotkeys, "透過自訂快捷鍵即時切換不同的桌面配置版面");
+            CheckBox cbProf = CreateCheckBoxReturn(cardProf, Strings.OptProfileHotkeys, "EnableProfileHotkeys", SettingsManager.EnableProfileHotkeys);
+            Grid gProf1 = CreateHotkeyEditor(cardProf, Strings.HkDirectProfile, "ProfSwitch", SettingsManager.ProfileSwitchModifier, 0, false);
+            Grid gProf2 = CreateHotkeyEditor(cardProf, Strings.HkPreviousProfile, "ProfPrev", SettingsManager.ProfilePrevModifier, SettingsManager.ProfilePrevKey, true);
+            Grid gProf3 = CreateHotkeyEditor(cardProf, Strings.HkNextProfile, "ProfNext", SettingsManager.ProfileNextModifier, SettingsManager.ProfileNextKey, true);
             gProf1.IsEnabled = gProf2.IsEnabled = gProf3.IsEnabled = cbProf.IsChecked == true;
             cbProf.Click += (s, e) => gProf1.IsEnabled = gProf2.IsEnabled = gProf3.IsEnabled = cbProf.IsChecked == true;
 
-            CreateSectionHeader(c, Strings.SecUtilities, ColorHotkeys);
-
-            CheckBox cbFocus = CreateCheckBoxReturn(c, Strings.OptFocusFrameHotkey, "EnableFocusFrameHotkey", SettingsManager.EnableFocusFrameHotkey);
-            Grid gFocus = CreateHotkeyEditor(c, Strings.HkFocusFrame, "FocusFrame", SettingsManager.FocusFrameModifier, SettingsManager.FocusFrameKey, true);
+            // 2. 輔助與搜尋快捷鍵
+            var cardUtils = CreateGroupCard(c, Strings.SecUtilities, ColorHotkeys, "全域面板聚焦與即時 Spotlight 搜尋快捷鍵");
+            CheckBox cbFocus = CreateCheckBoxReturn(cardUtils, Strings.OptFocusFrameHotkey, "EnableFocusFrameHotkey", SettingsManager.EnableFocusFrameHotkey);
+            Grid gFocus = CreateHotkeyEditor(cardUtils, Strings.HkFocusFrame, "FocusFrame", SettingsManager.FocusFrameModifier, SettingsManager.FocusFrameKey, true);
             gFocus.IsEnabled = cbFocus.IsChecked == true;
             cbFocus.Click += (s, e) => gFocus.IsEnabled = cbFocus.IsChecked == true;
 
-            CheckBox cbSpot = CreateCheckBoxReturn(c, Strings.OptSpotSearchHotkey, "EnableSpotSearchHotkey", SettingsManager.EnableSpotSearchHotkey);
-            Grid gSpot = CreateHotkeyEditor(c, Strings.HkSpotSearch, "SpotSearch", SettingsManager.SpotSearchModifier, SettingsManager.SpotSearchKey, true);
+            CheckBox cbSpot = CreateCheckBoxReturn(cardUtils, Strings.OptSpotSearchHotkey, "EnableSpotSearchHotkey", SettingsManager.EnableSpotSearchHotkey);
+            Grid gSpot = CreateHotkeyEditor(cardUtils, Strings.HkSpotSearch, "SpotSearch", SettingsManager.SpotSearchModifier, SettingsManager.SpotSearchKey, true);
             gSpot.IsEnabled = cbSpot.IsChecked == true;
             cbSpot.Click += (s, e) => gSpot.IsEnabled = cbSpot.IsChecked == true;
 
-            TextBlock infoText = new TextBlock
+            cardUtils.Children.Add(new TextBlock
             {
                 Text = Strings.NoteHotkeysRestart,
                 FontStyle = FontStyles.Italic,
                 Foreground = Brushes.Gray,
-                Margin = new Thickness(15, 20, 0, 0)
-            };
-            c.Children.Add(infoText);
+                Margin = new Thickness(6, 10, 6, 4)
+            });
 
             t.Content = new ScrollViewer { Content = c, VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
             _tabControl.Items.Add(t);
@@ -1026,7 +1032,7 @@ namespace Desktop_Frames
 
         private static Grid CreateHotkeyEditor(StackPanel p, string label, string namePrefix, string currentMod, int currentKey, bool hasKeySelector)
         {
-            Grid g = new Grid { Margin = new Thickness(15, 5, 0, 15) };
+            Grid g = new Grid { Margin = new Thickness(6, 4, 0, 10) };
             g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(160) });
             g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
 
@@ -1034,7 +1040,6 @@ namespace Desktop_Frames
             Grid.SetColumn(lbl, 0); g.Children.Add(lbl);
 
             StackPanel spMods = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
-
             string curModLower = (currentMod ?? "").ToLower();
 
             CheckBox chkCtrl = new CheckBox { Name = namePrefix + "Ctrl", Content = "Ctrl", IsChecked = curModLower.Contains("ctrl") || curModLower.Contains("control"), Margin = new Thickness(0, 0, 10, 0), VerticalAlignment = VerticalAlignment.Center };
@@ -1067,50 +1072,42 @@ namespace Desktop_Frames
             return g;
         }
 
-
         private static void CreateSmartDesktopTab()
         {
             TabItem t = new TabItem();
             StackPanel c = new StackPanel();
 
-            CreateSectionHeader(c, Strings.SecSmartDesktopAuto, ColorSmartDesktop);
-
-            CheckBox cbMain = CreateCheckBoxReturn(c, Strings.OptAutoOrganize, "EnableAutoOrganize", SettingsManager.EnableAutoOrganize);
-
-            CheckBox cbNotif = CreateCheckBoxReturn(c, Strings.OptExecutionToasts, "EnableAutoOrganizeNotifications", SettingsManager.EnableAutoOrganizeNotifications);
-            cbNotif.Margin = new Thickness(35, 0, 0, 8); // Indent it!
+            // 1. 自動整理引擎
+            var cardAuto = CreateGroupCard(c, Strings.SecSmartDesktopAuto, ColorSmartDesktop, "背景監視桌面變更，自動將新加入桌面的檔案與捷徑分門別類收納至對應柵欄");
+            CheckBox cbMain = CreateCheckBoxReturn(cardAuto, Strings.OptAutoOrganize, "EnableAutoOrganize", SettingsManager.EnableAutoOrganize);
+            CheckBox cbNotif = CreateCheckBoxReturn(cardAuto, Strings.OptExecutionToasts, "EnableAutoOrganizeNotifications", SettingsManager.EnableAutoOrganizeNotifications);
+            cbNotif.Margin = new Thickness(26, 2, 0, 6);
             cbNotif.IsEnabled = cbMain.IsChecked == true;
 
-            // NEW: Live Rule Statistics (Horizontal Layout)
-            StackPanel statsPanel = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(15, 15, 0, 15) };
+            // 2. 分類規則與執行
+            var cardRules = CreateGroupCard(c, Strings.Get("SecSmartDesktopRules"), ColorSmartDesktop, "依檔案類型、副檔名或關鍵字設定自動歸檔規則，亦可手動單次觸發");
+            StackPanel statsPanel = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(6, 4, 0, 10) };
             TextBlock txtTotalRules = new TextBlock { Text = Strings.Get("LblTotalRules", AutoOrganizeManager.Rules.Count), FontFamily = new FontFamily("Segoe UI"), FontSize = 13, FontWeight = FontWeights.Medium };
             TextBlock txtSeparator = new TextBlock { Text = "   -   ", FontFamily = new FontFamily("Segoe UI"), FontSize = 13, FontWeight = FontWeights.Medium, Foreground = Brushes.Gray };
             TextBlock txtEnabledRules = new TextBlock { Text = Strings.Get("LblEnabledRules", AutoOrganizeManager.Rules.Count(r => r.IsEnabled)), FontFamily = new FontFamily("Segoe UI"), FontSize = 13, FontWeight = FontWeights.Bold, Foreground = new SolidColorBrush(Color.FromRgb(34, 139, 34)) };
             statsPanel.Children.Add(txtTotalRules);
             statsPanel.Children.Add(txtSeparator);
             statsPanel.Children.Add(txtEnabledRules);
-            c.Children.Add(statsPanel);
+            cardRules.Children.Add(statsPanel);
 
-            // Navy Blue - Manage Rules Button
             Button btnManageRules = CreateStyledButton(Strings.BtnSmartDesktopRules, Color.FromRgb(0, 0, 128));
-            btnManageRules.Width = 255;
-            btnManageRules.Height = 45;
-            btnManageRules.Margin = new Thickness(15, 0, 0, 15);
+            btnManageRules.Width = 260; btnManageRules.Height = 40; btnManageRules.Margin = new Thickness(6, 0, 0, 10);
             btnManageRules.HorizontalAlignment = HorizontalAlignment.Left;
             btnManageRules.Click += (s, e) =>
             {
                 new AutoOrganizeForm().ShowDialog();
-                // Refresh statistics when the editor closes
                 txtTotalRules.Text = Strings.Get("LblTotalRules", AutoOrganizeManager.Rules.Count);
                 txtEnabledRules.Text = Strings.Get("LblEnabledRules", AutoOrganizeManager.Rules.Count(r => r.IsEnabled));
             };
-            c.Children.Add(btnManageRules);
+            cardRules.Children.Add(btnManageRules);
 
-            // Dark Red - Organize Desktop Now Button
             Button btnOrganizeNow = CreateStyledButton(Strings.BtnOrganizeNow, Color.FromRgb(139, 0, 0));
-            btnOrganizeNow.Width = 255;
-            btnOrganizeNow.Height = 45;
-            btnOrganizeNow.Margin = new Thickness(15, 0, 0, 15);
+            btnOrganizeNow.Width = 260; btnOrganizeNow.Height = 40; btnOrganizeNow.Margin = new Thickness(6, 0, 0, 8);
             btnOrganizeNow.HorizontalAlignment = HorizontalAlignment.Left;
             btnOrganizeNow.Click += (s, e) =>
             {
@@ -1119,17 +1116,16 @@ namespace Desktop_Frames
                     AutoOrganizeManager.ProcessDesktopNow();
                 }
             };
-            c.Children.Add(btnOrganizeNow);
+            cardRules.Children.Add(btnOrganizeNow);
 
-            TextBlock infoText = new TextBlock
+            cardRules.Children.Add(new TextBlock
             {
                 Text = Strings.NoteAutoOrganize,
                 FontStyle = FontStyles.Italic,
                 Foreground = Brushes.Gray,
-                Margin = new Thickness(15, 20, 0, 0),
+                Margin = new Thickness(6, 6, 6, 4),
                 TextWrapping = TextWrapping.Wrap
-            };
-            c.Children.Add(infoText);
+            });
 
             t.Content = new ScrollViewer { Content = c, VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
             _tabControl.Items.Add(t);
@@ -1139,18 +1135,22 @@ namespace Desktop_Frames
         {
             TabItem t = new TabItem();
             StackPanel c = new StackPanel();
-            CreateSectionHeader(c, Strings.SecLog, ColorLookDeeper);
-            CreateCheckBox(c, Strings.OptEnableLogging, "EnableLogging", SettingsManager.IsLogEnabled);
-            Button b = CreateStyledButton(Strings.BtnOpenLog, ColorLookDeeper); b.Width = 100; b.Height = 25; b.HorizontalAlignment = HorizontalAlignment.Left;
+
+            // 1. 診斷日誌
+            var cardLog = CreateGroupCard(c, Strings.SecLog, ColorLookDeeper, "記錄執行過程與除錯診斷資訊至本機日誌檔");
+            CreateCheckBox(cardLog, Strings.OptEnableLogging, "EnableLogging", SettingsManager.IsLogEnabled);
+            Button b = CreateStyledButton(Strings.BtnOpenLog, ColorLookDeeper);
+            b.Width = 120; b.Height = 32; b.Margin = new Thickness(6, 4, 0, 6); b.HorizontalAlignment = HorizontalAlignment.Left;
             b.Click += (s, e) => OpenLogFile();
-            c.Children.Add(b);
+            cardLog.Children.Add(b);
 
-            CreateSectionHeader(c, Strings.SecLogConfiguration, ColorLookDeeper);
-            CreateLogLevelComboBox(c);
-            CreateSectionHeader(c, Strings.SecLogCategories, ColorLookDeeper);
+            // 2. 日誌層級
+            var cardConfig = CreateGroupCard(c, Strings.SecLogConfiguration, ColorLookDeeper, "設定寫入日誌檔的最低嚴重性等級");
+            CreateLogLevelComboBox(cardConfig);
 
-            // This method creates checkboxes for all Enums (except Error now)
-            CreateLogCategoryCheckBoxes(c);
+            // 3. 追蹤分類
+            var cardCats = CreateGroupCard(c, Strings.SecLogCategories, ColorLookDeeper, "勾選欲納入日誌記錄的子系統模組");
+            CreateLogCategoryCheckBoxes(cardCats);
 
             t.Content = new ScrollViewer { Content = c, VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
             _tabControl.Items.Add(t);
@@ -1308,9 +1308,10 @@ namespace Desktop_Frames
 
                 // 1. General
                 var generalContent = GetTabContentStackPanel((TabItem)_tabControl.Items[0]);
-                if (generalContent != null) foreach (var child in generalContent.Children)
+                if (generalContent != null)
                 {
-                    if (child is CheckBox cb)
+                    var genCheckBoxes = FindDescendants<CheckBox>(generalContent);
+                    foreach (var cb in genCheckBoxes)
                     {
                         if (cb.Name == "StartWithWindows" && cb.IsChecked != TrayManager.IsStartWithWindows) TrayManager.Instance?.ToggleStartWithWindows(cb.IsChecked == true);
                         if (cb.Name == "SingleClickToLaunch") SettingsManager.SingleClickToLaunch = cb.IsChecked == true;
@@ -1335,69 +1336,53 @@ namespace Desktop_Frames
                             }
                         }
 
-                        // Moved from Style Tab (Choices)
                         if (cb.Name == "EnablePortalWatermark") { newPortalWatermarkState = cb.IsChecked == true; SettingsManager.ShowBackgroundImageOnPortalFrames = newPortalWatermarkState; }
                         if (cb.Name == "DisableFrameScrollbars") SettingsManager.DisableFrameScrollbars = cb.IsChecked == true;
                         if (cb.Name == "EnableSounds") SettingsManager.EnableSounds = cb.IsChecked == true;
                     }
 
-                    // --- NEW: Catch the Sound & Portal View Config Grids ---
-                    else if (child is Grid genGrid)
+                    var sndCombo = FindDescendants<ComboBox>(generalContent).FirstOrDefault(c => c.Name == "NotificationSoundComboBox");
+                    if (sndCombo != null)
                     {
-                        var sndCombo = genGrid.Children.OfType<ComboBox>().FirstOrDefault(c => c.Name == "NotificationSoundComboBox");
-                        if (sndCombo != null)
+                        SettingsManager.NotificationSound = sndCombo.SelectedIndex switch
                         {
-                            SettingsManager.NotificationSound = sndCombo.SelectedIndex switch
-                            {
-                                1 => NotificationSound.DoubleDing,
-                                2 => NotificationSound.SmoothTickle,
-                                3 => NotificationSound.MessageDing,
-                                4 => NotificationSound.GentleDing,
-                                5 => NotificationSound.SoftDing,
-                                _ => NotificationSound.DefaultSound
-                            };
-                        }
-
-                        var pvCombo = genGrid.Children.OfType<ComboBox>().FirstOrDefault(c => c.Name == "DefaultPortalViewComboBox");
-                        if (pvCombo?.SelectedItem != null)
-                        {
-                            SettingsManager.DefaultPortalView = (pvCombo.SelectedItem as ComboBoxItem)?.Tag?.ToString() ?? SettingsManager.DefaultPortalView;
-                        }
+                            1 => NotificationSound.DoubleDing,
+                            2 => NotificationSound.SmoothTickle,
+                            3 => NotificationSound.MessageDing,
+                            4 => NotificationSound.GentleDing,
+                            5 => NotificationSound.SoftDing,
+                            _ => NotificationSound.DefaultSound
+                        };
                     }
 
+                    var pvCombo = FindDescendants<ComboBox>(generalContent).FirstOrDefault(c => c.Name == "DefaultPortalViewComboBox");
+                    if (pvCombo?.SelectedItem != null)
+                    {
+                        SettingsManager.DefaultPortalView = (pvCombo.SelectedItem as ComboBoxItem)?.Tag?.ToString() ?? SettingsManager.DefaultPortalView;
+                    }
                 }
 
-                // Read outside the loop above: the selector is nested inside a row, so walking
-                // the direct children of each Grid never reaches it.
                 if ((_languageCombo?.SelectedItem as ComboBoxItem)?.Tag is string languageTag)
                 {
-                    // Remembered so the offer to restart is made only when the language really
-                    // changed, and not every time the options are saved.
                     _languageChanged = !string.Equals(SettingsManager.Language, languageTag, StringComparison.OrdinalIgnoreCase);
                     SettingsManager.Language = languageTag;
                 }
 
-
                 // 2. Style
                 var styleContent = GetTabContentStackPanel((TabItem)_tabControl.Items[1]);
-                if (styleContent != null) foreach (var child in styleContent.Children)
+                if (styleContent != null)
                 {
-                    if (child is CheckBox cb)
+                    var styleCheckBoxes = FindDescendants<CheckBox>(styleContent);
+                    foreach (var cb in styleCheckBoxes)
                     {
                         if (cb.Name == "EnableChameleon") SettingsManager.EnableChameleonMode = cb.IsChecked == true;
                         if (cb.Name == "ApplyTintToIcons") SettingsManager.ApplyTintToIcons = cb.IsChecked == true;
-                        // NEW: Auto-Hide & Fade Options (Moved from General)
                         if (cb.Name == "AutoHideFrames") { SettingsManager.AutoHideFrames = cb.IsChecked == true; Framemanager.ResetAutoHideTimer(); }
-
-
                         if (cb.Name == "FramesFadeOutFx") SettingsManager.FramesFadeOutFx = cb.IsChecked == true;
 
-                        // NEW: Desktop Icon Visibility
                         if (cb.Name == "HideDesktopElementsOnStart")
                         {
                             SettingsManager.HideDesktopElementsOnStart = cb.IsChecked == true;
-
-                            // Immediately apply this state upon saving
                             DesktopIconManager.SetDesktopIconsVisible(!SettingsManager.HideDesktopElementsOnStart);
                         }
                         if (cb.Name == "HideDesktopElementsOnAllFramesHide") SettingsManager.HideDesktopElementsOnAllFramesHide = cb.IsChecked == true;
@@ -1407,171 +1392,149 @@ namespace Desktop_Frames
                             DesktopIconManager.UpdateDotVisibility();
                         }
                     }
-                    else if (child is Grid g)
+
+                    var styleSliders = FindDescendants<Slider>(styleContent);
+                    var tint = styleSliders.FirstOrDefault(s => s.Name == "TintSlider"); if (tint != null) SettingsManager.TintValue = (int)tint.Value;
+                    var mtint = styleSliders.FirstOrDefault(s => s.Name == "MenuTintSlider"); if (mtint != null) SettingsManager.MenuTintValue = (int)mtint.Value;
+                    var autoHideTime = styleSliders.FirstOrDefault(s => s.Name == "AutoHideTimeSlider"); if (autoHideTime != null) { SettingsManager.AutoHideTime = (int)autoHideTime.Value; Framemanager.ResetAutoHideTimer(); }
+                    var fadeOutTime = styleSliders.FirstOrDefault(s => s.Name == "FadeOutTimeSlider"); if (fadeOutTime != null) SettingsManager.FadeOutTime = (int)fadeOutTime.Value;
+                    var fadeOutAlpha = styleSliders.FirstOrDefault(s => s.Name == "FadeOutAlphaSlider"); if (fadeOutAlpha != null) SettingsManager.FadeOutFxTargetAlpha = fadeOutAlpha.Value / 100.0;
+                    var autoRollTime = styleSliders.FirstOrDefault(s => s.Name == "AutoRollTimeSlider"); if (autoRollTime != null) SettingsManager.AutoRollTime = (int)autoRollTime.Value;
+
+                    var styleCombos = FindDescendants<ComboBox>(styleContent);
+                    var col = styleCombos.FirstOrDefault(c => c.Name == "ColorComboBox"); if ((col?.SelectedItem as ComboBoxItem)?.Tag is string colTag) SettingsManager.SelectedColor = colTag;
+                    var eff = styleCombos.FirstOrDefault(c => c.Name == "LaunchEffectComboBox"); if (eff != null) SettingsManager.LaunchEffect = (LaunchEffectsManager.LaunchEffect)eff.SelectedIndex;
+
+                    var radioButtons = FindDescendants<RadioButton>(styleContent);
+                    foreach (var rb in radioButtons)
                     {
-                        var tint = g.Children.OfType<Slider>().FirstOrDefault(s => s.Name == "TintSlider"); if (tint != null) SettingsManager.TintValue = (int)tint.Value; var mtint = g.Children.OfType<Slider>().FirstOrDefault(s => s.Name == "MenuTintSlider"); if (mtint != null) SettingsManager.MenuTintValue = (int)mtint.Value;
-                        var col = g.Children.OfType<ComboBox>().FirstOrDefault(c => c.Name == "ColorComboBox"); if ((col?.SelectedItem as ComboBoxItem)?.Tag is string colTag) SettingsManager.SelectedColor = colTag;
-                        var eff = g.Children.OfType<ComboBox>().FirstOrDefault(c => c.Name == "LaunchEffectComboBox"); if (eff != null) SettingsManager.LaunchEffect = (LaunchEffectsManager.LaunchEffect)eff.SelectedIndex;
-
-                        // Parse Sliders (Moved from General)
-                        var autoHideTime = g.Children.OfType<Slider>().FirstOrDefault(s => s.Name == "AutoHideTimeSlider"); if (autoHideTime != null) { SettingsManager.AutoHideTime = (int)autoHideTime.Value; Framemanager.ResetAutoHideTimer(); }
-                        var fadeOutTime = g.Children.OfType<Slider>().FirstOrDefault(s => s.Name == "FadeOutTimeSlider"); if (fadeOutTime != null) SettingsManager.FadeOutTime = (int)fadeOutTime.Value;
-                        var fadeOutAlpha = g.Children.OfType<Slider>().FirstOrDefault(s => s.Name == "FadeOutAlphaSlider"); if (fadeOutAlpha != null) SettingsManager.FadeOutFxTargetAlpha = fadeOutAlpha.Value / 100.0;
-                        var autoRollTime = g.Children.OfType<Slider>().FirstOrDefault(s => s.Name == "AutoRollTimeSlider"); if (autoRollTime != null) SettingsManager.AutoRollTime = (int)autoRollTime.Value;
-
-                        // Parse Icons from the new side-by-side nested Grid layout
-                        foreach (var innerChild in g.Children.OfType<StackPanel>())
+                        if (rb.IsChecked == true)
                         {
-                            foreach (var rbSp in innerChild.Children.OfType<StackPanel>())
-                            {
-                                if (rbSp.Tag?.ToString() == "MenuIconGroup") foreach (RadioButton rb in rbSp.Children.OfType<RadioButton>()) if (rb.IsChecked == true) SettingsManager.MenuIcon = (int)rb.Tag;
-                                if (rbSp.Tag?.ToString() == "LockIconGroup") foreach (RadioButton rb in rbSp.Children.OfType<RadioButton>()) if (rb.IsChecked == true) SettingsManager.LockIcon = (int)rb.Tag;
-                            }
+                            if (rb.GroupName == "MenuIconGroup" && rb.Tag is int mi) SettingsManager.MenuIcon = mi;
+                            if (rb.GroupName == "LockIconGroup" && rb.Tag is int li) SettingsManager.LockIcon = li;
                         }
                     }
                 }
 
                 // Note Default Style
-                if ((_noteDefaultFontCombo?.SelectedItem as ComboBoxItem)?.Tag is string fontTag)
-                {
-                    SettingsManager.NoteDefaultFontFamily = fontTag;
-                }
-                if ((_noteDefaultSizeCombo?.SelectedItem as ComboBoxItem)?.Tag is double sizeVal)
-                {
-                    SettingsManager.NoteDefaultFontSize = sizeVal;
-                }
-                if ((_noteDefaultColorCombo?.SelectedItem as ComboBoxItem)?.Tag is string colorTag)
-                {
-                    SettingsManager.NoteDefaultColor = colorTag;
-                }
+                if ((_noteDefaultFontCombo?.SelectedItem as ComboBoxItem)?.Tag is string fontTag) SettingsManager.NoteDefaultFontFamily = fontTag;
+                if ((_noteDefaultSizeCombo?.SelectedItem as ComboBoxItem)?.Tag is double sizeVal) SettingsManager.NoteDefaultFontSize = sizeVal;
+                if ((_noteDefaultColorCombo?.SelectedItem as ComboBoxItem)?.Tag is string colorTag) SettingsManager.NoteDefaultColor = colorTag;
 
                 // 3. Tools
                 var toolsContent = GetTabContentStackPanel((TabItem)_tabControl.Items[2]);
-                if (toolsContent != null) foreach (var child in toolsContent.Children) if (child is CheckBox cb && cb.Name == "EnableAutoBackup") SettingsManager.EnableAutoBackup = cb.IsChecked == true;
+                if (toolsContent != null)
+                {
+                    var autoBackupCb = FindDescendants<CheckBox>(toolsContent).FirstOrDefault(cb => cb.Name == "EnableAutoBackup");
+                    if (autoBackupCb != null) SettingsManager.EnableAutoBackup = autoBackupCb.IsChecked == true;
+                }
 
-                // 4. Hotkeys (NEW)
+                // 4. Hotkeys
                 var hotkeysContent = GetTabContentStackPanel((TabItem)_tabControl.Items[4]);
                 bool hotkeysChanged = false;
-                if (hotkeysContent != null) foreach (var child in hotkeysContent.Children)
+                if (hotkeysContent != null)
                 {
-                    if (child is CheckBox hotkeyCb)
+                    foreach (var hotkeyCb in FindDescendants<CheckBox>(hotkeysContent))
                     {
                         if (hotkeyCb.Name == "EnableProfileHotkeys" && SettingsManager.EnableProfileHotkeys != (hotkeyCb.IsChecked == true)) { SettingsManager.EnableProfileHotkeys = hotkeyCb.IsChecked == true; hotkeysChanged = true; }
                         if (hotkeyCb.Name == "EnableFocusFrameHotkey" && SettingsManager.EnableFocusFrameHotkey != (hotkeyCb.IsChecked == true)) { SettingsManager.EnableFocusFrameHotkey = hotkeyCb.IsChecked == true; hotkeysChanged = true; }
                         if (hotkeyCb.Name == "EnableSpotSearchHotkey" && SettingsManager.EnableSpotSearchHotkey != (hotkeyCb.IsChecked == true)) { SettingsManager.EnableSpotSearchHotkey = hotkeyCb.IsChecked == true; hotkeysChanged = true; }
                     }
 
-                    if (child is Grid g && g.Children.Count > 1 && g.Children[1] is StackPanel spMods)
+                    foreach (var g in FindDescendants<Grid>(hotkeysContent))
                     {
-                        string prefix = "";
-                        foreach (var elem in spMods.Children)
+                        if (g.Children.Count > 1 && g.Children[1] is StackPanel spMods)
                         {
-                            if (elem is CheckBox cb && cb.Name.EndsWith("Ctrl"))
-                            {
-                                prefix = cb.Name.Substring(0, cb.Name.Length - 4);
-                                break;
-                            }
-                        }
-                        if (!string.IsNullOrEmpty(prefix))
-                        {
-                            List<string> mods = new List<string>();
-                            int key = 0;
+                            string prefix = "";
                             foreach (var elem in spMods.Children)
                             {
-                                if (elem is CheckBox cb && cb.IsChecked == true)
+                                if (elem is CheckBox cb && cb.Name.EndsWith("Ctrl"))
                                 {
-                                    if (cb.Name.EndsWith("Ctrl")) mods.Add("Control");
-                                    else if (cb.Name.EndsWith("Alt")) mods.Add("Alt");
-                                    else if (cb.Name.EndsWith("Shift")) mods.Add("Shift");
-                                    else if (cb.Name.EndsWith("Win")) mods.Add("Win");
-                                }
-                                if (elem is ComboBox cmb && cmb.SelectedItem is ComboBoxItem item && item.Tag is int val)
-                                {
-                                    key = val;
+                                    prefix = cb.Name.Substring(0, cb.Name.Length - 4);
+                                    break;
                                 }
                             }
-                            string modString = string.Join(", ", mods);
+                            if (!string.IsNullOrEmpty(prefix))
+                            {
+                                List<string> mods = new List<string>();
+                                int key = 0;
+                                foreach (var elem in spMods.Children)
+                                {
+                                    if (elem is CheckBox cb && cb.IsChecked == true)
+                                    {
+                                        if (cb.Name.EndsWith("Ctrl")) mods.Add("Control");
+                                        else if (cb.Name.EndsWith("Alt")) mods.Add("Alt");
+                                        else if (cb.Name.EndsWith("Shift")) mods.Add("Shift");
+                                        else if (cb.Name.EndsWith("Win")) mods.Add("Win");
+                                    }
+                                    if (elem is ComboBox cmb && cmb.SelectedItem is ComboBoxItem item && item.Tag is int val)
+                                    {
+                                        key = val;
+                                    }
+                                }
+                                string modString = string.Join(", ", mods);
 
-                            if (prefix == "ProfSwitch") { if (SettingsManager.ProfileSwitchModifier != modString) { SettingsManager.ProfileSwitchModifier = modString; hotkeysChanged = true; } }
-                            if (prefix == "ProfPrev") { if (SettingsManager.ProfilePrevModifier != modString || SettingsManager.ProfilePrevKey != key) { SettingsManager.ProfilePrevModifier = modString; SettingsManager.ProfilePrevKey = key; hotkeysChanged = true; } }
-                            if (prefix == "ProfNext") { if (SettingsManager.ProfileNextModifier != modString || SettingsManager.ProfileNextKey != key) { SettingsManager.ProfileNextModifier = modString; SettingsManager.ProfileNextKey = key; hotkeysChanged = true; } }
-                            if (prefix == "FocusFrame") { if (SettingsManager.FocusFrameModifier != modString || SettingsManager.FocusFrameKey != key) { SettingsManager.FocusFrameModifier = modString; SettingsManager.FocusFrameKey = key; hotkeysChanged = true; } }
-                            if (prefix == "SpotSearch") { if (SettingsManager.SpotSearchModifier != modString || SettingsManager.SpotSearchKey != key) { SettingsManager.SpotSearchModifier = modString; SettingsManager.SpotSearchKey = key; hotkeysChanged = true; } }
+                                if (prefix == "ProfSwitch") { if (SettingsManager.ProfileSwitchModifier != modString) { SettingsManager.ProfileSwitchModifier = modString; hotkeysChanged = true; } }
+                                if (prefix == "ProfPrev") { if (SettingsManager.ProfilePrevModifier != modString || SettingsManager.ProfilePrevKey != key) { SettingsManager.ProfilePrevModifier = modString; SettingsManager.ProfilePrevKey = key; hotkeysChanged = true; } }
+                                if (prefix == "ProfNext") { if (SettingsManager.ProfileNextModifier != modString || SettingsManager.ProfileNextKey != key) { SettingsManager.ProfileNextModifier = modString; SettingsManager.ProfileNextKey = key; hotkeysChanged = true; } }
+                                if (prefix == "FocusFrame") { if (SettingsManager.FocusFrameModifier != modString || SettingsManager.FocusFrameKey != key) { SettingsManager.FocusFrameModifier = modString; SettingsManager.FocusFrameKey = key; hotkeysChanged = true; } }
+                                if (prefix == "SpotSearch") { if (SettingsManager.SpotSearchModifier != modString || SettingsManager.SpotSearchKey != key) { SettingsManager.SpotSearchModifier = modString; SettingsManager.SpotSearchKey = key; hotkeysChanged = true; } }
+                            }
                         }
                     }
                 }
 
                 if (hotkeysChanged)
                 {
-                    // Propagate the new hotkeys across all existing profiles
                     SettingsManager.BroadcastHotkeysToAllProfiles();
-
                     MessageBoxesManager.ShowOKOnlyMessageBoxForm(Strings.MsgHotkeysSavedRestartNeeded, Strings.DlgRestartRequired);
                 }
 
                 // 5. Smart Desktop (Auto-Organize)
                 var smartDesktopContent = GetTabContentStackPanel((TabItem)_tabControl.Items[5]);
-                if (smartDesktopContent != null) foreach (var child in smartDesktopContent.Children)
+                if (smartDesktopContent != null)
                 {
-                    if (child is CheckBox cb && cb.Name == "EnableAutoOrganize")
+                    foreach (var cb in FindDescendants<CheckBox>(smartDesktopContent))
                     {
-                        bool wasEnabled = SettingsManager.EnableAutoOrganize;
-                        SettingsManager.EnableAutoOrganize = cb.IsChecked == true;
-
-                        // Sync with the Tray icon context menu!
-                        TrayManager.Instance?.UpdateAutoOrganizeMenuCheck(SettingsManager.EnableAutoOrganize);
-
-                        // Live toggle the background engine
-                        if (!wasEnabled && SettingsManager.EnableAutoOrganize) AutoOrganizeManager.Start();
-                        else if (wasEnabled && !SettingsManager.EnableAutoOrganize) AutoOrganizeManager.Stop();
-                    }
-                    if (child is CheckBox cbn && cbn.Name == "EnableAutoOrganizeNotifications")
-                    {
-                        SettingsManager.EnableAutoOrganizeNotifications = cbn.IsChecked == true;
-                    }
-                }
-
-                // 6. Look Deeper (Logs) - Index shifted to 6
-                var logContent = GetTabContentStackPanel((TabItem)_tabControl.Items[6]);
-                var newEnabledCategories = new List<LogManager.LogCategory>();
-
-                // FIX: Force enable the hidden "Error" category so existing log calls don't break.
-                // It will only be filtered by the "Minimum Log Level" dropdown now.
-                newEnabledCategories.Add(LogManager.LogCategory.Error);
-
-                foreach (var child in logContent.Children)
-                {
-                    if (child is CheckBox cb)
-                    {
-                        if (cb.Name == "EnableLogging") SettingsManager.IsLogEnabled = cb.IsChecked == true;
-                    }
-                    else if (child is Grid g)
-                    {
-                        var lvl = g.Children.OfType<ComboBox>().FirstOrDefault(c => c.Name == "LogLevelComboBox");
-                        if (lvl?.SelectedItem != null && Enum.TryParse<LogManager.LogLevel>(lvl.SelectedItem.ToString(), out var ll)) SettingsManager.SetMinLogLevel(ll);
-
-                        if (g.Name == "LogCategoryGrid")
+                        if (cb.Name == "EnableAutoOrganize")
                         {
-                            foreach (var stack in g.Children.OfType<StackPanel>())
-                            {
-                                // FIX: Renamed inner variable 'catBox' to prevent conflict
-                                foreach (var catBox in stack.Children.OfType<CheckBox>())
-                                {
-                                    if (catBox.IsChecked == true && catBox.Tag is LogManager.LogCategory cat)
-                                    {
-                                        newEnabledCategories.Add(cat);
-                                        // Sync the boolean for background validation
-                                        if (cat == LogManager.LogCategory.BackgroundValidation)
-                                            SettingsManager.EnableBackgroundValidationLogging = true;
-                                    }
-                                }
-                            }
+                            bool wasEnabled = SettingsManager.EnableAutoOrganize;
+                            SettingsManager.EnableAutoOrganize = cb.IsChecked == true;
+                            TrayManager.Instance?.UpdateAutoOrganizeMenuCheck(SettingsManager.EnableAutoOrganize);
+                            if (!wasEnabled && SettingsManager.EnableAutoOrganize) AutoOrganizeManager.Start();
+                            else if (wasEnabled && !SettingsManager.EnableAutoOrganize) AutoOrganizeManager.Stop();
+                        }
+                        if (cb.Name == "EnableAutoOrganizeNotifications")
+                        {
+                            SettingsManager.EnableAutoOrganizeNotifications = cb.IsChecked == true;
                         }
                     }
                 }
 
+                // 6. Look Deeper (Logs)
+                var logContent = GetTabContentStackPanel((TabItem)_tabControl.Items[6]);
+                var newEnabledCategories = new List<LogManager.LogCategory>();
+                newEnabledCategories.Add(LogManager.LogCategory.Error);
 
+                if (logContent != null)
+                {
+                    var enableLoggingCb = FindDescendants<CheckBox>(logContent).FirstOrDefault(cb => cb.Name == "EnableLogging");
+                    if (enableLoggingCb != null) SettingsManager.IsLogEnabled = enableLoggingCb.IsChecked == true;
 
+                    var lvl = FindDescendants<ComboBox>(logContent).FirstOrDefault(c => c.Name == "LogLevelComboBox");
+                    if (lvl?.SelectedItem != null && Enum.TryParse<LogManager.LogLevel>(lvl.SelectedItem.ToString(), out var ll))
+                        SettingsManager.SetMinLogLevel(ll);
+
+                    foreach (var catBox in FindDescendants<CheckBox>(logContent))
+                    {
+                        if (catBox.IsChecked == true && catBox.Tag is LogManager.LogCategory cat)
+                        {
+                            newEnabledCategories.Add(cat);
+                            if (cat == LogManager.LogCategory.BackgroundValidation)
+                                SettingsManager.EnableBackgroundValidationLogging = true;
+                        }
+                    }
+                }
 
                 if (!newEnabledCategories.Contains(LogManager.LogCategory.BackgroundValidation))
                     SettingsManager.EnableBackgroundValidationLogging = false;
@@ -1583,26 +1546,18 @@ namespace Desktop_Frames
                 TrayManager.Instance?.UpdateTrayIcon();
                 Utility.UpdateFrameVisuals();
 
-				// --- NEW: Broadcast Idle Fade-Out Settings to all active frames ---
-				var allFrames = System.Windows.Application.Current.Windows.OfType<NonActivatingWindow>();
+                // Broadcast settings to all frames
+                var allFrames = System.Windows.Application.Current.Windows.OfType<NonActivatingWindow>();
                 foreach (var frame in allFrames)
                 {
-					frame.RefreshIdleSettings();
+                    frame.RefreshIdleSettings();
                 }
 
-                // --- NEW: Broadcast Auto-Roll Settings ---
                 Framemanager.RefreshAutoRollSettings();
-
-                // --- NEW: Broadcast Icon Tint Settings ---
                 Framemanager.RefreshAllIconsTint();
-
-                // --- NEW: Broadcast Scrollbar Settings ---
                 Framemanager.RefreshScrollbarSettings();
 
                 _optionsWindow.Close();
-
-                // After the window is closed and everything is on disk, so a restart cannot
-                // lose anything that was just saved.
                 OfferRestartAfterLanguageChange();
             }
             catch (Exception ex)
