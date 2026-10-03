@@ -8,23 +8,20 @@
 - Local Path Hint：`16_DesktopFramesPlus`
 
 ## 目前狀態
-可交付／已完成核心實作、全量自動化整合驗證與 MSBuild Release 編譯，待使用者人工啟動測試驗收。
-已徹底解決「檔案移回桌面後仍為隱藏狀態」與「關閉專案還原 / 開啟專案自動收納」之生命週期契約，實現「動物只有一隻」所有權互斥模型，且 100% 沿用原本的 WPF 實心面板（保留分頁 Tabs、捲動 ScrollViewer、收合 Roll-up、外觀樣式、Notes）。
+可交付／已完成「設定頁面適配螢幕大小」與「多螢幕 / 高 DPI 自適應縮放」、MSBuild Release 編譯（0 錯誤）。
+已解決小螢幕或 125%/150% 縮放時選項視窗底部被工作列截斷、無法點擊儲存/取消按鈕的問題，並支援雙擊標題列與最大化/還原按鈕、視窗邊框拉伸調整大小、全分頁 ScrollViewer 自動滾動。
 
 ## 本輪目標
-1. 診斷並徹底修復「檔案移回桌面時依然維持隱藏狀態」之四大根因：
-   - 資料夾屬性設定使用 `DirectoryInfo.Attributes` 易受快取或權限限制影響，改為雙重防線（.NET `File.SetAttributes` + Win32 Kernel32 原生 API `SetFileAttributes`）。
-   - 屬性去除 `Hidden` 後若值為 0，必須保底帶 `FileAttributes.Normal`（檔案）或 `FileAttributes.Directory`（目錄）。
-   - 右鍵「移回桌面」傳入之捷徑路徑與庫存原路徑不匹配問題：導入多維度解析（解析捷徑 TargetPath 反查桌面原路徑、標準化路徑比對、DisplayName 比對、以及 Fallback 兜底解除隱藏）。
-   - 舊版 LocalAppData 庫存自動遷移與合併，防止先前已接管項目成為孤兒。
-2. 完善「關閉專案還原桌面、開啟專案重新收納」之生命週期契約：
-   - 關閉專案時（`OnExit`）將所有柵欄內的實體檔案強力解除隱藏、捷徑搬回桌面。
-   - 開啟專案時（`Startup`）自動重新隱藏並收納回對應柵欄。
-3. 桌面 Shell 即時刷新通知強化：
-   - 新增 `SHCNE_UPDATEDIR` 針對使用者桌面與公用桌面路徑，並以 `SHCNE_UPDATEITEM` / `SHCNE_ATTRIBUTES` 精準刷新特定檔案，讓 Windows Explorer 桌面立即恢復正常可見圖示，不再殘留半透明外觀。
-4. 獨立急救工具與自動化測試腳本同步升級：
-   - `tools/rescue/EmergencyRescue.ps1` 升級為保底屬性解除與 Shell 雙路徑目錄刷新。
-   - `tools/rescue/Test-FenceInventory.ps1` 擴增至 18 項斷言（包含實體目錄資料夾隱藏與解除隱藏全量驗證）。
+1. **設定頁面螢幕與 DPI 自適應縮放**：
+   - 根據滑鼠當前游標所在螢幕（多螢幕支援），動態取得 `WorkingArea`（扣除工作列之可用範圍）。
+   - 透過 Win32 原生 DPI API 轉換為 WPF 裝置獨立像素 (DIU)，按螢幕可用寬高動態設限（寬度最大 800、上限 94% 螢幕寬，高度最大 780、上限 90% 螢幕高），安全置中顯示。
+2. **視窗縮放與最大化功能**：
+   - 啟用 `ResizeMode.CanResizeWithGrip` 支援邊框拉動調整大小。
+   - 標題列新增「最大化／還原」按鈕（🗖 / 🗗），並支援雙擊標題列切換全螢幕工作區最大化與原尺寸還原。
+3. **全分頁滾動防截斷**：
+   - 左側 Tab 清單外層包裹 `ScrollViewer`，避免在超低垂直解析度下按鈕超高被裁切。
+   - Tab 2（Tools）補齊 `ScrollViewer`。
+   - `SaveOptions` 導入通用 `GetTabContentStackPanel` 安全解包，保證設定存取 100% 穩定無例外。
 
 ## 已完成
 1. **解除隱藏與屬性防禦強化（`FenceInventoryManager.cs`）**：
@@ -44,9 +41,13 @@
    - 呼叫 Win32 `SHChangeNotify` 發送 `SHCNE_UPDATEDIR` 刷新 User Desktop 與 Common Desktop，發送 `SHCNE_UPDATEITEM` / `SHCNE_ATTRIBUTES` 刷新受影響檔案，並搭配 `SHCNE_ASSOCCHANGED` 與 `SHCNF_FLUSH`，使 Windows 桌面圖示瞬間重繪。
 5. **FrameManager 同步路徑更新**：
    - 拖曳實體檔案建立捷徑後，呼叫 `UpdateItemStoragePath` 即時將生成的捷徑相對路徑寫入庫存 WAL。
-6. **建置與測試全數通過**：
-   - MSBuild Release 建置成功（Exit code 0，0 個錯誤）。已產出最新 `Desktop Frames.exe`。
-   - `Test-FenceInventory.ps1` 涵蓋 7 大測試情境，18 項斷言全數 PASS（0 失敗）。
+6. **設定頁面螢幕自適應與視窗管理優化（`OptionsFormManager.cs`）**：
+   - 多螢幕游標感知：透過 `Screen.FromPoint` 獲取當前螢幕工作區（WorkingArea）。
+   - WPF 座標換算與邊界拘束：換算 DPI 裝置獨立像素，寬度設定在 580~800 之間且不超過螢幕可用寬度的 94%，高度設定在 460~780 之間且不超過螢幕可用高度的 90%，解決底部儲存/取消按鈕溢出螢幕無法操作的痛點。
+   - 邊框拉伸與最大化切換：開啟 `CanResizeWithGrip`，標題列加入最大化／還原按鈕（🗖 / 🗗），支援雙擊標題列切換全螢幕工作區。
+   - 移除 Grid 中多餘的 80px Row 3 空白佔位。
+   - 左側 Tab 清單與 Tab 2（Tools）補齊 `ScrollViewer`，各頁籤內容在小螢幕下皆可流暢垂直滾動。
+   - `SaveOptions` 導入 `GetTabContentStackPanel` 安全解包，保證相容性與穩定性。
 
 ## 刻意未修改
 - 未修改既有 `options.json`、`frames.json` 核心儲存架構，確保向下相容性與免安裝可攜性。
@@ -58,34 +59,24 @@
 ## 驗證結果
 ### 已執行
 1. **正式 MSBuild 建置**：
-   - 指令：`MSBuild.exe "Code\Desktop Frames\Desktop Frames.csproj" /p:Configuration=Release /t:Rebuild`
-   - 結果：建置成功，0 個錯誤（Exit code 0）。產出最新 `Desktop Frames.exe`（2026/10/3 下午 09:47:56）。
+   - 指令：`MSBuild.exe "Code\Desktop Frames\Desktop Frames.csproj" /p:Configuration=Release`
+   - 結果：建置成功，0 個錯誤（Exit code 0）。產出最新 `Desktop Frames.exe`。
 2. **自動化整合驗證腳本**：
    - 指令：`pwsh.exe tools\rescue\Test-FenceInventory.ps1`
    - 結果：18 項斷言全數 PASS，0 項 FAIL（Exit code 0）。
-     - TEST 1 實體檔案原地隱藏接管：PASS
-     - TEST 2 捷徑檔案託管搬移接管：PASS
-     - TEST 3 WAL 庫存結構與落盤：PASS
-     - TEST 4 同名防覆寫保護測試：PASS
-     - TEST 5 急救操作冪等性：PASS
-     - TEST 6 關閉還原桌面與重啟自動收納生命週期測試：PASS
-     - TEST 7 實體資料夾目錄原地隱藏與解除隱藏測試：PASS
 
 ### 尚未驗證
-- 真實桌面環境下，使用者手動在面板上右鍵點選「移回桌面」的視覺操作驗收。
+- 真實桌面環境下，使用者手動在小螢幕或 125%/150% 縮放螢幕開啟設定頁面進行按鈕點擊與視覺操作驗收。
 
 ### 已知風險
 - 若使用者在 Windows 檔案總管中勾選了「顯示隱藏的檔案、資料夾及磁碟機」，接管期間（處於柵欄中時）實體檔案在桌面上會呈現半透明圖示；移回桌面或關閉專案後會立即恢復為 100% 正常鮮豔圖示。
 
 ## Git 狀態
-- Commit：`288c3d3`
-- Push：是
-- Working Tree：Clean
+- Commit：待提交
+- Push：待推送
+- Working Tree：Modified (`Code/Desktop Frames/OptionsFormManager.cs`, `HANDOFF.md`)
 - Branch：main
 
 ## 下一步
-1. 邀請使用者啟動程式（`Desktop Frames.exe`）進行人工測試：
-   - 拖曳實體檔案／資料夾至面板中（確認桌面外圍隱藏／面板內可見）。
-   - 對面板內的圖示按右鍵選「移回桌面 (還原圖示)」（確認桌面圖示立刻完全恢復，非隱藏狀態）。
-   - 關閉專案（確認柵欄內的檔案全部還原回桌面可見）。
-   - 重新啟動專案（確認檔案自動重新收納進柵欄，桌面再度乾淨）。
+1. 提交本輪修改並推播至 GitHub：`feat: 設定頁面適配螢幕大小與多螢幕DPI縮放`。
+2. 邀請使用者啟動程式（`Desktop Frames.exe`）驗證設定頁面之縮放、最大化與儲存功能。

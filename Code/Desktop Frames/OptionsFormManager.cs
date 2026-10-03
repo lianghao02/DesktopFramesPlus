@@ -19,14 +19,57 @@ namespace Desktop_Frames
         private static TabControl _tabControl;
         private static Window _optionsWindow;
         private static Color _userAccentColor;
+        private static bool _isMaximized = false;
+        private static Rect _normalBounds;
+        private static Button _maxButton;
 
         // Colors for tabs
         private static readonly Color ColorStyle = Color.FromRgb(128, 0, 128); // Purple
         private static readonly Color ColorTools = Color.FromRgb(34, 139, 34); // Green
+        private static readonly Color LookDeeper = Color.FromRgb(220, 53, 69); // Red
         private static readonly Color ColorLookDeeper = Color.FromRgb(220, 53, 69); // Red
         private static readonly Color ColorProfiles = Color.FromRgb(255, 20, 147); // Deep Pink
         private static readonly Color ColorHotkeys = Color.FromRgb(139, 69, 19); // SaddleBrown
         private static readonly Color ColorSmartDesktop = Color.FromRgb(41, 74, 122); // Semi Dark Blue
+
+        private static double GetScreenDpiScale(IntPtr hwnd)
+        {
+            try
+            {
+                using (var graphics = System.Drawing.Graphics.FromHwnd(hwnd))
+                {
+                    return graphics.DpiX / 96.0;
+                }
+            }
+            catch
+            {
+                return 1.0;
+            }
+        }
+
+        private static void ToggleMaximize(double screenLeftDiu, double screenTopDiu, double screenWidthDiu, double screenHeightDiu)
+        {
+            if (_optionsWindow == null) return;
+            if (!_isMaximized)
+            {
+                _normalBounds = new Rect(_optionsWindow.Left, _optionsWindow.Top, _optionsWindow.Width, _optionsWindow.Height);
+                _optionsWindow.Left = screenLeftDiu;
+                _optionsWindow.Top = screenTopDiu;
+                _optionsWindow.Width = screenWidthDiu;
+                _optionsWindow.Height = screenHeightDiu;
+                _isMaximized = true;
+                if (_maxButton != null) _maxButton.Content = "🗗";
+            }
+            else
+            {
+                _optionsWindow.Left = _normalBounds.Left;
+                _optionsWindow.Top = _normalBounds.Top;
+                _optionsWindow.Width = _normalBounds.Width;
+                _optionsWindow.Height = _normalBounds.Height;
+                _isMaximized = false;
+                if (_maxButton != null) _maxButton.Content = "🗖";
+            }
+        }
 
         public static void ShowOptionsForm(int targetTabIndex = 0)
         {
@@ -38,13 +81,53 @@ namespace Desktop_Frames
                 }
                 _userAccentColor = Utility.GetColorFromName(SettingsManager.SelectedColor);
 
+                // --- 螢幕與工作區自適應計算 (Screen-Adaptive Dimensions & Bounds) ---
+                double dpiScale = 1.0;
+                double screenLeftDiu = SystemParameters.WorkArea.Left;
+                double screenTopDiu = SystemParameters.WorkArea.Top;
+                double screenWidthDiu = SystemParameters.WorkArea.Width;
+                double screenHeightDiu = SystemParameters.WorkArea.Height;
+
+                try
+                {
+                    var mousePos = System.Windows.Forms.Cursor.Position;
+                    var currentScreen = System.Windows.Forms.Screen.FromPoint(mousePos) ?? System.Windows.Forms.Screen.PrimaryScreen;
+                    if (currentScreen != null)
+                    {
+                        dpiScale = GetScreenDpiScale(IntPtr.Zero);
+                        if (dpiScale <= 0) dpiScale = 1.0;
+
+                        screenLeftDiu = currentScreen.WorkingArea.Left / dpiScale;
+                        screenTopDiu = currentScreen.WorkingArea.Top / dpiScale;
+                        screenWidthDiu = currentScreen.WorkingArea.Width / dpiScale;
+                        screenHeightDiu = currentScreen.WorkingArea.Height / dpiScale;
+                    }
+                }
+                catch { }
+
+                // 自適應目標尺寸：不超出工作區範圍，小螢幕自動縮減，大螢幕保持舒適比例
+                double targetWidth = Math.Min(800, Math.Max(580, screenWidthDiu * 0.94));
+                double targetHeight = Math.Min(780, Math.Max(460, screenHeightDiu * 0.90));
+
+                double left = screenLeftDiu + (screenWidthDiu - targetWidth) / 2;
+                double top = screenTopDiu + (screenHeightDiu - targetHeight) / 2;
+                if (left < screenLeftDiu) left = screenLeftDiu;
+                if (top < screenTopDiu) top = screenTopDiu;
+
+                _isMaximized = false;
                 _optionsWindow = new Window
                 {
                     Title = Strings.OptionsTitle,
-                    Width = 800,
-                    Height = 850,
-                    WindowStartupLocation = WindowStartupLocation.CenterScreen,
-                    ResizeMode = ResizeMode.NoResize,
+                    Width = targetWidth,
+                    Height = targetHeight,
+                    Left = left,
+                    Top = top,
+                    WindowStartupLocation = WindowStartupLocation.Manual,
+                    MaxWidth = screenWidthDiu,
+                    MaxHeight = screenHeightDiu,
+                    MinWidth = Math.Min(580, screenWidthDiu * 0.85),
+                    MinHeight = Math.Min(450, screenHeightDiu * 0.75),
+                    ResizeMode = ResizeMode.CanResizeWithGrip,
                     WindowStyle = WindowStyle.None,
                     Background = new SolidColorBrush(Color.FromRgb(248, 249, 250)),
                     AllowsTransparency = true
@@ -69,8 +152,7 @@ namespace Desktop_Frames
                 Grid mainGrid = new Grid();
                 mainGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(40) }); // Header
                 mainGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) }); // Content
-                mainGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(60) }); // Footer
-                mainGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(80) }); // Donation
+                mainGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(56) }); // Footer
 
                 // Header
                 Border headerBorder = new Border { Background = new SolidColorBrush(_userAccentColor), Height = 40 };
@@ -78,7 +160,8 @@ namespace Desktop_Frames
 
                 Grid headerGrid = new Grid();
                 headerGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-                headerGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(40) });
+                headerGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(32) }); // Maximize/Restore
+                headerGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(36) }); // Close
 
                 TextBlock titleBlock = new TextBlock
                 {
@@ -90,6 +173,22 @@ namespace Desktop_Frames
                     VerticalAlignment = VerticalAlignment.Center,
                     Margin = new Thickness(20, 0, 0, 0)
                 };
+
+                Button maxButton = new Button
+                {
+                    Content = "🗖",
+                    Width = 32,
+                    Height = 32,
+                    Foreground = Brushes.White,
+                    Background = Brushes.Transparent,
+                    BorderThickness = new Thickness(0),
+                    Cursor = Cursors.Hand,
+                    FontFamily = new FontFamily("Segoe UI Symbol"),
+                    FontSize = 13,
+                    ToolTip = "最大化 / 還原"
+                };
+                _maxButton = maxButton;
+                maxButton.Click += (s, e) => ToggleMaximize(screenLeftDiu, screenTopDiu, screenWidthDiu, screenHeightDiu);
 
                 Button closeButton = new Button
                 {
@@ -104,9 +203,25 @@ namespace Desktop_Frames
                 closeButton.Click += (s, e) => _optionsWindow.Close();
 
                 Grid.SetColumn(titleBlock, 0); headerGrid.Children.Add(titleBlock);
-                Grid.SetColumn(closeButton, 1); headerGrid.Children.Add(closeButton);
+                Grid.SetColumn(maxButton, 1); headerGrid.Children.Add(maxButton);
+                Grid.SetColumn(closeButton, 2); headerGrid.Children.Add(closeButton);
                 headerBorder.Child = headerGrid;
-                headerBorder.MouseLeftButtonDown += (s, e) => { if (e.ButtonState == MouseButtonState.Pressed) _optionsWindow.DragMove(); };
+
+                headerBorder.MouseLeftButtonDown += (s, e) =>
+                {
+                    if (e.ClickCount == 2)
+                    {
+                        ToggleMaximize(screenLeftDiu, screenTopDiu, screenWidthDiu, screenHeightDiu);
+                    }
+                    else if (e.ButtonState == MouseButtonState.Pressed)
+                    {
+                        if (_isMaximized)
+                        {
+                            ToggleMaximize(screenLeftDiu, screenTopDiu, screenWidthDiu, screenHeightDiu);
+                        }
+                        _optionsWindow.DragMove();
+                    }
+                };
 
                 CreateTabContent(mainGrid);
                 CreateFooter(mainGrid);
@@ -114,6 +229,7 @@ namespace Desktop_Frames
                 mainBorder.Child = mainGrid;
                 _optionsWindow.Content = mainBorder;
                 _optionsWindow.KeyDown += (s, e) => { if (e.Key == Key.Enter) SaveOptions(); else if (e.Key == Key.Escape) _optionsWindow.Close(); };
+                _optionsWindow.Closed += (s, e) => { _isMaximized = false; };
                 // Pause Here:
                 AutoOrganizeManager.Pause();
 
@@ -136,7 +252,15 @@ namespace Desktop_Frames
             contentGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
             Grid.SetRow(contentGrid, 1);
 
-            StackPanel tabPanel = new StackPanel { Background = new SolidColorBrush(Color.FromRgb(240, 240, 240)), Margin = new Thickness(0, 20, 0, 0) };
+            StackPanel tabPanel = new StackPanel { Background = new SolidColorBrush(Color.FromRgb(240, 240, 240)) };
+            ScrollViewer tabScrollViewer = new ScrollViewer
+            {
+                Content = tabPanel,
+                VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+                HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
+                Background = new SolidColorBrush(Color.FromRgb(240, 240, 240)),
+                Margin = new Thickness(0, 20, 0, 0)
+            };
             Border contentBorder = new Border { Background = Brushes.White, BorderBrush = new SolidColorBrush(Color.FromRgb(218, 220, 224)), BorderThickness = new Thickness(1, 0, 0, 0), Padding = new Thickness(20), Margin = new Thickness(0, 20, 0, 0) };
 
             _tabControl = new TabControl { Background = Brushes.Transparent, BorderThickness = new Thickness(0) };
@@ -163,7 +287,7 @@ namespace Desktop_Frames
             CreateTabButton(tabPanel, Strings.TabLookDeeper, 6, _lastSelectedTabIndex == 6);
 
             contentBorder.Child = _tabControl;
-            Grid.SetColumn(tabPanel, 0); contentGrid.Children.Add(tabPanel);
+            Grid.SetColumn(tabScrollViewer, 0); contentGrid.Children.Add(tabScrollViewer);
             Grid.SetColumn(contentBorder, 1); contentGrid.Children.Add(contentBorder);
             mainGrid.Children.Add(contentGrid);
         }
@@ -739,7 +863,7 @@ namespace Desktop_Frames
             rs.Children.Add(r1); rs.Children.Add(r2);
             c.Children.Add(rs);
 
-            t.Content = c;
+            t.Content = new ScrollViewer { Content = c, VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
             _tabControl.Items.Add(t);
         }
 
@@ -1104,6 +1228,16 @@ namespace Desktop_Frames
             p.Children.Add(g);
         }
 
+        private static StackPanel GetTabContentStackPanel(TabItem tabItem)
+        {
+            if (tabItem == null) return null;
+            if (tabItem.Content is ScrollViewer sv && sv.Content is StackPanel spFromSv)
+                return spFromSv;
+            if (tabItem.Content is StackPanel sp)
+                return sp;
+            return null;
+        }
+
         // --- SAVING ---
         private static void SaveOptions()
         {
@@ -1114,8 +1248,8 @@ namespace Desktop_Frames
                 bool newShowInTrayState = false;
 
                 // 1. General
-                var generalContent = (StackPanel)((ScrollViewer)((TabItem)_tabControl.Items[0]).Content).Content;
-                foreach (var child in generalContent.Children)
+                var generalContent = GetTabContentStackPanel((TabItem)_tabControl.Items[0]);
+                if (generalContent != null) foreach (var child in generalContent.Children)
                 {
                     if (child is CheckBox cb)
                     {
@@ -1172,13 +1306,6 @@ namespace Desktop_Frames
                         }
                     }
 
-                    // REMOVED: EnableProfileAutomation logic is now handled exclusively in the Profiles tab.
-                    //if (cb.Name == "EnableProfileAutomation")
-                    //{
-                    //    SettingsManager.EnableProfileAutomation = cb.IsChecked == true;
-                    //    if (SettingsManager.EnableProfileAutomation) AutomationManager.Start();
-                    //}
-
                 }
 
                 // Read outside the loop above: the selector is nested inside a row, so walking
@@ -1193,8 +1320,8 @@ namespace Desktop_Frames
 
 
                 // 2. Style
-                var styleContent = (StackPanel)((ScrollViewer)((TabItem)_tabControl.Items[1]).Content).Content;
-                foreach (var child in styleContent.Children)
+                var styleContent = GetTabContentStackPanel((TabItem)_tabControl.Items[1]);
+                if (styleContent != null) foreach (var child in styleContent.Children)
                 {
                     if (child is CheckBox cb)
                     {
@@ -1255,13 +1382,13 @@ namespace Desktop_Frames
                 }
 
                 // 3. Tools
-                var toolsContent = (StackPanel)((TabItem)_tabControl.Items[2]).Content;
-                foreach (var child in toolsContent.Children) if (child is CheckBox cb && cb.Name == "EnableAutoBackup") SettingsManager.EnableAutoBackup = cb.IsChecked == true;
+                var toolsContent = GetTabContentStackPanel((TabItem)_tabControl.Items[2]);
+                if (toolsContent != null) foreach (var child in toolsContent.Children) if (child is CheckBox cb && cb.Name == "EnableAutoBackup") SettingsManager.EnableAutoBackup = cb.IsChecked == true;
 
                 // 4. Hotkeys (NEW)
-                var hotkeysContent = (StackPanel)((ScrollViewer)((TabItem)_tabControl.Items[4]).Content).Content;
+                var hotkeysContent = GetTabContentStackPanel((TabItem)_tabControl.Items[4]);
                 bool hotkeysChanged = false;
-                foreach (var child in hotkeysContent.Children)
+                if (hotkeysContent != null) foreach (var child in hotkeysContent.Children)
                 {
                     if (child is CheckBox hotkeyCb)
                     {
@@ -1319,8 +1446,8 @@ namespace Desktop_Frames
                 }
 
                 // 5. Smart Desktop (Auto-Organize)
-                var smartDesktopContent = (StackPanel)((ScrollViewer)((TabItem)_tabControl.Items[5]).Content).Content;
-                foreach (var child in smartDesktopContent.Children)
+                var smartDesktopContent = GetTabContentStackPanel((TabItem)_tabControl.Items[5]);
+                if (smartDesktopContent != null) foreach (var child in smartDesktopContent.Children)
                 {
                     if (child is CheckBox cb && cb.Name == "EnableAutoOrganize")
                     {
@@ -1341,7 +1468,7 @@ namespace Desktop_Frames
                 }
 
                 // 6. Look Deeper (Logs) - Index shifted to 6
-                var logContent = (StackPanel)((ScrollViewer)((TabItem)_tabControl.Items[6]).Content).Content;
+                var logContent = GetTabContentStackPanel((TabItem)_tabControl.Items[6]);
                 var newEnabledCategories = new List<LogManager.LogCategory>();
 
                 // FIX: Force enable the hidden "Error" category so existing log calls don't break.
