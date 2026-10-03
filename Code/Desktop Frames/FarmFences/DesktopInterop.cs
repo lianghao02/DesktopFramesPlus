@@ -17,6 +17,7 @@ namespace Desktop_Frames.FarmFences
         public string ResolvedPath { get; set; } = string.Empty;
         public Point ScreenPoint { get; set; }
         public Rect BoundsOnScreen { get; set; }
+        public Size Spacing { get; set; }
         public bool IsSelected { get; set; }
 
         public override string ToString() => $"[{Index}] '{Name}' @ ({ScreenPoint.X:F0}, {ScreenPoint.Y:F0}) -> {ResolvedPath}";
@@ -24,6 +25,24 @@ namespace Desktop_Frames.FarmFences
 
     public static class DesktopInterop
     {
+        private delegate bool MonitorCallback(IntPtr monitor, IntPtr dc, IntPtr rectangle, IntPtr data);
+        [StructLayout(LayoutKind.Sequential)]
+        private struct MonitorInfo { public int Size; public RECT Monitor, Work; public uint Flags; }
+        [DllImport("user32.dll")] private static extern bool EnumDisplayMonitors(IntPtr dc, IntPtr clip, MonitorCallback callback, IntPtr data);
+        [DllImport("user32.dll", CharSet = CharSet.Auto)] private static extern bool GetMonitorInfo(IntPtr monitor, ref MonitorInfo info);
+
+        public static List<Rect> GetWorkAreas()
+        {
+            var areas = new List<Rect>();
+            if (!EnumDisplayMonitors(IntPtr.Zero, IntPtr.Zero, (monitor, _, _, _) =>
+            {
+                var info = new MonitorInfo { Size = Marshal.SizeOf<MonitorInfo>() };
+                if (GetMonitorInfo(monitor, ref info)) areas.Add(new Rect(info.Work.Left, info.Work.Top,
+                    info.Work.Right - info.Work.Left, info.Work.Bottom - info.Work.Top));
+                return true;
+            }, IntPtr.Zero) || areas.Count == 0) throw new InvalidOperationException("無法取得螢幕工作區");
+            return areas;
+        }
         #region Win32 Constants and Structs
 
         private const uint LVM_FIRST = 0x1000;
@@ -441,6 +460,7 @@ namespace Desktop_Frames.FarmFences
                                     Index = i, Name = name, ResolvedPath = key,
                                     IsSelected = (((long)SendMessage(hwnd, LVM_FIRST + 44, (IntPtr)i, (IntPtr)2)) & 2) != 0,
                                     ScreenPoint = new Point(screenPt.X, screenPt.Y),
+                                    Spacing = new Size(Math.Max(1, spacing.X), Math.Max(1, spacing.Y)),
                                     BoundsOnScreen = bounds
                                 });
                             }
@@ -459,6 +479,7 @@ namespace Desktop_Frames.FarmFences
 
         private static List<Rect> ReadNativeBounds(IntPtr hwnd, int count)
         {
+            if (count == 0) return new List<Rect>();
             GetWindowThreadProcessId(hwnd, out uint pid);
             IntPtr process = OpenProcess(PROCESS_VM_OPERATION | PROCESS_VM_READ | PROCESS_QUERY_INFORMATION, false, pid);
             if (process == IntPtr.Zero) throw new System.ComponentModel.Win32Exception(Marshal.GetLastWin32Error());

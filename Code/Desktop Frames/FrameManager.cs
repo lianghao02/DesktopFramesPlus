@@ -1274,6 +1274,7 @@ namespace Desktop_Frames
             };
             menu.Items.Add(newFrameItem);
 
+
             var newPortalFrameItem = new MenuItem { Header = Strings.MenuNewPortalFrame };
             newPortalFrameItem.Click += (s, e) =>
             {
@@ -1324,6 +1325,18 @@ namespace Desktop_Frames
                     if (SettingsManager.ExportShortcutsOnFrameDeletion && frame.ItemsType?.ToString() == "Data")
                     {
                         ExportAllIconsToDesktop(frame, false);
+                    }
+
+                    // 農場圍籬安全釋放協議：刪除面板時，所屬動物安全倒回一般桌面
+                    try
+                    {
+                        string frameIdStr = frame.Id?.ToString();
+                        Services.FenceInventoryManager.Instance.ReleaseFrameItemsToDesktop(frameIdStr);
+                    }
+                    catch (Exception ex)
+                    {
+                        LogManager.Log(LogManager.LogLevel.Error, LogManager.LogCategory.FrameCreation,
+                            $"Failed to release fence items on frame deletion: {ex.Message}");
                     }
 
                     BackupManager.BackupDeletedFrame(frame);
@@ -1443,10 +1456,12 @@ namespace Desktop_Frames
                 MenuItem miEdit = new MenuItem { Header = Strings.MenuEdit };
                 MenuItem miMove = new MenuItem { Header = Strings.MenuMove };
                 MenuItem miRemove = new MenuItem { Header = Strings.MenuRemove };
+                MenuItem miReleaseToDesktop = new MenuItem { Header = Strings.Get("MenuReleaseToDesktop", "移回桌面 (解除收納)") };
 
                 iconContextMenu.Items.Add(miEdit);
                 iconContextMenu.Items.Add(miMove);
                 iconContextMenu.Items.Add(miRemove);
+                iconContextMenu.Items.Add(miReleaseToDesktop);
 
                 bool isSpacer = filePath != null && filePath.StartsWith("INTERNAL_BLANK_");
 
@@ -1590,6 +1605,13 @@ namespace Desktop_Frames
 
                             if (targetArray != null)
                             {
+                                try
+                                {
+                                    string itemFilePath = liveItem["Filename"]?.ToString();
+                                    Services.FenceInventoryManager.Instance.ReleaseItemByPath(itemFilePath);
+                                }
+                                catch { }
+
                                 targetArray.Remove(liveItem);
                                 FrameDataManager.SaveFrameData();
                                 var wp = VisualTreeHelper.GetParent(sp) as WrapPanel;
@@ -1600,6 +1622,46 @@ namespace Desktop_Frames
                     catch (Exception ex)
                     {
                         LogManager.Log(LogManager.LogLevel.Error, LogManager.LogCategory.UI, $"Error removing: {ex.Message}");
+                    }
+                };
+
+                miReleaseToDesktop.Click += (s, e) =>
+                {
+                    try
+                    {
+                        var liveItem = GetLiveItem();
+                        string frameId = frame.Id?.ToString();
+                        var liveFrame = FrameDataManager.FrameData.FirstOrDefault(f => f.Id?.ToString() == frameId);
+
+                        if (liveFrame != null && liveItem != null)
+                        {
+                            string itemFilePath = liveItem["Filename"]?.ToString();
+                            Services.FenceInventoryManager.Instance.ReleaseItemByPath(itemFilePath);
+
+                            JArray targetArray = liveFrame.Items as JArray;
+                            bool tabsEnabled = liveFrame.TabsEnabled?.ToString().ToLower() == "true";
+                            if (tabsEnabled)
+                            {
+                                var tabs = liveFrame.Tabs as JArray;
+                                int tabIdx = Convert.ToInt32(liveFrame.CurrentTab?.ToString() ?? "0");
+                                if (tabs != null && tabIdx < tabs.Count)
+                                {
+                                    targetArray = tabs[tabIdx]["Items"] as JArray;
+                                }
+                            }
+
+                            if (targetArray != null)
+                            {
+                                targetArray.Remove(liveItem);
+                                FrameDataManager.SaveFrameData();
+                                var wp = VisualTreeHelper.GetParent(sp) as WrapPanel;
+                                if (wp != null) wp.Children.Remove(sp);
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        LogManager.Log(LogManager.LogLevel.Error, LogManager.LogCategory.UI, $"Error releasing to desktop: {ex.Message}");
                     }
                 };
 
@@ -3506,30 +3568,13 @@ namespace Desktop_Frames
                 FrameDataManager.SaveFrameData();
             }
 
-            // Safe Non-destructive Item Collection
-            if (dialog.SelectedItemPaths != null && dialog.SelectedItemPaths.Count > 0)
-            {
-                foreach (string itemPath in dialog.SelectedItemPaths)
-                {
-                    try
-                    {
-                        AddItemToDataFrame(frame, itemPath);
-                    }
-                    catch (Exception ex)
-                    {
-                        LogManager.Log(LogManager.LogLevel.Error, LogManager.LogCategory.FrameCreation,
-                            $"Failed to add item '{itemPath}' to drawn frame: {ex.Message}");
-                    }
-                }
-                FrameDataManager.SaveFrameData();
-            }
-
             ReloadFrames();
         }
 
         public static bool AddItemToDataFrame(dynamic frame, string droppedFile)
         {
             if (frame == null || string.IsNullOrWhiteSpace(droppedFile)) return false;
+
 
             bool fileExists = System.IO.File.Exists(droppedFile);
             bool directoryExists = System.IO.Directory.Exists(droppedFile);
@@ -3821,6 +3866,8 @@ namespace Desktop_Frames
 
         public static void CreateFrame(dynamic frame, TargetChecker targetChecker)
         {
+            // 原地面板只由共用原生核心顯示，同一 Id 不再建立捷徑面板視窗。
+
 
             // --- FIX: Declare Title TextBox EARLY ---
             TextBox titletb = new TextBox
@@ -6584,6 +6631,26 @@ namespace Desktop_Frames
                             // --- DATA FRAME LOGIC ---
                             if (frame.ItemsType?.ToString() == "Data")
                             {
+                                string targetFrameId = frame.Id?.ToString() ?? string.Empty;
+                                Services.ManagedItemRecord adoptedRecord = null;
+
+                                // 農場圍籬：檢查是否為來自桌面的項目（所有權互斥模型：動物只有一隻）
+                                if (Services.FenceInventoryManager.IsFromDesktop(droppedFile))
+                                {
+                                    bool adoptSuccess = Services.FenceInventoryManager.Instance.TryAdopt(
+                                        droppedFile, targetFrameId, out adoptedRecord, out string adoptErrorMsg);
+
+                                    if (!adoptSuccess)
+                                    {
+                                        // 權限不足或檔案鎖定時，堅決拒絕接管，彈出提示並保留原狀，絕不留下雙份入口
+                                        if (!string.IsNullOrEmpty(adoptErrorMsg))
+                                        {
+                                            MessageBoxesManager.ShowOKOnlyMessageBoxForm(adoptErrorMsg, Strings.DlgInfo);
+                                        }
+                                        continue;
+                                    }
+                                }
+
                                 if (!System.IO.Directory.Exists("Shortcuts")) System.IO.Directory.CreateDirectory("Shortcuts");
                                 string baseShortcutName = System.IO.Path.Combine("Shortcuts", System.IO.Path.GetFileName(droppedFile));
                                 string shortcutName = baseShortcutName;
@@ -6649,14 +6716,18 @@ namespace Desktop_Frames
                                         shortcut.TargetPath = droppedFile;
                                         if (isFolder) shortcut.WorkingDirectory = droppedFile;
                                         shortcut.Save();
+
+                                        if (adoptedRecord != null)
+                                        {
+                                            adoptedRecord.ManagedStoragePath = shortcutName;
+                                            Services.FenceInventoryManager.Instance.UpdateItemStoragePath(adoptedRecord.Id, shortcutName);
+                                        }
                                     }
                                     catch { continue; }
                                 }
                                 else
                                 {
-                                    // CASE B: Copying existing shortcut (LNK or URL)
-                                    // FIX: Determine correct extension based on type
-                                    // If it's a Web Link, MUST remain .url. If it's a Shortcut, MUST remain .lnk.
+                                    // CASE B: Copying or moving existing shortcut (LNK or URL)
                                     string ext = isWebLink ? ".url" : ".lnk";
 
                                     // Ensure base name has correct extension
@@ -6672,15 +6743,24 @@ namespace Desktop_Frames
                                         shortcutName = System.IO.Path.Combine("Shortcuts", $"{nameNoExt} ({counter++}){ext}");
                                     }
 
-                                    if (isWebLink)
+                                    if (adoptedRecord != null && adoptedRecord.Type == Services.AdoptionType.ShortcutMove)
                                     {
-                                        // FIX: Never rewrite .url files on drop. This destroys custom game/app icons (Steam/Spotify).
-                                        // ALWAYS copy the original file exactly as-is to preserve IconFile and IconIndex properties.
-                                        System.IO.File.Copy(droppedFile, shortcutName, true);
+                                        if (System.IO.File.Exists(adoptedRecord.ManagedStoragePath))
+                                        {
+                                            System.IO.File.Move(adoptedRecord.ManagedStoragePath, shortcutName);
+                                            adoptedRecord.ManagedStoragePath = shortcutName;
+                                        }
                                     }
                                     else
                                     {
-                                        System.IO.File.Copy(droppedFile, shortcutName, true);
+                                        if (isWebLink)
+                                        {
+                                            System.IO.File.Copy(droppedFile, shortcutName, true);
+                                        }
+                                        else
+                                        {
+                                            System.IO.File.Copy(droppedFile, shortcutName, true);
+                                        }
                                     }
                                 }
 
@@ -7823,7 +7903,9 @@ namespace Desktop_Frames
 
 
 
-        private static void CreateNewFrame(string title, string itemsType, double x = 20, double y = 20, string customColor = null, string customLaunchEffect = null, string pluginId = null)
+        public static void CreateNativePanel() => CreateNewFrame("", "Data");
+
+        public static void CreateNewFrame(string title, string itemsType, double x = 20, double y = 20, string customColor = null, string customLaunchEffect = null, string pluginId = null)
         {
             // Generate random name instead of using the passed title
             string frameName = CoreUtilities.GenerateRandomName();

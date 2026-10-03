@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0-windows7.0</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <UseWindowsForms>true</UseWindowsForms>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="Desktop Frames"><HintPath>..\..\Code\Desktop Frames\bin\Release\net8.0-windows7.0\Desktop Frames.dll</HintPath></Reference>
+    <Reference Include="Newtonsoft.Json"><HintPath>..\..\Code\Desktop Frames\bin\Release\net8.0-windows7.0\Newtonsoft.Json.dll</HintPath></Reference>
+  </ItemGroup>
+</Project>

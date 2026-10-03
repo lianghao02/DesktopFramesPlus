@@ -1993,4 +1993,11 @@
   <data name="FarmLoadFailed" xml:space="preserve"><value>農場柵欄設定讀取失敗，已保護原設定不被覆寫。</value></data>
   <data name="FarmOperationFailed" xml:space="preserve"><value>農場柵欄操作未完成；原圖示仍留在桌面。請查看診斷記錄。</value></data>
   <data name="FarmSaveFailed" xml:space="preserve"><value>農場柵欄設定無法儲存。請檢查資料夾寫入權限。</value></data>
+  <data name="FarmNoSpace" xml:space="preserve"><value>可用格子不足，已取消本次操作並保留原位置與歸屬。請移開柵欄或增加可用空間。</value></data>
+  <data name="FarmOverlap" xml:space="preserve"><value>既有柵欄重疊，已暫停排列與歸屬變更。請先手動移開重疊外框；原圖示與歸屬保留。</value></data>
+  <data name="FarmRestoreFailed" xml:space="preserve"><value>Explorer 拒絕位置回復，已停止儲存以保護原歸屬。請關閉自動排列／對齊格線並檢查桌面位置。</value></data>
+  <data name="NativePanelAdopt" xml:space="preserve"><value>此面板接管桌面原圖示</value></data>
+  <data name="NativePanelNeedsEmpty" xml:space="preserve"><value>此面板已有捷徑或分頁資料，已保留原內容。請使用空面板接管桌面原圖示。</value></data>
+  <data name="NativePanelDragHint" xml:space="preserve"><value>建立後，請將桌面原圖示拖入面板。取消面板後，圖示留在桌面；不複製原檔，也不建立第二份入口。</value></data>
+  <data name="MenuReleaseToDesktop" xml:space="preserve"><value>移回桌面 (還原圖示)</value></data>
 </root>

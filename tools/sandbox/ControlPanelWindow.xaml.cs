@@ -14,6 +14,7 @@ namespace FarmFenceSandbox
             _fenceManager = fenceManager;
 
             _fenceManager.LogMessage += OnLogMessage;
+            _fenceManager.Warning += message => MessageBox.Show(message, "農場柵欄", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
 
         private void OnLogMessage(string msg)

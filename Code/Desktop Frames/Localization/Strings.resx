@@ -1977,4 +1977,11 @@ This cannot be undone.</value>
   <data name="FarmLoadFailed" xml:space="preserve"><value>Farm fence settings could not be read. The original settings are protected from being overwritten.</value></data>
   <data name="FarmOperationFailed" xml:space="preserve"><value>The farm fence operation could not be completed. Original icons remain on the desktop. See the diagnostic log.</value></data>
   <data name="FarmSaveFailed" xml:space="preserve"><value>Farm fence settings could not be saved. Check the folder's write permissions.</value></data>
+  <data name="FarmNoSpace" xml:space="preserve"><value>There are not enough free cells. This operation was cancelled; original positions and ownership were preserved. Move a fence or free up space.</value></data>
+  <data name="FarmOverlap" xml:space="preserve"><value>Saved fences overlap. Layout and ownership changes are paused. Move the overlapping borders apart first; original icons and ownership are preserved.</value></data>
+  <data name="FarmRestoreFailed" xml:space="preserve"><value>Explorer refused position restoration. Saving was stopped to protect original ownership. Turn off auto arrange / align to grid and check desktop positions.</value></data>
+  <data name="NativePanelAdopt" xml:space="preserve"><value>Use original desktop icons in this panel</value></data>
+  <data name="NativePanelNeedsEmpty" xml:space="preserve"><value>This panel contains shortcut or tab data. It was preserved. Use an empty panel to adopt original desktop icons.</value></data>
+  <data name="NativePanelDragHint" xml:space="preserve"><value>Drag the original desktop icon into this panel. Removing the panel leaves the icon on the desktop; no copy or shortcut is created.</value></data>
+  <data name="MenuReleaseToDesktop" xml:space="preserve"><value>Release to Desktop</value></data>
 </root>

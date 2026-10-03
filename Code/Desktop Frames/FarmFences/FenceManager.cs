@@ -39,30 +39,43 @@ namespace Desktop_Frames.FarmFences
         private readonly DispatcherTimer _refresh;
         private readonly string _stateFilePath;
         private readonly CancellationTokenSource _lifetime = new();
+        private readonly bool _arrangeDesktop;
+        private readonly Dictionary<FenceWindow, Rect> _committedMoveBounds = new();
+        private readonly Dictionary<FenceWindow, Rect> _lastAllowed = new();
+        private readonly Dictionary<FenceWindow, Task<List<DesktopIconItem>>> _moveSnapshots = new();
         private DesktopDragMonitor? _input;
         private Task<List<DesktopIconItem>>? _pressedSnapshot;
         private Point _pressedPoint;
-        private bool _loadFailed, _stopped, _refreshing, _dragBusy, _moving;
+        private bool _loadFailed, _stopped, _refreshing, _dragBusy, _moving, _overlapBlocked;
         private Task? _initialization;
-        private readonly Dictionary<FenceWindow, Rect> _moveOrigins = new();
-        private readonly Dictionary<FenceWindow, Rect> _committedMoveBounds = new();
-        private readonly Dictionary<FenceWindow, Task<List<DesktopIconItem>>> _moveSnapshots = new();
-        private readonly HashSet<FenceWindow> _failedMoves = new();
-        private readonly Dictionary<FenceWindow, Point> _pendingMoves = new();
+        private Task<(bool Success, bool Restored)>? _nativeTransaction;
+        private Dictionary<string, Point>? _transactionOriginals;
+        private Task<List<DesktopIconItem>>? _dropOriginalSnapshot;
         public event Action<string>? LogMessage;
         public event Action? FencesChanged;
         public event Action<string>? Warning;
+        public event Action<string>? FenceCancelled;
+        public event Action<IReadOnlyList<FenceStateData>>? StateSaved;
         public IReadOnlyList<FenceWindow> Fences => _fences.AsReadOnly();
 
-        public FenceManager(string? statePath = null)
+        public FenceManager(string? statePath = null, bool arrangeDesktop = true)
         {
             _stateFilePath = statePath ?? Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "fence_state.json");
+            _arrangeDesktop = arrangeDesktop;
             _refresh = new DispatcherTimer { Interval = TimeSpan.FromSeconds(2) };
             _refresh.Tick += async (_, _) => await RefreshAsync();
         }
 
         public Task Ready => _initialization ??= InitializeAsync();
         public void Initialize() => _ = Ready;
+        private bool Busy => _moving || _dragBusy || _fences.Any(f => f.IsUserMoving);
+        private List<LayoutFence> LayoutFences() => _fences.Select(f =>
+        {
+            var bounds = f.GetPhysicalBounds();
+            var content = f.GetPhysicalContentBounds();
+            return new LayoutFence(f.FenceId, bounds, new Thickness(content.Left - bounds.Left,
+                content.Top - bounds.Top, bounds.Right - content.Right, bounds.Bottom - content.Bottom));
+        }).ToList();
 
         private async Task InitializeAsync()
         {
@@ -78,7 +91,7 @@ namespace Desktop_Frames.FarmFences
                         CreateFence(state);
                         foreach (var item in state.AssignedItems)
                         {
-                            if (!_assigned.TryAdd(item, state.Id)) throw new InvalidDataException("同一 Shell 項目不能同時屬於兩個柵欄");
+                            _assigned.Add(item, state.Id);
                             if (state.ItemPositions.TryGetValue(item, out var position)) _positions[item] = new Point(position.X, position.Y);
                         }
                     }
@@ -88,31 +101,41 @@ namespace Desktop_Frames.FarmFences
             {
                 _loadFailed = true;
                 foreach (var window in _fences) window.Close();
-                _fences.Clear();
-                _assigned.Clear();
-                _positions.Clear();
+                _fences.Clear(); _assigned.Clear(); _positions.Clear();
                 Fail("FarmLoadFailed", ex);
             }
+            if (_stopped || _loadFailed) return;
+            await _dispatcher.InvokeAsync(() => { }, DispatcherPriority.ContextIdle);
             if (_stopped) return;
+            // 既有重疊先提示；不回復圖示、不排列、不清除或交換歸屬。
+            _overlapBlocked = FenceLayout.HasOverlap(LayoutFences());
+            if (_overlapBlocked) Warn("FarmOverlap");
+            if (!_arrangeDesktop) return; // 設定回歸只操作測試視窗與測試設定檔。
             try
             {
                 _input = new DesktopDragMonitor();
                 _input.Diagnostic += message => _dispatcher.BeginInvoke(new Action(() => LogMessage?.Invoke(message)));
-                // Hook callback 只排入 UI 佇列，不在低階 Hook 中做 COM 或磁碟作業。
                 _input.Pressed += point => _dispatcher.BeginInvoke(new Action(() => BeginDrag(point)));
                 _input.Released += (point, accepted) => _dispatcher.BeginInvoke(new Action(async () => await EndDragAsync(point, accepted)));
                 await RefreshAsync();
-                // 只恢復已保存的明確歸屬，不依柵欄範圍收集桌面圖示。
-                var restore = _positions.ToArray();
-                await Task.Run(() =>
+                if (_stopped) return;
+                if (!_overlapBlocked && _fences.Count > 0)
                 {
-                    foreach (var position in restore)
+                    _moving = true;
+                    try
                     {
-                        _lifetime.Token.ThrowIfCancellationRequested();
-                        if (!DesktopInterop.MoveShellItem(position.Key, position.Value))
-                            throw new InvalidOperationException("保存的圖示位置無法恢復");
+                        var actual = await Task.Run(DesktopInterop.GetAllDesktopIcons);
+                        var ordered = actual.Select(i =>
+                        {
+                            var point = _positions.TryGetValue(i.ResolvedPath, out var saved) ? saved : i.ScreenPoint;
+                            var bounds = i.BoundsOnScreen;
+                            if (!bounds.IsEmpty) bounds.Offset(point.X - i.ScreenPoint.X, point.Y - i.ScreenPoint.Y);
+                            return new DesktopIconItem { ResolvedPath = i.ResolvedPath, ScreenPoint = point, BoundsOnScreen = bounds, Spacing = i.Spacing };
+                        }).ToList();
+                        await ArrangeAsync(ordered, new Dictionary<string, string>(_assigned, StringComparer.OrdinalIgnoreCase), actual);
                     }
-                });
+                    finally { _moving = false; }
+                }
                 LogMessage?.Invoke($"桌面監聽已啟動，HWND={_input.DesktopWindow}，柵欄={_fences.Count}");
             }
             catch (Exception ex) { Fail("FarmOperationFailed", ex); }
@@ -135,72 +158,150 @@ namespace Desktop_Frames.FarmFences
             }
         }
 
-        private void CreateFence(FenceStateData s)
+
+        private void CreateFence(FenceStateData state)
         {
-            var window = new FenceWindow(s.Id, s.Title, s.Left, s.Top, s.Width, s.Height, Color.FromRgb(75, 165, 175));
+            var window = new FenceWindow(state.Id, state.Title, state.Left, state.Top, state.Width, state.Height, Color.FromRgb(75, 165, 175));
+            window.CanManipulate = () => !_stopped && !_loadFailed && !_moving && !_dragBusy && !_fences.Any(f => f.IsUserMoving);
             window.FenceClosed += CancelFence;
             window.TitleChanged += _ => SaveState();
+            window.ConstrainBounds = (f, requested) =>
+            {
+                var current = _lastAllowed.TryGetValue(f, out var previous) ? previous : f.GetPhysicalBounds();
+                var obstacles = _fences.Where(g => g != f).Select(g => g.GetPhysicalBounds()).ToArray();
+                var areas = DesktopInterop.GetWorkAreas();
+                Rect allowed;
+                if (_overlapBlocked)
+                {
+                    // 明確手動移開舊重疊外框：只能減少既有重疊，不能侵入新的柵欄。
+                    double Intersection(Rect a, Rect b) { a.Intersect(b); return a.IsEmpty ? 0 : a.Width * a.Height; }
+                    allowed = areas.Any(a => a.Contains(requested)) && obstacles.All(o => Intersection(requested, o) <= Intersection(current, o)) ? requested : current;
+                }
+                else allowed = FenceLayout.Constrain(current, requested, obstacles, areas);
+                _lastAllowed[f] = allowed;
+                return allowed;
+            };
             window.MoveStarted += f =>
             {
-                _moveOrigins[f] = f.GetPhysicalBounds();
-                _committedMoveBounds[f] = _moveOrigins[f];
-                var members = _assigned.Where(p => p.Value == f.FenceId).Select(p => p.Key).ToHashSet(StringComparer.OrdinalIgnoreCase);
-                _moveSnapshots[f] = Task.Run(() => DesktopInterop.GetAllDesktopIcons().Where(i => members.Contains(i.ResolvedPath)).ToList());
+                _committedMoveBounds[f] = f.GetPhysicalBounds();
+                _lastAllowed[f] = f.GetPhysicalBounds();
+                _moveSnapshots[f] = Task.Run(DesktopInterop.GetAllDesktopIcons);
                 _pressedSnapshot = null;
             };
-            window.FenceMoved += (f, x, y) =>
-            {
-                if (_failedMoves.Contains(f) || !_moveOrigins.TryGetValue(f, out var origin)) return;
-                var bounds = f.GetPhysicalBounds();
-                _pendingMoves[f] = new Point(bounds.X - origin.X, bounds.Y - origin.Y);
-                if (!_moving) _ = DrainMovesAsync();
-            };
-            window.MoveCompleted += async f =>
-            {
-                while (_moving && !_stopped) await Task.Delay(20);
-                if (!_stopped)
-                {
-                    if (_failedMoves.Remove(f) && _moveOrigins.TryGetValue(f, out var origin)) f.SetPhysicalBounds(origin);
-                    _moveOrigins.Remove(f);
-                    _committedMoveBounds.Remove(f);
-                    _moveSnapshots.Remove(f);
-                    SaveState();
-                }
-            };
+            window.MoveCompleted += async f => await CompleteGeometryAsync(f);
             _fences.Add(window);
             window.Show();
             FencesChanged?.Invoke();
         }
 
-        public void CreateNewFence(string? title = null)
+        public void CreateNewFence(string? title = null) => _ = CreateNewFenceAsync(title);
+        public async Task<bool> BindPanelAsync(string panelId, string title, Rect bounds)
         {
-            if (_loadFailed || _stopped) return;
-            var area = SystemParameters.WorkArea;
-            CreateFence(new FenceStateData
+            await Ready;
+            if (_stopped || _loadFailed || Busy || _overlapBlocked || _fences.Any(f => f.FenceId == panelId)) return false;
+            if (_fences.Any(f => FenceLayout.Overlaps(f.GetPhysicalBounds(), bounds)) || !DesktopInterop.GetWorkAreas().Any(a => a.Contains(bounds)))
+            { Warn("FarmNoSpace"); return false; }
+            _moving = true;
+            FenceWindow? added = null;
+            try
             {
-                Id = Guid.NewGuid().ToString("N"), Title = string.IsNullOrWhiteSpace(title) ? FenceText.Get("FarmName", _fences.Count + 1) : title.Trim(),
-                Left = area.Left + 240 + (_fences.Count % 5) * 30, Top = area.Top + 120 + (_fences.Count % 5) * 30,
-                Width = 320, Height = 280
-            });
-            SaveState();
+                var before = _arrangeDesktop ? await Task.Run(DesktopInterop.GetAllDesktopIcons) : new List<DesktopIconItem>();
+                if (_stopped) return false;
+                CreateFence(new FenceStateData { Id = panelId, Title = title, Left = bounds.X, Top = bounds.Y,
+                    Width = Math.Max(160, bounds.Width), Height = Math.Max(120, bounds.Height) });
+                added = _fences.Last();
+                await _dispatcher.InvokeAsync(() => { }, DispatcherPriority.ContextIdle);
+                if (_stopped) return false;
+                if (_arrangeDesktop && !await ArrangeAsync(before, new Dictionary<string, string>(_assigned, StringComparer.OrdinalIgnoreCase), before, new HashSet<string> { panelId }))
+                { _fences.Remove(added); added.Close(); return false; }
+                SaveState(); return true;
+            }
+            catch (Exception ex)
+            { if (added != null) { _fences.Remove(added); added.Close(); } Fail("FarmOperationFailed", ex); return false; }
+            finally { _moving = false; }
+        }
+        public async Task CreateNewFenceAsync(string? title = null, string? id = null)
+        {
+            await Ready;
+            if (_loadFailed || _stopped || Busy) return;
+            if (id != null && _fences.Any(f => f.FenceId == id)) return;
+            if (_overlapBlocked) { Warn("FarmOverlap"); return; }
+            var areas = DesktopInterop.GetWorkAreas();
+            Rect? available = null;
+            foreach (var area in areas.OrderBy(a => a.Left).ThenBy(a => a.Top))
+            {
+                for (double y = area.Top; y + 280 <= area.Bottom && available == null; y += 16)
+                    for (double x = area.Left; x + 320 <= area.Right; x += 16)
+                    {
+                        var candidate = new Rect(x, y, 320, 280);
+                        if (_fences.Any(f => FenceLayout.Overlaps(candidate, f.GetPhysicalBounds()))) continue;
+                        available = candidate; break;
+                    }
+                if (available != null) break;
+            }
+            if (available == null) { Warn("FarmNoSpace"); return; }
+            _moving = true;
+            FenceWindow? added = null;
+            try
+            {
+                var before = _arrangeDesktop ? await Task.Run(DesktopInterop.GetAllDesktopIcons) : new List<DesktopIconItem>();
+                if (_stopped) return;
+                var r = available.Value;
+                CreateFence(new FenceStateData { Id = id ?? Guid.NewGuid().ToString("N"), Title = string.IsNullOrWhiteSpace(title) ? FenceText.Get("FarmName", _fences.Count + 1) : title.Trim(),
+                    Left = r.Left, Top = r.Top, Width = r.Width, Height = r.Height });
+                added = _fences.Last();
+                await _dispatcher.InvokeAsync(() => { }, DispatcherPriority.ContextIdle);
+                if (_stopped) return;
+                if (_arrangeDesktop && !await ArrangeAsync(before, new Dictionary<string, string>(_assigned, StringComparer.OrdinalIgnoreCase), before, new HashSet<string> { added.FenceId }))
+                { _fences.Remove(added); added.Close(); FencesChanged?.Invoke(); }
+                if (!_stopped) SaveState();
+            }
+            catch (Exception ex)
+            {
+                if (added != null) { _fences.Remove(added); added.Close(); FencesChanged?.Invoke(); }
+                Fail("FarmOperationFailed", ex);
+            }
+            finally { _moving = false; }
         }
 
-        private void CancelFence(FenceWindow window)
+        internal void CancelFence(FenceWindow window)
         {
-            _pendingMoves.Remove(window);
-            _moveOrigins.Remove(window);
-            _committedMoveBounds.Remove(window);
-            _moveSnapshots.Remove(window);
-            _failedMoves.Remove(window);
             foreach (var key in _assigned.Where(p => p.Value == window.FenceId).Select(p => p.Key).ToArray()) { _assigned.Remove(key); _positions.Remove(key); }
             _fences.Remove(window);
+            _committedMoveBounds.Remove(window); _lastAllowed.Remove(window); _moveSnapshots.Remove(window);
+            _overlapBlocked = FenceLayout.HasOverlap(LayoutFences());
             SaveState();
             FencesChanged?.Invoke();
+            // 取消只解除歸屬，不移動原生圖示；下一次排列將它們視為框外項目。
+            FenceCancelled?.Invoke(window.FenceId);
+        }
+
+        private async Task CompleteGeometryAsync(FenceWindow window)
+        {
+            if (_stopped || !_moveSnapshots.Remove(window, out var snapshot)) return;
+            _moving = true;
+            bool success = false;
+            try
+            {
+                _overlapBlocked = FenceLayout.HasOverlap(LayoutFences());
+                if (_overlapBlocked) { Warn("FarmOverlap"); success = true; return; }
+                var before = await snapshot;
+                if (_stopped) return;
+                success = await ArrangeAsync(before, new Dictionary<string, string>(_assigned, StringComparer.OrdinalIgnoreCase), before, new HashSet<string> { window.FenceId });
+            }
+            catch (Exception ex) { Fail("FarmOperationFailed", ex); }
+            finally
+            {
+                if (!_stopped && !success && _committedMoveBounds.TryGetValue(window, out var original)) window.SetPhysicalBounds(original);
+                _committedMoveBounds.Remove(window); _lastAllowed.Remove(window);
+                _moving = false;
+                if (!_stopped) SaveState();
+            }
         }
 
         private void BeginDrag(Point point)
         {
-            if (_stopped || _loadFailed || _moving || _dragBusy || _fences.Any(f => f.IsUserMoving)) return;
+            if (_stopped || _loadFailed || Busy || _overlapBlocked || _fences.Count == 0) return;
             _pressedPoint = point;
             _pressedSnapshot = Task.Run(DesktopInterop.GetAllDesktopIcons);
         }
@@ -210,27 +311,26 @@ namespace Desktop_Frames.FarmFences
             var beforeTask = _pressedSnapshot;
             var pressedPoint = _pressedPoint;
             _pressedSnapshot = null;
-            if (!accepted || beforeTask == null || _stopped || _moving || _dragBusy) return;
+            if (!accepted || beforeTask == null || _stopped || Busy) return;
             _dragBusy = true;
+            _dropOriginalSnapshot = beforeTask;
             try
             {
                 var before = await beforeTask;
-                LogMessage?.Invoke($"拖曳來源快照：{before.Count} 項，按下={pressedPoint}");
                 var source = before.SingleOrDefault(i => !i.BoundsOnScreen.IsEmpty && i.BoundsOnScreen.Contains(pressedPoint));
-                if (source == null) { LogMessage?.Invoke("來源未命中原生圖示範圍，不變更歸屬。"); return; }
-                // 等 Explorer 完成原生 Drop 並讀回；兩次結果一致才提交。
+                if (source == null) return;
                 await Task.Delay(180);
                 var after = await Task.Run(DesktopInterop.GetAllDesktopIcons);
                 await Task.Delay(100);
                 var confirmed = await Task.Run(DesktopInterop.GetAllDesktopIcons);
-                if (_stopped || _moving || _fences.Any(f => f.IsUserMoving)) return;
+                if (_stopped || _fences.Any(f => f.IsUserMoving)) return;
                 var sourceAfter = after.SingleOrDefault(i => Same(i.ResolvedPath, source.ResolvedPath));
                 var sourceConfirm = confirmed.SingleOrDefault(i => Same(i.ResolvedPath, source.ResolvedPath));
-                LogMessage?.Invoke($"來源={source.Name}，原座標={source.ScreenPoint}，新座標={sourceAfter?.ScreenPoint}，selected={sourceAfter?.IsSelected}");
                 if (sourceAfter == null || sourceConfirm == null || sourceAfter.ScreenPoint != sourceConfirm.ScreenPoint ||
                     sourceAfter.ScreenPoint == source.ScreenPoint || !sourceAfter.IsSelected) return;
-                Point delta = new Point(sourceAfter.ScreenPoint.X - source.ScreenPoint.X, sourceAfter.ScreenPoint.Y - source.ScreenPoint.Y);
-                bool changed = false;
+                var delta = sourceAfter.ScreenPoint - source.ScreenPoint;
+                var proposed = new Dictionary<string, string>(_assigned, StringComparer.OrdinalIgnoreCase);
+                var dragged = new List<DesktopIconItem>();
                 foreach (var item in after.Where(i => i.IsSelected && !i.BoundsOnScreen.IsEmpty))
                 {
                     var old = before.SingleOrDefault(i => Same(i.ResolvedPath, item.ResolvedPath));
@@ -238,96 +338,92 @@ namespace Desktop_Frames.FarmFences
                     if (old == null || verify == null || verify.ScreenPoint != item.ScreenPoint ||
                         Math.Abs(item.ScreenPoint.X - old.ScreenPoint.X - delta.X) > 2 ||
                         Math.Abs(item.ScreenPoint.Y - old.ScreenPoint.Y - delta.Y) > 2) continue;
-                    var center = new Point(item.BoundsOnScreen.X + item.BoundsOnScreen.Width / 2, item.BoundsOnScreen.Y + item.BoundsOnScreen.Height / 2);
-                    // 重疊時最小工作區優先；同面積以固定 Id 決定，與清單插入順序無關。
-                    var target = _fences.Where(f => f.GetPhysicalContentBounds().Contains(center))
-                        .OrderBy(f => f.GetPhysicalContentBounds().Width * f.GetPhysicalContentBounds().Height)
-                        .ThenBy(f => f.FenceId, StringComparer.Ordinal).FirstOrDefault();
-                    if (target == null) { changed |= _assigned.Remove(item.ResolvedPath); _positions.Remove(item.ResolvedPath); }
-                    else if (!_assigned.TryGetValue(item.ResolvedPath, out var id) || id != target.FenceId)
-                    {
-                        _assigned[item.ResolvedPath] = target.FenceId;
-                        changed = true;
-                    }
-                    if (target != null) { _positions[item.ResolvedPath] = item.ScreenPoint; changed = true; }
+                    dragged.Add(item);
+                    proposed.TryGetValue(item.ResolvedPath, out var previous);
+                    var owner = FenceLayout.DropOwner(item.BoundsOnScreen, LayoutFences(), previous);
+                    if (owner != null) proposed[item.ResolvedPath] = owner;
+                    else proposed.Remove(item.ResolvedPath);
                 }
-                if (changed) { SaveState(); LogMessage?.Invoke("原生桌面拖曳完成，已提交單一歸屬。"); }
+                if (dragged.Count == 0) return;
+                // 只回復本次真正移動的選取項目；其他桌面項目以目前讀回位置為回復基準。
+                var originals = after.Select(i => dragged.Any(d => Same(d.ResolvedPath, i.ResolvedPath)) ? before.Single(b => Same(b.ResolvedPath, i.ResolvedPath)) : i).ToList();
+                var targets = dragged.Where(i => proposed.ContainsKey(i.ResolvedPath)).Select(i => proposed[i.ResolvedPath]).ToHashSet(StringComparer.Ordinal);
+                if (await ArrangeAsync(after, proposed, originals, targets)) { SaveState(); LogMessage?.Invoke("原生拖曳與分區排列已完成，歸屬已提交。"); }
             }
             catch (Exception ex) { Fail("FarmOperationFailed", ex); }
-            finally { _dragBusy = false; }
+            finally { _dragBusy = false; _dropOriginalSnapshot = null; }
         }
 
-        private async Task DrainMovesAsync()
+        private async Task<bool> ArrangeAsync(List<DesktopIconItem> icons, Dictionary<string, string> proposed, List<DesktopIconItem> originals, IReadOnlySet<string>? growable = null)
         {
-            _moving = true;
-            try
+            if (_stopped) return false;
+            LayoutPlan plan;
+            var originalPositions = originals.ToDictionary(i => i.ResolvedPath, i => i.ScreenPoint, StringComparer.OrdinalIgnoreCase);
+            try { plan = FenceLayout.Plan(LayoutFences(), icons, proposed, DesktopInterop.GetWorkAreas(), growable); }
+            catch (InvalidOperationException ex)
             {
-                while (_pendingMoves.Count > 0 && !_stopped)
-                {
-                    var pair = _pendingMoves.First();
-                    _pendingMoves.Remove(pair.Key);
-                    if (!_moveSnapshots.TryGetValue(pair.Key, out var snapshot)) continue;
-                    var baseline = await snapshot;
-                    bool success = await Task.Run(() =>
-                    {
-                        bool moved = true;
-                        try
-                        {
-                        foreach (var icon in baseline)
-                        {
-                            _lifetime.Token.ThrowIfCancellationRequested();
-                            var target = new Point(icon.ScreenPoint.X + pair.Value.X, icon.ScreenPoint.Y + pair.Value.Y);
-                            if (!DesktopInterop.MoveShellItem(icon.ResolvedPath, target))
-                            {
-                                moved = false;
-                                break;
-                            }
-                        }
-                        }
-                        catch (OperationCanceledException) { throw; }
-                        catch (Exception) { moved = false; }
-                        if (!moved)
-                            foreach (var original in baseline)
-                                // 每筆回復都獨立嘗試；整體失敗由 UI 警示，不更新歸屬。
-                                try { DesktopInterop.MoveShellItem(original.ResolvedPath, original.ScreenPoint); }
-                                catch (Exception) { }
-                        return moved;
-                    });
-                    if (!success && !_stopped)
-                    {
-                        _failedMoves.Add(pair.Key);
-                        _pendingMoves.Remove(pair.Key);
-                        // 回到本次開始位置；所有原圖示仍可在原生桌面操作。
-                        if (_moveOrigins.TryGetValue(pair.Key, out var origin)) pair.Key.SetPhysicalBounds(origin);
-                        Fail("FarmOperationFailed", new InvalidOperationException("Shell 位置讀回不符，可能啟用自動排列或對齊格線"));
-                    }
-                    if (!_stopped)
-                    {
-                        foreach (var original in baseline)
-                            _positions[original.ResolvedPath] = success ? new Point(original.ScreenPoint.X + pair.Value.X, original.ScreenPoint.Y + pair.Value.Y) : original.ScreenPoint;
-                        if (_moveOrigins.TryGetValue(pair.Key, out var start))
-                            _committedMoveBounds[pair.Key] = success ? new Rect(start.X + pair.Value.X, start.Y + pair.Value.Y, start.Width, start.Height) : start;
-                    }
-                }
+                // 容量預檢失敗時尚未執行排列；仍須回復 Explorer 已完成的圖示 Drop。
+                await MovePositionsAsync(originalPositions, originalPositions, true);
+                if (!_stopped) Warn(ex.Message);
+                return false;
             }
-            catch (OperationCanceledException) { }
-            catch (Exception ex) { if (!_stopped) Fail("FarmOperationFailed", ex); }
-            finally { _moving = false; }
+            var plannedFences = LayoutFences().Select(f => f with { Bounds = plan.Fences[f.Id] }).ToArray();
+            bool success = await MovePositionsAsync(plan.Positions, originalPositions, verify: () =>
+            {
+                // Explorer 對齊／自動排列可能延後拉回；整批完成後再驗證位置及完整範圍。
+                Thread.Sleep(100);
+                var actual = DesktopInterop.GetAllDesktopIcons();
+                if (actual.Count != plan.Positions.Count) return false;
+                foreach (var item in actual)
+                {
+                    if (!plan.Positions.TryGetValue(item.ResolvedPath, out var expected) ||
+                        Math.Abs(item.ScreenPoint.X - expected.X) > 2 || Math.Abs(item.ScreenPoint.Y - expected.Y) > 2 || item.BoundsOnScreen.IsEmpty) return false;
+                    if (proposed.TryGetValue(item.ResolvedPath, out var owner))
+                    {
+                        if (!plannedFences.Single(f => f.Id == owner).Content.Contains(item.BoundsOnScreen)) return false;
+                    }
+                    else if (plannedFences.Any(f => FenceLayout.Overlaps(f.Bounds, item.BoundsOnScreen))) return false;
+                }
+                return actual.SelectMany((i, index) => actual.Skip(index + 1).Select(j => FenceLayout.Overlaps(i.BoundsOnScreen, j.BoundsOnScreen))).All(b => !b);
+            });
+            if (!success || _stopped) return false;
+            foreach (var f in _fences) f.SetPhysicalBounds(plan.Fences[f.FenceId]);
+            _assigned.Clear();
+            foreach (var pair in proposed) _assigned.Add(pair.Key, pair.Value);
+            _positions.Clear();
+            foreach (var pair in plan.Positions.Where(p => proposed.ContainsKey(p.Key))) _positions.Add(pair.Key, pair.Value);
+            return true;
+        }
+
+        private async Task<bool> MovePositionsAsync(Dictionary<string, Point> requested, Dictionary<string, Point> originals, bool force = false, Func<bool>? verify = null)
+        {
+            _transactionOriginals = originals;
+            _nativeTransaction = Task.Run(() =>
+            {
+                bool success = LayoutTransaction.Apply(requested, originals,
+                    DesktopInterop.MoveShellItem, _lifetime.Token, out bool restored, force, verify);
+                return (success, restored);
+            });
+            var result = await _nativeTransaction;
+            if (_stopped) return false;
+            _transactionOriginals = null;
+            if (!result.Restored) { _loadFailed = true; if (!_stopped) Warn("FarmRestoreFailed"); }
+            else if (!result.Success && !_stopped) Warn("FarmOperationFailed");
+            return result.Success;
         }
 
         private async Task RefreshAsync()
         {
-            if (_refreshing || _moving || _dragBusy || _stopped) return;
+            if (_refreshing || Busy || _stopped || _overlapBlocked) return;
             _refreshing = true;
             try
             {
                 var icons = await Task.Run(DesktopInterop.GetAllDesktopIcons);
                 var hwnd = await Task.Run(DesktopInterop.GetDesktopListViewHwnd);
-                if (_stopped) return;
+                if (_stopped || Busy) return;
                 if (_input != null) _input.DesktopWindow = hwnd;
                 var keys = icons.Select(i => i.ResolvedPath).ToHashSet(StringComparer.OrdinalIgnoreCase);
                 bool changed = false;
-                // 改名／搬離／刪除會解除失效身分；不以顯示名稱猜測替代項目。
                 foreach (var key in _assigned.Keys.Where(k => !keys.Contains(k)).ToArray()) { changed |= _assigned.Remove(key); _positions.Remove(key); }
                 if (changed) SaveState();
             }
@@ -336,6 +432,7 @@ namespace Desktop_Frames.FarmFences
         }
 
         private static bool Same(string a, string b) => string.Equals(a, b, StringComparison.OrdinalIgnoreCase);
+        private void Warn(string key) { LogMessage?.Invoke(key); Warning?.Invoke(FenceText.Get(key)); }
         private void Fail(string key, Exception ex) { LogMessage?.Invoke(ex.ToString()); Warning?.Invoke(FenceText.Get(key)); }
 
         public void SaveState()
@@ -357,9 +454,11 @@ namespace Desktop_Frames.FarmFences
                 string temporary = _stateFilePath + ".tmp";
                 File.WriteAllText(temporary, JsonSerializer.Serialize(list, new JsonSerializerOptions { WriteIndented = true }), new UTF8Encoding(false));
                 File.Move(temporary, _stateFilePath, true);
+                StateSaved?.Invoke(list);
             }
             catch (Exception ex) { Fail("FarmSaveFailed", ex); }
         }
+
 
         public void Stop()
         {
@@ -368,6 +467,29 @@ namespace Desktop_Frames.FarmFences
             _lifetime.Cancel();
             _refresh.Stop();
             _input?.Dispose();
+            // 背景位置交易不呼叫 Dispatcher；可等它回復完畢，不造成 UI 互鎖。
+            var result = _nativeTransaction?.GetAwaiter().GetResult();
+            if (result is { Restored: false }) _loadFailed = true;
+            if (_transactionOriginals != null)
+            {
+                var originals = _transactionOriginals;
+                bool restored = Task.Run(() => LayoutTransaction.Apply(originals, originals, DesktopInterop.MoveShellItem,
+                    CancellationToken.None, out _, true)).GetAwaiter().GetResult();
+                if (!restored) _loadFailed = true;
+                _transactionOriginals = null;
+            }
+            else if (_dragBusy && _dropOriginalSnapshot != null)
+            {
+                // 在等待 Explorer Drop 穩定時退出，仍回復按下滑鼠前的原生位置。
+                try
+                {
+                    var originals = _dropOriginalSnapshot.GetAwaiter().GetResult().ToDictionary(i => i.ResolvedPath, i => i.ScreenPoint, StringComparer.OrdinalIgnoreCase);
+                    bool restored = Task.Run(() => LayoutTransaction.Apply(originals, originals, DesktopInterop.MoveShellItem,
+                        CancellationToken.None, out _, true)).GetAwaiter().GetResult();
+                    if (!restored) _loadFailed = true;
+                }
+                catch (Exception ex) { _loadFailed = true; Fail("FarmRestoreFailed", ex); }
+            }
             SaveState();
             foreach (var window in _fences) window.Close();
             _fences.Clear();

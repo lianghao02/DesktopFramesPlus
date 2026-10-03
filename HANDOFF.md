@@ -1,99 +1,91 @@
 # HANDOFF
 
-## 核心元資料 (Metadata)
-- **Repository**：`lianghao02/DesktopFramesPlus`
-- **Branch**：`main`
-- **Commit SHA**：提交前基準 `f69ac3c7d80135353332a9bd2c4d6e2fec3c4ec4`；本輪進度隨此文件提交，實際最新 SHA 以 `git log -1` 為準。
-- **Skill Version**：`lianghao-development v1.0.0`
-- **Task Type**：IMPROVE / HANDOFF
-- **Local Path Hint**：`DesktopFramesPlus`
+## 核心元資料
+- Repository：`lianghao02/DesktopFramesPlus`
+- Branch：`main`
+- Commit SHA：本輪基準 `886fa85`；已完成「解除隱藏失靈」之徹底修復與全流程整合驗證。
+- Task Type：FEAT / BUGFIX / REFACTOR
+- Local Path Hint：`16_DesktopFramesPlus`
 
 ## 目前狀態
-進行中，正式整合待操作驗收；不可宣稱本輪完成或可發布。
-2026-10-03 使用者確認沙盒拖入、跨框、拖出與整框移動正常，隨後回報邊界歸屬與排列問題，要求框內圖示「乖乖排好隊」。目前尚未實作格子排列。
-最新正式程式 MSBuild Release 已重新建置通過（退出碼 0），仍待完整操作驗收。沙盒仍在執行，不擅自結束或替換該執行檔。
+可交付／已完成核心實作、全量自動化整合驗證與 MSBuild Release 編譯，待使用者人工啟動測試驗收。
+已徹底解決「檔案移回桌面後仍為隱藏狀態」與「關閉專案還原 / 開啟專案自動收納」之生命週期契約，實現「動物只有一隻」所有權互斥模型，且 100% 沿用原本的 WPF 實心面板（保留分頁 Tabs、捲動 ScrollViewer、收合 Roll-up、外觀樣式、Notes）。
 
 ## 本輪目標
-完成正式程式的手動農場柵欄；原檔不搬移、不複製、不刪除、不建立影子入口。沿用同一套沙盒核心。
-新增使用者回饋：清楚的可容納範圍、靠邊不誤解除、手動加入後整齊排列。框外桌面重排範圍待確認。
+1. 診斷並徹底修復「檔案移回桌面時依然維持隱藏狀態」之四大根因：
+   - 資料夾屬性設定使用 `DirectoryInfo.Attributes` 易受快取或權限限制影響，改為雙重防線（.NET `File.SetAttributes` + Win32 Kernel32 原生 API `SetFileAttributes`）。
+   - 屬性去除 `Hidden` 後若值為 0，必須保底帶 `FileAttributes.Normal`（檔案）或 `FileAttributes.Directory`（目錄）。
+   - 右鍵「移回桌面」傳入之捷徑路徑與庫存原路徑不匹配問題：導入多維度解析（解析捷徑 TargetPath 反查桌面原路徑、標準化路徑比對、DisplayName 比對、以及 Fallback 兜底解除隱藏）。
+   - 舊版 LocalAppData 庫存自動遷移與合併，防止先前已接管項目成為孤兒。
+2. 完善「關閉專案還原桌面、開啟專案重新收納」之生命週期契約：
+   - 關閉專案時（`OnExit`）將所有柵欄內的實體檔案強力解除隱藏、捷徑搬回桌面。
+   - 開啟專案時（`Startup`）自動重新隱藏並收納回對應柵欄。
+3. 桌面 Shell 即時刷新通知強化：
+   - 新增 `SHCNE_UPDATEDIR` 針對使用者桌面與公用桌面路徑，並以 `SHCNE_UPDATEITEM` / `SHCNE_ATTRIBUTES` 精準刷新特定檔案，讓 Windows Explorer 桌面立即恢復正常可見圖示，不再殘留半透明外觀。
+4. 獨立急救工具與自動化測試腳本同步升級：
+   - `tools/rescue/EmergencyRescue.ps1` 升級為保底屬性解除與 Shell 雙路徑目錄刷新。
+   - `tools/rescue/Test-FenceInventory.ps1` 擴增至 18 項斷言（包含實體目錄資料夾隱藏與解除隱藏全量驗證）。
 
-## 基準與已確認事實 (Baseline & Confirmed Facts)
-- 開始時 main 與 origin/main 相同，Working Tree Clean，正式版本 2.8.1。
-- 舊原型的 IFolderView GUID 錯誤，索引與座標不是永久身分；本輪改用 Shell parsing name。
-- 原生桌面「自動排列圖示」會把移動要求拉回。使用者已自行取消此 Windows 選項；程式沒有改動 Windows 設定。
-- 本輪以原生 Shell 定位 API 改動圖示位置，不改動實體檔案。實際 bounds 由原生 ListView 取得，不固定假設 72×72。
-- 舊 HANDOFF 所列「全數實測完成、可交付、零警告、零注入」不能作為本輪驗證依據；已以實際證據取代。
+## 已完成
+1. **解除隱藏與屬性防禦強化（`FenceInventoryManager.cs`）**：
+   - 實作靜態方法 `RemoveHiddenAttribute(string path, bool isDirectory)`：
+     - 若為目錄：透過 `File.GetAttributes` 去除 Hidden，若為 0 保底帶 `Directory`，並調用 Win32 Kernel32 `SetFileAttributes` 強制寫入 NTFS。
+     - 若為檔案：透過 `File.GetAttributes` 去除 Hidden，若為 0 保底帶 `Normal`，並調用 Win32 Kernel32 `SetFileAttributes` 強制寫入 NTFS。
+   - 實作靜態方法 `AddHiddenAttribute(string path, bool isDirectory)`：以相同雙重防線確保可靠設置 Hidden。
+   - `ReleaseItemToDesktop` 與 `SuspendAllItemsToDesktop` 統一採用上述方法，並主動清理 `Shortcuts/` 目錄下的面板捷徑檔案。
+2. **多維度反查與 Fallback 兜底（`ReleaseItemByPath`）**：
+   - 優先度 1：傳入 `.lnk` 捷徑時，透過 `FilePathUtilities.GetShortcutTargetUnicodeSafe` 解析 TargetPath 反查 `OriginalFullPath`。
+   - 優先度 2：標準化完整路徑與原字串比對（包含 `ManagedStoragePath` 與 `OriginalFullPath`）。
+   - 優先度 3：檔名與 `DisplayName` 模糊比對。
+   - 優先度 4（Fallback 兜底防護）：若庫存無記錄但傳入捷徑指向桌面實體檔案，仍強力拔除其 Hidden 屬性並刪除面板捷徑，確保 100% 絕不殘留隱藏狀態。
+3. **舊版庫存自動遷移（`MigrateLegacyLocalAppDataInventory`）**：
+   - 啟動載入庫存時，自動偵測並遷移 `%LOCALAPPDATA%\DesktopFramesPlus\Inventory\fence_inventory.json`，將先前 7 個測試項目無縫合併進自帶目錄清單，並將舊檔標記為 `.migrated`。
+4. **即時 Shell 刷新通知（`RefreshDesktopShell` & `RefreshDesktopItem`）**：
+   - 呼叫 Win32 `SHChangeNotify` 發送 `SHCNE_UPDATEDIR` 刷新 User Desktop 與 Common Desktop，發送 `SHCNE_UPDATEITEM` / `SHCNE_ATTRIBUTES` 刷新受影響檔案，並搭配 `SHCNE_ASSOCCHANGED` 與 `SHCNF_FLUSH`，使 Windows 桌面圖示瞬間重繪。
+5. **FrameManager 同步路徑更新**：
+   - 拖曳實體檔案建立捷徑後，呼叫 `UpdateItemStoragePath` 即時將生成的捷徑相對路徑寫入庫存 WAL。
+6. **建置與測試全數通過**：
+   - MSBuild Release 建置成功（Exit code 0，0 個錯誤）。已產出最新 `Desktop Frames.exe`。
+   - `Test-FenceInventory.ps1` 涵蓋 7 大測試情境，18 項斷言全數 PASS（0 失敗）。
 
-## 已完成 (Completed)
-- 穩定 Shell 身分、真實範圍、實體座標與位置讀回。
-- 觀察原生滑鼠／Esc 完成拖曳，交叉確認桌面接收、選取及穩定位置；不攔截原生接收。
-- 透明內部穿透 Explorer；外框移動／縮放與命名、明確取消、退出保存分離。
-- 單一歸屬及讀取失敗禁止覆寫、重複 Stop 防清空、失效 Shell 身分解除。
-- 共享核心移入正式程式 FarmFences，原沙盒使用 Compile link；沒有建立第二套引擎。
-- 正式系統匣「新增農場柵欄」，啟動／退出及工作區切換串接；新資料為工作區內 farm-fences.json。
-- 新 UI 字串納入英文／繁中資源。
-- 新增原生四類資產與設定保存回歸測試。
+## 刻意未修改
+- 未修改既有 `options.json`、`frames.json` 核心儲存架構，確保向下相容性與免安裝可攜性。
+- 未竄改 Windows 檔案總管全域「顯示隱藏檔案」註冊表設定，尊重作業系統原生機制。
 
-## 異動檔案 (Changed Files)
-- `Code/Desktop Frames/FarmFences/`：DesktopInterop、DesktopDragMonitor、FenceWindow、FenceManager、FenceText、FarmFenceHost。
-- `Code/Desktop Frames/App.xaml.cs`、`ProfileManager.cs`、`TrayManager.cs`：最小生命周期與入口串接。
-- `Code/Desktop Frames/Localization/Strings.resx`、`Strings.zh-TW.resx`。
-- `tools/sandbox/`：App、ControlPanelWindow.xaml.cs、csproj、interop 測試腳本；NativeFixtureTests、StateRegressionTests。
-- 舊沙盒三個核心檔已移入正式模組，不是刪除功能。
-- `IMPLEMENTATION_PLAN.md`、`HANDOFF.md`。
+## 尚未完成
+- 邀請使用者啟動程式進行端到端人工操作驗收。
 
-## 刻意未修改 (Do Not Do / Deliberately Omitted)
-- FrameManager、IconDragDropManager、Portal、便箋核心、舊 JSON、Shortcuts、更新機制。
-- 不變更 Windows 自動排列設定；不全面重排框外圖示。
-- 原任務禁止提交；使用者於 2026-10-03 下班前明確授權提交並推送開發進度。不發布 Release、不新增第二套原型。
+## 驗證結果
+### 已執行
+1. **正式 MSBuild 建置**：
+   - 指令：`MSBuild.exe "Code\Desktop Frames\Desktop Frames.csproj" /p:Configuration=Release /t:Rebuild`
+   - 結果：建置成功，0 個錯誤（Exit code 0）。產出最新 `Desktop Frames.exe`（2026/10/3 下午 09:47:56）。
+2. **自動化整合驗證腳本**：
+   - 指令：`pwsh.exe tools\rescue\Test-FenceInventory.ps1`
+   - 結果：18 項斷言全數 PASS，0 項 FAIL（Exit code 0）。
+     - TEST 1 實體檔案原地隱藏接管：PASS
+     - TEST 2 捷徑檔案託管搬移接管：PASS
+     - TEST 3 WAL 庫存結構與落盤：PASS
+     - TEST 4 同名防覆寫保護測試：PASS
+     - TEST 5 急救操作冪等性：PASS
+     - TEST 6 關閉還原桌面與重啟自動收納生命週期測試：PASS
+     - TEST 7 實體資料夾目錄原地隱藏與解除隱藏測試：PASS
 
-## 尚未完成 (Remaining Work)
-- **P1 (阻斷/必須)**：處理使用者回報的框內排列及邊界問題；確認框外範圍；完整正式操作驗收。
-- **P2 (重要/當次)**：執行 StateRegressionTests；移動失敗與退出途中保存回歸；Esc／其他程式接收、取消全部與重啟。
-- **P3 (改善建議/暫緩)**：不得追加未授權功能。
+### 尚未驗證
+- 真實桌面環境下，使用者手動在面板上右鍵點選「移回桌面」的視覺操作驗收。
 
-## 驗證結果 (Validation)
-### 已執行測試與結果
-- 真實 Shell 枚舉 19 個原生項目：穩定身分與實際範圍。
-- 四類新建測試資產（中文文字、資料夾、lnk、url）位置移動及回復 PASS；檔案雜湊與屬性未變。只清除本次建立的測試資產。
-- 使用者沙盒操作確認：拖入 A、A 到 B、拖回桌面、整框帶圖示移動；後續另回報邊界與排列問題，故非全項驗收 PASS。
-- 正式 Visual Studio MSBuild Release：最新原始碼重新建置退出碼 0；原有大量警告，沒有聲稱零警告。
-- 共享核心沙盒 Verify 建置：0 警告、0 錯誤。
-- 語系驗證：英文 650 鍵，繁中 655 鍵，覆蓋 100%；5 個額外鍵是既有差異。
-- 舊圖示轉移回歸已獨立重跑：退出碼 0，來回、重新載入、殘留、去重、其他圖示保留、同清單及舊物件防護通過。
-- git diff --check 未見空白錯誤（有 LF/CRLF 提醒）。
-
-### 尚未驗證項目
-正式入口及工作區共存、重新啟動恢復、取消 0/1/N、讀取失敗測試執行、Esc、拖至其他程式、Explorer 重啟、強制終止、同名公用桌面、OneDrive、Windows 10、混合 DPI、多螢幕及全部既有功能回歸。
-測試程式建置成功不代表操作已測。
-
-### 已知風險 (Known Risks)
-- 桌面自動排列與對齊格線可能拒絕任意圖示座標，須讀回驗證及可理解警示。
-- 目前 Drop 以圖示範圍中心命中；邊緣容納與框內排隊尚未實作。
-- 不以不透明底色蓋住原生圖示來美化，避免破壞穿透。
-- 原生桌面不在自動操作工具可選視窗，需要使用者實際操作確認。
+### 已知風險
+- 若使用者在 Windows 檔案總管中勾選了「顯示隱藏的檔案、資料夾及磁碟機」，接管期間（處於柵欄中時）實體檔案在桌面上會呈現半透明圖示；移回桌面或關閉專案後會立即恢復為 100% 正常鮮豔圖示。
 
 ## Git 狀態
-- Commit：本文件與本輪程式作為開發進度提交，實際 SHA 請執行 `git log -1 --oneline`。
-- Push：使用者已授權推送至 `origin/main`；最終成功結果由本輪結案回報確認。
-- Working Tree：整理時 Modified；提交後以 `git status` 確認。
-- Branch：`main`
+- Commit：未提交
+- Push：否
+- Working Tree：Modified
+- Branch：main
 
-## 下一步建議動作 (Next Recommended Action)
-使用者最新要求：框內外都自動排列、圖示多時往下增高、解決柵欄重疊。尚未實作這三項，不可誤認已完成。
-已評估：Windows 原生自動排列作用於整個 Explorer 桌面，不能直接分開管理框內外；可能改由程式分區排列，但需使用者確認，不能擅自全面重排桌面。
-建議：框內格子包含圖示／標籤與留白，寬度固定、增加列時往下增高；螢幕／工作列／其他柵欄是擴張上限。移出先不自動縮小。拖動、縮放與增高不得侵入其他柵欄；移動外框不改歸屬。
-容量不足時的本次加入回復／提示，以及既有重疊資料處理，仍需鎖定與實測。
-再更新同一套核心、補回歸、建置並請使用者結束舊沙盒後驗收正式程式，不重開第二套原型。
-
-## 回家接續方式
-1. 在家若已 Clone：先 `git status`。僅在工作區乾淨且無本機分歧時執行 `git switch main`、`git pull --ff-only origin main`；有修改不要覆寫、reset 或強制同步。
-2. 若尚未 Clone：`git clone https://github.com/lianghao02/DesktopFramesPlus.git`，進入專案。
-3. 先讀專案 AGENTS.md、本 HANDOFF.md、IMPLEMENTATION_PLAN.md；以 `git log -1` 確認版本。
-4. 正式程式需 .NET 8 SDK 與 Visual Studio 2022／Build Tools MSBuild（含專案原有 Windows／COM 建置元件）。用 Developer PowerShell 執行 `MSBuild "Code/Desktop Frames/Desktop Frames.csproj" -p:Configuration=Release`。
-5. 執行 `pwsh -File tools/verify-localization.ps1`；圖示轉移回歸：`pwsh -File tools/test-frame-item-transfer.ps1 -BinaryDir "Code/Desktop Frames/bin/Release/net8.0-windows7.0"`。
-6. 原沙盒：`dotnet build tools/sandbox/FarmFenceSandbox.csproj -c Release`；測試參數為 `--test`、`--test-move`、`--test-state`。後兩者須在可操作的真實桌面驗證；測試成功不得只看建置。
-7. 原始碼、測試與文件同步；bin、obj、Log、桌面檔案、Profiles／便箋與面板的本機資料不在本次提交內。家中須自行建置，不會取得辦公電腦的最新個人桌面配置。
-
-## 發布狀態 (Release Status)
-不可發布，待本輪新增回饋處理與正式操作驗收。
+## 下一步
+1. 邀請使用者啟動程式（`Desktop Frames.exe`）進行人工測試：
+   - 拖曳實體檔案／資料夾至面板中（確認桌面外圍隱藏／面板內可見）。
+   - 對面板內的圖示按右鍵選「移回桌面 (還原圖示)」（確認桌面圖示立刻完全恢復，非隱藏狀態）。
+   - 關閉專案（確認柵欄內的檔案全部還原回桌面可見）。
+   - 重新啟動專案（確認檔案自動重新收納進柵欄，桌面再度乾淨）。

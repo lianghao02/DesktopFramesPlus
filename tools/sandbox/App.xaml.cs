@@ -32,12 +32,20 @@ namespace FarmFenceSandbox
 
             DesktopInterop.DiagnosticLog += Log;
 
-            if (allArgs.Any(a => a.Equals("--test", StringComparison.OrdinalIgnoreCase) || a.Equals("--test-move", StringComparison.OrdinalIgnoreCase) || a.Equals("--test-state", StringComparison.OrdinalIgnoreCase)))
+            if (allArgs.Any(a => a.Equals("--test", StringComparison.OrdinalIgnoreCase) || a.Equals("--test-move", StringComparison.OrdinalIgnoreCase) || a.Equals("--test-state", StringComparison.OrdinalIgnoreCase) || a.Equals("--test-layout", StringComparison.OrdinalIgnoreCase)))
             {
                 Log("進入 --test CLI 模式");
+                ShutdownMode = ShutdownMode.OnExplicitShutdown;
                 try
                 {
                     AttachConsole(ATTACH_PARENT_PROCESS);
+                    if (allArgs.Contains("--test-layout") || allArgs.Contains("--test-state"))
+                    {
+                        if (allArgs.Contains("--test-layout")) LayoutRegressionTests.Run(Log);
+                        if (allArgs.Contains("--test-state")) await StateRegressionTests.Run(Log);
+                        Shutdown(0);
+                        return;
+                    }
                     Log("================ 農場柵欄底層實測 (CLI 模式) ================");
 
                     // 1. HWND 取得

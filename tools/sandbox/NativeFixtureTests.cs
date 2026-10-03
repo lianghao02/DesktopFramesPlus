@@ -74,6 +74,44 @@ namespace FarmFenceSandbox
                     if (hashes.Any(p => Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(p.Key))) != p.Value) ||
                         attributes.Any(p => File.GetAttributes(p.Key) != p.Value)) throw new InvalidOperationException("測試原檔內容或屬性發生變更");
                 }
+                // 在沒有使用者圖示的空白區驗證同一共用排列核心，不重排使用者桌面。
+                var all = DesktopInterop.GetAllDesktopIcons();
+                var others = all.Where(i => !paths.Contains(i.ResolvedPath)).ToArray();
+                Rect? region = null;
+                foreach (var area in DesktopInterop.GetWorkAreas())
+                {
+                    for (double x = area.Right - 640; x >= area.Left && region == null; x -= 160)
+                        for (double y = area.Top; y + 600 <= area.Bottom; y += 120)
+                        {
+                            var candidate = new Rect(x, y, 640, 600);
+                            if (others.Any(i => !i.BoundsOnScreen.IsEmpty && FenceLayout.Overlaps(candidate, i.BoundsOnScreen))) continue;
+                            region = candidate; break;
+                        }
+                    if (region != null) break;
+                }
+                if (region == null) throw new InvalidOperationException("沒有足夠的空白區執行原生排列測試，未移動使用者圖示");
+                var emptyArea = region.Value;
+                var fence = new LayoutFence("fixture", new Rect(emptyArea.Left + 150, emptyArea.Top + 20, 360, 260), new Thickness(3, 35, 3, 3));
+                var currentItems = all.Where(i => paths.Contains(i.ResolvedPath)).ToList();
+                var owners = currentItems.Take(2).ToDictionary(i => i.ResolvedPath, _ => fence.Id, StringComparer.OrdinalIgnoreCase);
+                var plan = FenceLayout.Plan(new[] { fence }, currentItems, owners, new[] { emptyArea });
+                bool Verify()
+                {
+                    Thread.Sleep(100);
+                    var actual = DesktopInterop.GetAllDesktopIcons();
+                    return currentItems.All(i => actual.Count(a => a.ResolvedPath == i.ResolvedPath) == 1 &&
+                        (actual.Single(a => a.ResolvedPath == i.ResolvedPath).ScreenPoint - plan.Positions[i.ResolvedPath]).Length <= 2) &&
+                        others.All(i => actual.Single(a => a.ResolvedPath == i.ResolvedPath).ScreenPoint == i.ScreenPoint);
+                }
+                if (!LayoutTransaction.Apply(plan.Positions, positions, DesktopInterop.MoveShellItem, CancellationToken.None, out bool restored, verify: Verify))
+                    throw new InvalidOperationException($"共用排列核心原生交易失敗，回復={restored}");
+                var arranged = DesktopInterop.GetAllDesktopIcons().Where(i => paths.Contains(i.ResolvedPath)).ToArray();
+                var plannedFence = fence with { Bounds = plan.Fences[fence.Id] };
+                if (arranged.Any(i => owners.ContainsKey(i.ResolvedPath) ? !plannedFence.Content.Contains(i.BoundsOnScreen) :
+                    FenceLayout.Overlaps(plannedFence.Bounds, i.BoundsOnScreen)) ||
+                    hashes.Any(p => Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(p.Key))) != p.Value) ||
+                    attributes.Any(p => File.GetAttributes(p.Key) != p.Value)) throw new InvalidOperationException("原生排列或原檔保全驗證失敗");
+                log("PASS：共用核心框內／框外原生排列、整批位置讀回、零第二份入口、使用者圖示位置未變。");
                 log("PASS：中文文件／資料夾／lnk／url 原生身分與座標讀回、原檔雜湊及屬性未變。");
             }
             finally
