@@ -78,9 +78,9 @@
 - 若使用者在 Windows 檔案總管中勾選了「顯示隱藏的檔案、資料夾及磁碟機」，接管期間（處於柵欄中時）實體檔案在桌面上會呈現半透明圖示；移回桌面或關閉專案後會立即恢復為 100% 正常鮮豔圖示。
 
 ## Git 狀態
-- Commit：未提交
-- Push：否
-- Working Tree：Modified
+- Commit：`288c3d3`
+- Push：是
+- Working Tree：Clean
 - Branch：main
 
 ## 下一步
