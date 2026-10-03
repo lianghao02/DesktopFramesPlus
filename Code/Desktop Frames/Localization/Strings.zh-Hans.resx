@@ -1957,4 +1957,31 @@
   <data name="LblNoDesktopIcons" xml:space="preserve">
     <value>桌面上无可用图标</value>
   </data>
+  <data name="SecInteractions" xml:space="preserve">
+    <value>操作与吸附</value>
+  </data>
+  <data name="SecFolderPortals" xml:space="preserve">
+    <value>文件夹镜像面板</value>
+  </data>
+  <data name="SecPublicDesktop" xml:space="preserve">
+    <value>公用桌面收纳权限</value>
+  </data>
+  <data name="LogCategoryFrameCreation" xml:space="preserve">
+    <value>面板创建</value>
+  </data>
+  <data name="OptShowDesktopDot" xml:space="preserve">
+    <value>桌面图标隐藏时在底部显示浮动圆点</value>
+  </data>
+  <data name="BtnGrantPublicDesktop" xml:space="preserve">
+    <value>一键授权收纳权限</value>
+  </data>
+  <data name="LblPublicDesktopGranted" xml:space="preserve">
+    <value>✓ 已具备公用桌面收纳权限（可直接拖拽收纳 Steam、PotPlayer 等图标）</value>
+  </data>
+  <data name="LblPublicDesktopNotGranted" xml:space="preserve">
+    <value>⚠️ 尚未授权公用桌面收纳（受 Windows 系统保护）</value>
+  </data>
+  <data name="DescPublicDesktop" xml:space="preserve">
+    <value>Windows 系统默认限制一般权限搬移“公用桌面”的快捷方式（如 Steam、PotPlayer）。授权后即可在一般用户权限下直接拖入栅栏收纳，且不会受到 UIPI 阻断拖拽。</value>
+  </data>
 </root>

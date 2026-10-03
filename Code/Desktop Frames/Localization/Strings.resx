@@ -1984,4 +1984,31 @@ This cannot be undone.</value>
   <data name="NativePanelNeedsEmpty" xml:space="preserve"><value>This panel contains shortcut or tab data. It was preserved. Use an empty panel to adopt original desktop icons.</value></data>
   <data name="NativePanelDragHint" xml:space="preserve"><value>Drag the original desktop icon into this panel. Removing the panel leaves the icon on the desktop; no copy or shortcut is created.</value></data>
   <data name="MenuReleaseToDesktop" xml:space="preserve"><value>Release to Desktop</value></data>
+  <data name="SecInteractions" xml:space="preserve">
+    <value>Behavior &amp; Interactions</value>
+  </data>
+  <data name="SecFolderPortals" xml:space="preserve">
+    <value>Folder Portals</value>
+  </data>
+  <data name="SecPublicDesktop" xml:space="preserve">
+    <value>Public Desktop Permissions</value>
+  </data>
+  <data name="LogCategoryFrameCreation" xml:space="preserve">
+    <value>Frame Creation</value>
+  </data>
+  <data name="OptShowDesktopDot" xml:space="preserve">
+    <value>Show Floating Dot when desktop icons are hidden</value>
+  </data>
+  <data name="BtnGrantPublicDesktop" xml:space="preserve">
+    <value>Grant Public Desktop Permission</value>
+  </data>
+  <data name="LblPublicDesktopGranted" xml:space="preserve">
+    <value>✓ Public Desktop is authorized for adoption.</value>
+  </data>
+  <data name="LblPublicDesktopNotGranted" xml:space="preserve">
+    <value>⚠️ Public Desktop is restricted by Windows.</value>
+  </data>
+  <data name="DescPublicDesktop" xml:space="preserve">
+    <value>Windows restricts moving shortcuts from the Public Desktop (like Steam, PotPlayer). Granting permission allows DesktopFrames to adopt them safely under standard user rights without UIPI conflicts.</value>
+  </data>
 </root>

@@ -541,45 +541,17 @@ namespace Desktop_Frames
 
             CreateSectionHeader(c, Strings.SecStartup, _userAccentColor);
             CreateCheckBox(c, Strings.OptStartWithWindows, "StartWithWindows", TrayManager.IsStartWithWindows);
-            CreateSectionHeader(c, Strings.SecSelections, _userAccentColor);
+            CreateCheckBox(c, Strings.OptTrayIcon, "EnableTrayIcon", SettingsManager.ShowInTray);
+            CreateCheckBox(c, Strings.OptNewFrameContextMenu, "EnableContextMenu", SettingsManager.EnableContextMenu);
+            CreateCheckBox(c, Strings.OptDisableScrollbars, "DisableFrameScrollbars", SettingsManager.DisableFrameScrollbars);
+
+            // 3. 操作與吸附
+            CreateSectionHeader(c, Strings.Get("SecInteractions"), _userAccentColor);
             CreateCheckBox(c, Strings.OptSingleClick, "SingleClickToLaunch", SettingsManager.SingleClickToLaunch);
             CreateCheckBox(c, Strings.OptSnapNearFrames, "EnableSnapNearFrames", SettingsManager.IsSnapEnabled);
             CreateCheckBox(c, Strings.OptDimensionSnap, "EnableDimensionSnap", SettingsManager.EnableDimensionSnap);
-            CreateCheckBox(c, Strings.OptTrayIcon, "EnableTrayIcon", SettingsManager.ShowInTray);
-            CreateCheckBox(c, Strings.OptRecycleBin, "UseRecycleBin", SettingsManager.UseRecycleBin);
 
-            // NEW: Context Menu Option
-            CreateCheckBox(c, Strings.OptNewFrameContextMenu, "EnableContextMenu", SettingsManager.EnableContextMenu);
-
-            // --- NEW: Default Portal View Dropdown ---
-            Grid portalViewGrid = new Grid { Margin = new Thickness(15, 8, 0, 8) };
-            portalViewGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(140) });
-            portalViewGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(150) });
-
-            TextBlock lblPortalView = new TextBlock { Text = Strings.LblDefaultPortalView, FontFamily = new FontFamily("Segoe UI"), FontSize = 13, VerticalAlignment = VerticalAlignment.Center };
-            Grid.SetColumn(lblPortalView, 0);
-
-            ComboBox cbPortalView = new ComboBox { Name = "DefaultPortalViewComboBox", Height = 25, FontFamily = new FontFamily("Segoe UI"), FontSize = 13, VerticalAlignment = VerticalAlignment.Center };
-            // Content is what the user reads, Tag is what gets written to the
-            // settings file. Never save the label: it changes with the language.
-            cbPortalView.Items.Add(new ComboBoxItem { Content = Strings.ViewIcons, Tag = "Icons" });
-            cbPortalView.Items.Add(new ComboBoxItem { Content = Strings.ViewDetails, Tag = "Details" });
-            cbPortalView.SelectedIndex = string.Equals(SettingsManager.DefaultPortalView, "Details", StringComparison.OrdinalIgnoreCase) ? 1 : 0;
-            Grid.SetColumn(cbPortalView, 1);
-
-            portalViewGrid.Children.Add(lblPortalView);
-            portalViewGrid.Children.Add(cbPortalView);
-            c.Children.Add(portalViewGrid);
-            // -----------------------------------------
-
-            // Moved from Style Tab (Choices)
-            CreateCheckBox(c, Strings.OptPortalWatermark, "EnablePortalWatermark", SettingsManager.ShowBackgroundImageOnPortalFrames);
-            var n = CreateCheckBoxReturn(c, Strings.OptNoteWatermark, "EnableNoteWatermark", false);
-            n.IsEnabled = false; n.Foreground = Brushes.Gray;
-            CreateCheckBox(c, Strings.OptDisableScrollbars, "DisableFrameScrollbars", SettingsManager.DisableFrameScrollbars);
-
-
-            // --- NEW: Notification Sound Dropdown ---
+            // 音效設定
             CheckBox cbSounds = CreateCheckBoxReturn(c, Strings.OptEnableSounds, "EnableSounds", SettingsManager.EnableSounds);
 
             Grid soundGrid = new Grid { Margin = new Thickness(35, 0, 0, 8) }; // Indented to show parent/child relationship
@@ -615,9 +587,95 @@ namespace Desktop_Frames
             // Live-toggle the combobox based on the checkbox state
             soundGrid.IsEnabled = cbSounds.IsChecked == true;
             cbSounds.Click += (s, e) => soundGrid.IsEnabled = cbSounds.IsChecked == true;
-            // ----------------------------------------
 
-            //     CreateCheckBox(c, Strings.LblEnableProfileAutomation, "EnableProfileAutomation", SettingsManager.EnableProfileAutomation);
+            // 4. 資料夾鏡像面板 (Folder Portal)
+            CreateSectionHeader(c, Strings.Get("SecFolderPortals"), _userAccentColor);
+
+            Grid portalViewGrid = new Grid { Margin = new Thickness(15, 8, 0, 8) };
+            portalViewGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(140) });
+            portalViewGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(150) });
+
+            TextBlock lblPortalView = new TextBlock { Text = Strings.LblDefaultPortalView, FontFamily = new FontFamily("Segoe UI"), FontSize = 13, VerticalAlignment = VerticalAlignment.Center };
+            Grid.SetColumn(lblPortalView, 0);
+
+            ComboBox cbPortalView = new ComboBox { Name = "DefaultPortalViewComboBox", Height = 25, FontFamily = new FontFamily("Segoe UI"), FontSize = 13, VerticalAlignment = VerticalAlignment.Center };
+            cbPortalView.Items.Add(new ComboBoxItem { Content = Strings.ViewIcons, Tag = "Icons" });
+            cbPortalView.Items.Add(new ComboBoxItem { Content = Strings.ViewDetails, Tag = "Details" });
+            cbPortalView.SelectedIndex = string.Equals(SettingsManager.DefaultPortalView, "Details", StringComparison.OrdinalIgnoreCase) ? 1 : 0;
+            Grid.SetColumn(cbPortalView, 1);
+
+            portalViewGrid.Children.Add(lblPortalView);
+            portalViewGrid.Children.Add(cbPortalView);
+            c.Children.Add(portalViewGrid);
+
+            CreateCheckBox(c, Strings.OptPortalWatermark, "EnablePortalWatermark", SettingsManager.ShowBackgroundImageOnPortalFrames);
+            CreateCheckBox(c, Strings.OptRecycleBin, "UseRecycleBin", SettingsManager.UseRecycleBin);
+
+            // 5. 公用桌面收納權限 (Public Desktop)
+            CreateSectionHeader(c, Strings.Get("SecPublicDesktop"), _userAccentColor);
+            c.Children.Add(new TextBlock
+            {
+                Text = Strings.Get("DescPublicDesktop"),
+                FontSize = 12,
+                Foreground = new SolidColorBrush(Color.FromRgb(110, 110, 110)),
+                TextWrapping = TextWrapping.Wrap,
+                Margin = new Thickness(15, 0, 15, 8)
+            });
+
+            bool isCommonGranted = Services.FenceInventoryManager.HasCommonDesktopWritePermission();
+            Grid publicDesktopGrid = new Grid { Margin = new Thickness(15, 4, 15, 15) };
+            publicDesktopGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            publicDesktopGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(160) });
+
+            TextBlock lblCommonStatus = new TextBlock
+            {
+                Text = isCommonGranted ? Strings.Get("LblPublicDesktopGranted") : Strings.Get("LblPublicDesktopNotGranted"),
+                FontSize = 13,
+                FontWeight = FontWeights.SemiBold,
+                Foreground = isCommonGranted ? new SolidColorBrush(Color.FromRgb(34, 139, 34)) : new SolidColorBrush(Color.FromRgb(210, 105, 30)),
+                VerticalAlignment = VerticalAlignment.Center,
+                TextWrapping = TextWrapping.Wrap
+            };
+            Grid.SetColumn(lblCommonStatus, 0);
+
+            Button btnGrant = new Button
+            {
+                Content = isCommonGranted ? "✓ 已完成授權" : Strings.Get("BtnGrantPublicDesktop"),
+                Height = 30,
+                FontSize = 12,
+                FontWeight = FontWeights.SemiBold,
+                Background = isCommonGranted ? new SolidColorBrush(Color.FromRgb(235, 235, 235)) : new SolidColorBrush(Color.FromRgb(0, 120, 215)),
+                Foreground = isCommonGranted ? Brushes.Gray : Brushes.White,
+                BorderThickness = new Thickness(0),
+                Cursor = isCommonGranted ? Cursors.Arrow : Cursors.Hand,
+                IsEnabled = !isCommonGranted,
+                Margin = new Thickness(10, 0, 0, 0)
+            };
+            Grid.SetColumn(btnGrant, 1);
+
+            btnGrant.Click += (s, e) =>
+            {
+                bool success = Services.FenceInventoryManager.GrantCommonDesktopPermission();
+                if (success)
+                {
+                    lblCommonStatus.Text = Strings.Get("LblPublicDesktopGranted");
+                    lblCommonStatus.Foreground = new SolidColorBrush(Color.FromRgb(34, 139, 34));
+                    btnGrant.Content = "✓ 已完成授權";
+                    btnGrant.IsEnabled = false;
+                    btnGrant.Foreground = Brushes.Gray;
+                    btnGrant.Background = new SolidColorBrush(Color.FromRgb(235, 235, 235));
+                    btnGrant.Cursor = Cursors.Arrow;
+                    MessageBoxesManager.ShowOKOnlyMessageBoxForm("公用桌面收納權限已成功授權！日後可直接拖曳收納公用捷徑。", Strings.DlgInfo);
+                }
+                else
+                {
+                    MessageBoxesManager.ShowOKOnlyMessageBoxForm("未取得系統管理員授權或已取消確認。", Strings.DlgInfo);
+                }
+            };
+
+            publicDesktopGrid.Children.Add(lblCommonStatus);
+            publicDesktopGrid.Children.Add(btnGrant);
+            c.Children.Add(publicDesktopGrid);
             t.Content = new ScrollViewer { Content = c, VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
             _tabControl.Items.Add(t);
         }
@@ -673,6 +731,7 @@ namespace Desktop_Frames
             CreateSectionHeader(c, Strings.SecDesktopIconVisibility, ColorStyle);
             CreateCheckBox(c, Strings.OptHideIconsRunning, "HideDesktopElementsOnStart", SettingsManager.HideDesktopElementsOnStart);
             CreateCheckBox(c, Strings.OptHideIconsWhenHidden, "HideDesktopElementsOnAllFramesHide", SettingsManager.HideDesktopElementsOnAllFramesHide);
+            CreateCheckBox(c, Strings.Get("OptShowDesktopDot"), "ShowDesktopDot", SettingsManager.ShowDesktopDot);
 
 
 
@@ -1342,6 +1401,11 @@ namespace Desktop_Frames
                             DesktopIconManager.SetDesktopIconsVisible(!SettingsManager.HideDesktopElementsOnStart);
                         }
                         if (cb.Name == "HideDesktopElementsOnAllFramesHide") SettingsManager.HideDesktopElementsOnAllFramesHide = cb.IsChecked == true;
+                        if (cb.Name == "ShowDesktopDot")
+                        {
+                            SettingsManager.ShowDesktopDot = cb.IsChecked == true;
+                            DesktopIconManager.UpdateDotVisibility();
+                        }
                     }
                     else if (child is Grid g)
                     {

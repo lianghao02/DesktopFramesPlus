@@ -6685,6 +6685,36 @@ namespace Desktop_Frames
                                 // 農場圍籬：檢查是否為來自桌面的項目（所有權互斥模型：動物只有一隻）
                                 if (Services.FenceInventoryManager.IsFromDesktop(droppedFile))
                                 {
+                                    // --- 智慧授權：若拖入公用桌面項目且尚未取得寫入權限，即時詢問並執行處方 1 ---
+                                    if (Services.FenceInventoryManager.IsInCommonDesktop(droppedFile) &&
+                                        !Services.FenceInventoryManager.HasCommonDesktopWritePermission())
+                                    {
+                                        string promptMsg = "此圖示位於 Windows「公用桌面」(Public Desktop，如 Steam、PotPlayer 等)。\n" +
+                                                           "Windows 預設限制一般使用者權限搬移此處的檔案。\n\n" +
+                                                           "是否立即授權本程式收納公用桌面圖示？\n\n" +
+                                                           "（點選「是」後只需確認一次 Windows UAC 系統確認，授權完成後即可直接收納，且主程式仍維持安全的一般權限，不會阻斷拖曳）";
+
+                                        bool userAgreed = MessageBoxesManager.ShowCustomYesNoMessageBox(promptMsg, Strings.Get("SecPublicDesktop"));
+                                        if (userAgreed)
+                                        {
+                                            bool granted = Services.FenceInventoryManager.GrantCommonDesktopPermission();
+                                            if (granted)
+                                            {
+                                                LogManager.Log(LogManager.LogLevel.Info, LogManager.LogCategory.FrameCreation,
+                                                    "Common desktop permission successfully granted via on-drop prompt.");
+                                            }
+                                            else
+                                            {
+                                                MessageBoxesManager.ShowOKOnlyMessageBoxForm("未取得管理員授權，圖示保留於桌面。", Strings.DlgInfo);
+                                                continue;
+                                            }
+                                        }
+                                        else
+                                        {
+                                            continue;
+                                        }
+                                    }
+
                                     bool adoptSuccess = Services.FenceInventoryManager.Instance.TryAdopt(
                                         droppedFile, targetFrameId, out adoptedRecord, out string adoptErrorMsg);
 

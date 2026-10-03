@@ -1214,7 +1214,7 @@
     <value>工作區系統錯誤：{0}</value>
   </data>
   <data name="MsgRecycleBinFailed" xml:space="preserve">
-    <value>無法把該專案移入回收站。</value>
+    <value>無法把該項目移入資源回收筒。</value>
   </data>
   <data name="MsgReloadFramesFailed" xml:space="preserve">
     <value>重新載入面板時出錯：{0}</value>
@@ -1387,7 +1387,7 @@
     <value>面板隱藏時一併隱藏 Windows 桌面圖示</value>
   </data>
   <data name="OptIdleFadeOut" xml:space="preserve">
-    <value>空閒時淡出面板</value>
+    <value>閒置時淡出面板</value>
   </data>
   <data name="OptionsHeading" xml:space="preserve">
     <value>選項</value>
@@ -1396,19 +1396,19 @@
     <value>Desktop Frames + - 選項</value>
   </data>
   <data name="OptNewFrameContextMenu" xml:space="preserve">
-    <value>在桌面右鍵選單中顯示「新增框架」</value>
+    <value>在桌面右鍵選單中顯示「新建面板」</value>
   </data>
   <data name="OptNoteWatermark" xml:space="preserve">
-    <value>啟用便箋框架浮水印（即將推出）</value>
+    <value>啟用便箋面板浮水印（即將推出）</value>
   </data>
   <data name="OptPortalWatermark" xml:space="preserve">
-    <value>啟用資料夾框架浮水印</value>
+    <value>啟用資料夾面板背景浮水印</value>
   </data>
   <data name="OptProfileHotkeys" xml:space="preserve">
     <value>工作區切換快捷鍵</value>
   </data>
   <data name="OptRecycleBin" xml:space="preserve">
-    <value>資料夾面板中的“刪除專案”改為放入回收站</value>
+    <value>資料夾面板中的「刪除項目」改為移至資源回收筒</value>
   </data>
   <data name="OptSingleClick" xml:space="preserve">
     <value>單擊即可開啟</value>
@@ -1570,10 +1570,10 @@
     <value>圖示</value>
   </data>
   <data name="SecIdleAutoRoll" xml:space="preserve">
-    <value>空閒自動收起</value>
+    <value>閒置自動收合</value>
   </data>
   <data name="SecIdleFadeOut" xml:space="preserve">
-    <value>空閒淡出</value>
+    <value>閒置淡出</value>
   </data>
   <data name="SecLog" xml:space="preserve">
     <value>日誌</value>
@@ -1582,7 +1582,7 @@
     <value>日誌類別</value>
   </data>
   <data name="SecLogConfiguration" xml:space="preserve">
-    <value>日誌配置</value>
+    <value>日誌層級</value>
   </data>
   <data name="SecMaintenance" xml:space="preserve">
     <value>維護</value>
@@ -1655,7 +1655,7 @@
     <value>智慧桌面（自動整理）</value>
   </data>
   <data name="SecStartup" xml:space="preserve">
-    <value>啟動</value>
+    <value>系統與啟動</value>
   </data>
   <data name="SecUtilities" xml:space="preserve">
     <value>實用工具</value>
@@ -1670,7 +1670,7 @@
     <value>面板色調</value>
   </data>
   <data name="SldIdleTime" xml:space="preserve">
-    <value>空閒時間（秒）</value>
+    <value>閒置時間（秒）</value>
   </data>
   <data name="SldMenuTint" xml:space="preserve">
     <value>選單色調</value>
@@ -1942,7 +1942,7 @@
   <data name="MsgTemplateExported" xml:space="preserve">
     <value>語言模板已成功匯出！</value>
   </data>
-<data name="MsgProfileInitializationError" xml:space="preserve"><value>設定檔初始化錯誤：{0}</value></data><data name="DlgStartupError" xml:space="preserve"><value>啟動錯誤</value></data><data name="MsgCriticalStartupError" xml:space="preserve"><value>嚴重啟動錯誤：{0}</value></data><data name="MsgShowAboutFailed" xml:space="preserve"><value>無法顯示「關於」視窗：{0}</value></data><data name="LogCategoryBackgroundValidation" xml:space="preserve"><value>背景驗證</value></data><data name="LogCategoryGeneral" xml:space="preserve"><value>一般</value></data><data name="LogCategorySettings" xml:space="preserve"><value>設定</value></data><data name="LogCategoryFrameUpdate" xml:space="preserve"><value>框架更新</value></data><data name="DefaultFrameTitle" xml:space="preserve"><value>新增框架 — 將快捷方式拖放到這裡</value></data><data name="DefaultTipsTitle" xml:space="preserve"><value>Desktop Frames + 啟動提示</value></data><data name="LogCategoryImportExport" xml:space="preserve"><value>匯入與匯出</value></data><data name="LogCategoryUI" xml:space="preserve"><value>使用者介面</value></data><data name="DefaultTipsContent" xml:space="preserve"><value>歡迎使用 DESKTOP FRAMES +&#xD;&#xA;---------------------------&#xD;&#xA;• 收合／展開：按兩下框架標題列。&#xD;&#xA;• 重新命名：Ctrl + 按一下標題列（按 Enter 儲存）。&#xD;&#xA;• 搜尋（SpotSearch）：按 Ctrl + &#96;（波浪符號）即可立即尋找任何圖示。&#xD;&#xA;• 選項：按一下左上角的「♥」選單圖示。&#xD;&#xA;• 重新排列圖示：Ctrl + 拖曳圖示至新位置。&#xD;&#xA;• 快顯功能表：在圖示或框架上按滑鼠右鍵，查看更多選項。&#xD;&#xA;&#xD;&#xA;提示：Ctrl + 按一下或 Ctrl + 按滑鼠右鍵，可顯示更多選項。&#xD;&#xA;&#xD;&#xA;試著自訂這個框架吧！在標題列上按滑鼠右鍵 → 自訂…</value></data><data name="LogCategoryIconHandling" xml:space="preserve"><value>圖示處理</value></data>  <data name="MenuDrawFrame" xml:space="preserve">
+<data name="MsgProfileInitializationError" xml:space="preserve"><value>設定檔初始化錯誤：{0}</value></data><data name="DlgStartupError" xml:space="preserve"><value>啟動錯誤</value></data><data name="MsgCriticalStartupError" xml:space="preserve"><value>嚴重啟動錯誤：{0}</value></data><data name="MsgShowAboutFailed" xml:space="preserve"><value>無法顯示「關於」視窗：{0}</value></data><data name="LogCategoryBackgroundValidation" xml:space="preserve"><value>背景驗證</value></data><data name="LogCategoryGeneral" xml:space="preserve"><value>一般</value></data><data name="LogCategorySettings" xml:space="preserve"><value>設定</value></data><data name="LogCategoryFrameUpdate" xml:space="preserve"><value>面板更新</value></data><data name="LogCategoryFrameCreation" xml:space="preserve"><value>面板建立</value></data><data name="DefaultFrameTitle" xml:space="preserve"><value>新增框架 — 將快捷方式拖放到這裡</value></data><data name="DefaultTipsTitle" xml:space="preserve"><value>Desktop Frames + 啟動提示</value></data><data name="LogCategoryImportExport" xml:space="preserve"><value>匯入與匯出</value></data><data name="LogCategoryUI" xml:space="preserve"><value>使用者介面</value></data><data name="DefaultTipsContent" xml:space="preserve"><value>歡迎使用 DESKTOP FRAMES +&#xD;&#xA;---------------------------&#xD;&#xA;• 收合／展開：按兩下框架標題列。&#xD;&#xA;• 重新命名：Ctrl + 按一下標題列（按 Enter 儲存）。&#xD;&#xA;• 搜尋（SpotSearch）：按 Ctrl + &#96;（波浪符號）即可立即尋找任何圖示。&#xD;&#xA;• 選項：按一下左上角的「♥」選單圖示。&#xD;&#xA;• 重新排列圖示：Ctrl + 拖曳圖示至新位置。&#xD;&#xA;• 快顯功能表：在圖示或框架上按滑鼠右鍵，查看更多選項。&#xD;&#xA;&#xD;&#xA;提示：Ctrl + 按一下或 Ctrl + 按滑鼠右鍵，可顯示更多選項。&#xD;&#xA;&#xD;&#xA;試著自訂這個框架吧！在標題列上按滑鼠右鍵 → 自訂…</value></data><data name="LogCategoryIconHandling" xml:space="preserve"><value>圖示處理</value></data>  <data name="MenuDrawFrame" xml:space="preserve">
     <value>滑鼠框選範圍建立面板…</value>
   </data>
   <data name="DrawFrameHint" xml:space="preserve">
@@ -2000,4 +2000,28 @@
   <data name="NativePanelNeedsEmpty" xml:space="preserve"><value>此面板已有捷徑或分頁資料，已保留原內容。請使用空面板接管桌面原圖示。</value></data>
   <data name="NativePanelDragHint" xml:space="preserve"><value>建立後，請將桌面原圖示拖入面板。取消面板後，圖示留在桌面；不複製原檔，也不建立第二份入口。</value></data>
   <data name="MenuReleaseToDesktop" xml:space="preserve"><value>移回桌面 (還原圖示)</value></data>
+  <data name="SecInteractions" xml:space="preserve">
+    <value>操作與吸附</value>
+  </data>
+  <data name="SecFolderPortals" xml:space="preserve">
+    <value>資料夾鏡像面板</value>
+  </data>
+  <data name="SecPublicDesktop" xml:space="preserve">
+    <value>公用桌面收納權限</value>
+  </data>
+  <data name="OptShowDesktopDot" xml:space="preserve">
+    <value>桌面圖示隱藏時在底部顯示浮動圓點</value>
+  </data>
+  <data name="BtnGrantPublicDesktop" xml:space="preserve">
+    <value>一鍵授權收納權限</value>
+  </data>
+  <data name="LblPublicDesktopGranted" xml:space="preserve">
+    <value>✓ 已具備公用桌面收納權限（可直接拖曳收納 Steam、PotPlayer 等圖示）</value>
+  </data>
+  <data name="LblPublicDesktopNotGranted" xml:space="preserve">
+    <value>⚠️ 尚未授權公用桌面收納（受 Windows 系統目錄保護）</value>
+  </data>
+  <data name="DescPublicDesktop" xml:space="preserve">
+    <value>Windows 系統預設限制一般權限搬移「公用桌面」的捷徑（如 Steam、PotPlayer）。授權後即可在一般使用者權限下直接拖入柵欄收納，且不會受到 UIPI 阻斷拖曳。</value>
+  </data>
 </root>

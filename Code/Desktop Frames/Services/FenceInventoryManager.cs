@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Security.Principal;
+using System.Diagnostics;
 using Newtonsoft.Json;
 
 namespace Desktop_Frames.Services
@@ -481,6 +482,62 @@ namespace Desktop_Frames.Services
             }
         }
 
+        public static bool HasCommonDesktopWritePermission()
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(CommonDesktopPath) || !Directory.Exists(CommonDesktopPath))
+                    return false;
+
+                string testFile = Path.Combine(CommonDesktopPath, $".dfp_perm_check_{Guid.NewGuid():N}.tmp");
+                using (var fs = new FileStream(testFile, FileMode.CreateNew, FileAccess.ReadWrite, FileShare.None))
+                {
+                    byte[] testByte = new byte[] { 0 };
+                    fs.Write(testByte, 0, testByte.Length);
+                }
+                File.Delete(testFile);
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        public static bool GrantCommonDesktopPermission()
+        {
+            try
+            {
+                string username = Environment.UserName;
+                string commonPath = CommonDesktopPath;
+                if (string.IsNullOrWhiteSpace(commonPath) || !Directory.Exists(commonPath))
+                    return false;
+
+                var psi = new ProcessStartInfo
+                {
+                    FileName = "icacls.exe",
+                    Arguments = $"\"{commonPath}\" /grant \"{username}:(OI)(CI)M\"",
+                    Verb = "runas",
+                    UseShellExecute = true,
+                    WindowStyle = ProcessWindowStyle.Hidden,
+                    CreateNoWindow = true
+                };
+
+                using (var proc = Process.Start(psi))
+                {
+                    if (proc == null) return false;
+                    proc.WaitForExit();
+                    return proc.ExitCode == 0;
+                }
+            }
+            catch (Exception ex)
+            {
+                LogManager.Log(LogManager.LogLevel.Warn, LogManager.LogCategory.FrameCreation,
+                    $"Grant common desktop permission failed or user canceled UAC: {ex.Message}");
+                return false;
+            }
+        }
+
         public bool PreflightCheck(string path, out string failureReason)
         {
             failureReason = string.Empty;
@@ -513,8 +570,13 @@ namespace Desktop_Frames.Services
                 {
                     if (IsInCommonDesktop(path))
                     {
-                        failureReason = "此圖示位於「公用桌面」(Public Desktop)，需要系統管理員權限。\n" +
-                                        "請對本程式右鍵點選「以系統管理員身分執行」，即可直接接管並清空桌面圖示。";
+                        failureReason = "此圖示位於系統「公用桌面」(Public Desktop)，Windows 預設限制一般權限搬移。\n\n" +
+                                        "建議解決方式（請擇一）：\n" +
+                                        "1. 手動將該圖示「剪下」並貼到「個人桌面」（Windows 會提示一次提權），之後即可正常拖入柵欄。\n" +
+                                        "2. 以系統管理員身分開啟 PowerShell 執行一次性目錄授權：\n" +
+                                        "   icacls \"C:\\Users\\Public\\Desktop\" /grant \"$($env:USERNAME):(OI)(CI)M\"\n" +
+                                        "   授權後本程式便能直接無痛收納公用桌面圖示。\n\n" +
+                                        "※ 請勿將本程式以「系統管理員身分」啟動，否則 Windows UIPI 機制會全面封鎖桌面拖曳。";
                     }
                     else
                     {
