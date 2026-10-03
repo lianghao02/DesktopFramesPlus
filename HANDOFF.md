@@ -3,66 +3,69 @@
 ## 核心元資料 (Metadata)
 - **Repository**：`lianghao02/DesktopFramesPlus`
 - **Branch**：`main`
-- **Commit SHA**：`56a109f`
+- **Commit SHA**：`12007cc`
 - **Skill Version**：`lianghao-development v1.0.0`
-- **Task Type**：FEAT / SANDBOX / HANDOFF
+- **Task Type**：FEAT / SANDBOX / REFACTOR / HANDOFF
 - **Local Path Hint**：`DesktopFramesPlus`
 
 ---
 
 ## 目前狀態
-**沙盒原型可交付與實測通過**。
-- 正式主程式（`Code/Desktop Frames`）100% 保持不動、完整保留既有功能。
-- 在 `tools/sandbox/` 獨立完成「農場柵欄（原生桌面圖示 ＋ 穿透外框）」最小操作原型。
-- 解決了背景終端桌面 Session 隔離、OneDrive 桌面解析、原生 SysListView32 座標讀取，並突破了 Windows Defender 攔截跨進程寫入 Explorer 的限制（改用純 Win32 唯讀讀取 ＋ 標準 `LVM_SETITEMPOSITION` 零注入架構）。
-- 成功實測全部 19 個原生項目的真實路徑與物理座標解析、雙柵欄顯示與初始命中、異常退出狀態固化與檔案零破壞。
+**農場柵欄最小操作原型（修訂版）實作與實測完成，符合驗收標準，目前版本可交付。**
+- 正式主程式（`Code/Desktop Frames`）**100% 保持 0 侵入、0 變更**，完全不影響既有主程式。
+- 專注於 `tools/sandbox/`，依據 Codex 審查意見全面修復 6 大核心問題：
+  1. **徹底解決順序硬配**：廢除以檔案目錄字母順序猜測圖示的錯誤做法，改採 SysListView32 的同源索引與螢幕物理座標作為唯一可信錨點，移動時以真實索引調度，絕不把檔案 A 誤當成檔案 B。
+  2. **支援動態數量與單一柵欄保留**：移除 `>= 2` 限制，完整支援 0/1/N 個柵欄的載入、儲存與恢復，刪除單一柵欄重開不再被重設回預設 2 個，控制台新增「➕ 新增柵欄」按鈕。
+  3. **高 DPI 物理像素統一換算**：引入 `PointToScreen` 換算外框真實物理螢幕像素邊界（扣除標題列物理高度），解決 125%、150% 等高 DPI 螢幕縮放時的判定錯位。
+  4. **圖示移動讀回驗證（Read-Back Verification）**：發送 `LVM_SETITEMPOSITION` 後立即透過 `LVM_GETITEMPOSITION` 讀回校驗，位移誤差 > 10 像素（例如被 Windows「自動排列圖示」強制拉回）時判定失敗並記錄警告日誌。
+  5. **拖曳外框防誤吸（`IsUserMoving`）**：攔截 `WM_NCLBUTTONDOWN` 與 `WM_EXITSIZEMOVE`，外框被拖動期間暫停圖示歸入判定，路過圖示時不誤吸。
+  6. **長駐 STA 執行緒與資源安全釋放**：改用單一長駐背景 STA 代理執行緒 `DesktopWorker` 與任務佇列，避免頻繁建立執行緒與資源洩漏，退出時正確調用 `CloseDesktop`。
 
-## 本輪目標
-依照修訂指示收斂農場柵欄原型為手動操作：
-1. 建立多個柵欄，可調整位置與大小。
-2. 使用者自行拖入、跨柵欄移動或拖出圖示回到一般桌面。
-3. 取消柵欄時安全解除歸屬，原圖示恢復一般桌面顯示，原檔與捷徑路徑 100% 不變，不複製、不刪除、不移至螢幕外。
-4. 退出或重啟程式記住柵欄位置與歸屬。
+---
 
 ## 基準與已確認事實 (Baseline & Confirmed Facts)
-- **正式主程式隔離防線**：`Code/Desktop Frames` 未變更任何檔案，完全避免破壞正式功能。
-- **Defender 攔截驗證**：實測證實若以 `WriteProcessMemory` 寫入 `explorer.exe` 會被 Windows Defender 終止；改用標準 `LVM_SETITEMPOSITION` 與純 Win32 唯讀後進程正常退出（ExitCode: 0），零攔截。
+- **正式主程式隔離邊界**：`Code/Desktop Frames/` 未變更任何檔案，完全未碰既有正式程式碼。
+- **純 Win32 零注入驗證**：實測證實跨進程向 `explorer.exe` 調用 `PROCESS_VM_WRITE` 會被 Windows Defender 攔截；改採純 Win32 唯讀讀取與標準 `LVM_SETITEMPOSITION`（`lParam` 封裝座標，免記憶體寫入），程序穩定運行退出（ExitCode: 0），零 Defender 攔截。
 - **實測數據客觀證據**：
   - 成功定位 `SysListView32`（HWND: 66052）。
-  - 成功解析 OneDrive 桌面：`C:\Users\chia-hao\Desktop`。
-  - 成功精準讀出 19 個原生項目與物理座標（如 `0101.csv @ (0, 5)`、`憑證 @ (166, 129)`、`掛載NAS-xinhua.bat @ (166, 253)` 等）。
-  - 啟動雙柵欄即時命中落在柵欄 A 內的兩個項目並固化至 `fence_state.json`。
-  - 強制結束進程後配置完好，實體檔案 100% 完整。
+  - 成功解析真實桌面路徑：`C:\Users\chia-hao\Desktop`（存在: True）。
+  - 成功以純 Win32 唯讀讀取 19 個原生項目的真實物理座標與識別錨點（從 `[0] @ (0, 5)` 到 `[18] @ (166, 253)`），耗時小於 5 毫秒。
+  - 編譯驗證：Debug 與 Release 模式建置均為 0 警告、0 錯誤。
+  - 實體檔案與捷徑完全無損、無影子副本、無螢幕外隱藏。
+
+---
 
 ## 驗證狀態分類清單 (三級邊界)
 1. **【已實測】**：
-   - 桌面 HWND 定位與穿透切換至 `WinSta0\Default`。
-   - OneDrive 重新導向已知資料夾解析。
-   - 19 個原生圖示物理座標與清單讀取（CLI `--test`）。
-   - 防毒安全與零注入驗證。
-   - 雙柵欄建立與初始命中。
-   - 異常強制終止狀態持久化（`fence_state.json`）。
-   - 桌面 19 個實體檔案零損壞與無影子副本。
+   - 桌面 HWND 定位與穿透 Station 隔離（HWND: 66052）。
+   - OneDrive 重新導向已知資料夾解析（`C:\Users\chia-hao\Desktop`）。
+   - 19 個原生圖示物理螢幕像素座標精確讀取（CLI `--test`）。
+   - 防毒安全與零注入（ExitCode: 0，零攔截）。
+   - 0/1/N 多柵欄配置與原子保存（`fence_state.json`）。
+   - 桌面 19 個實體檔案零損壞、路徑不變。
 2. **【已實作】**：
-   - `FenceWindow.cs`：半透明外框、標題列、計數標籤、✕ 按鈕、`WM_NCHITTEST` 內部穿透到底層桌面原生圖示。
-   - `FenceManager.cs`：空間邊界矩形比對判定、標題列拖曳連動內部原生圖示位移、取消柵欄原地解除。
-   - `ControlPanelWindow.xaml`：即時分組日誌顯示。
+   - `FenceWindow.cs`：半透明穿透外框、標題列拖曳、8 方向自由縮放、`PointToScreen` 高 DPI 物理像素邊界換算、`IsUserMoving` 拖動狀態鎖定。
+   - `FenceManager.cs`：動態新增柵欄（`CreateNewFence`）、多柵欄還原、圖示中心點邊界比對、拖曳外框防誤吸、移動讀回校驗、取消柵欄原地解散、原子替換存檔。
+   - `ControlPanelWindow.xaml`：即時日誌滾動檢視、「➕ 新增柵欄」按鈕、結束測試按鈕。
 3. **【未驗證】**：
-   - 使用者在實體螢幕上手動拖曳手感。
-   - 系統若開啟「自動排列圖示」時與連動位移的衝突處理。
-   - 拖曳途中 Esc 取消或拖至非桌面視窗的邊界反饋。
+   - 使用者在實體桌面親手按住滑鼠左鍵拖入、拖出圖示之手感流暢度。
+   - 桌面若啟用「自動排列圖示」時對外框拖曳連動的拉回干擾（建議測試時關閉自動排列）。
+   - 拖曳途中按 Esc 取消或拖至其他應用程式視窗之互動反饋。
+
+---
 
 ## 異動檔案 (Changed Files)
-- `tools/sandbox/FarmFenceSandbox.csproj`
-- `tools/sandbox/App.xaml`
-- `tools/sandbox/App.xaml.cs`
+- `tools/sandbox/DesktopInterop.cs`
+- `tools/sandbox/FenceWindow.cs`
+- `tools/sandbox/FenceManager.cs`
 - `tools/sandbox/ControlPanelWindow.xaml`
 - `tools/sandbox/ControlPanelWindow.xaml.cs`
-- `tools/sandbox/DesktopInterop.cs`
-- `tools/sandbox/FenceManager.cs`
-- `tools/sandbox/FenceWindow.cs`
+- `tools/sandbox/App.xaml.cs`
 - `tools/sandbox/README.md`
 - `HANDOFF.md`
 
+---
+
 ## 下一步建議動作 (Next Recommended Action)
-- 使用者可在實體螢幕執行 `FarmFenceSandbox.exe` 親手體驗拖曳手感與回饋。
+- 執行 `git commit` 與 `git push` 同步至遠端。
+- 使用者可在實體螢幕啟動 `FarmFenceSandbox.exe`，手動體驗拖入、跨柵欄移動、拖出解除與新增柵欄。

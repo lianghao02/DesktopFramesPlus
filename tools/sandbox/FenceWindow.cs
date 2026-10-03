@@ -1,11 +1,9 @@
 using System;
-using System.Collections.Generic;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
-using System.Windows.Shapes;
 
 namespace FarmFenceSandbox
 {
@@ -14,6 +12,10 @@ namespace FarmFenceSandbox
         #region Win32 Constants for Hit-Testing & Window Styles
 
         private const int WM_NCHITTEST = 0x0084;
+        private const int WM_NCLBUTTONDOWN = 0x00A1;
+        private const int WM_NCLBUTTONUP = 0x00A2;
+        private const int WM_EXITSIZEMOVE = 0x0232;
+
         private const int HTTRANSPARENT = -1;
         private const int HTCLIENT = 1;
         private const int HTCAPTION = 2;
@@ -39,18 +41,21 @@ namespace FarmFenceSandbox
 
         public string FenceId { get; }
         public string FenceTitle { get; private set; }
+        public bool IsUserMoving { get; private set; } = false;
+
         private readonly TextBlock _titleBlock;
         private readonly TextBlock _countBlock;
         private readonly Button _closeBtn;
         private readonly Border _headerBorder;
 
-        private Point _lastWindowPos;
+        private Point _lastPhysicalPos;
         private bool _isLoaded = false;
         private const int ResizeBorderThickness = 6;
         private const int HeaderHeight = 32;
 
         public event Action<FenceWindow>? FenceClosed;
         public event Action<FenceWindow, double, double>? FenceMoved;
+        public event Action<FenceWindow>? MoveCompleted;
 
         public FenceWindow(string fenceId, string fenceTitle, double left, double top, double width, double height, Color accentColor)
         {
@@ -61,22 +66,20 @@ namespace FarmFenceSandbox
             AllowsTransparency = true;
             Background = new SolidColorBrush(Color.FromArgb(40, 20, 25, 35));
             ShowInTaskbar = false;
-            Topmost = false; // 不蓋在一般應用程式之上
+            Topmost = false;
 
             Left = left;
             Top = top;
             Width = width;
             Height = height;
 
-            _lastWindowPos = new Point(left, top);
-
             // 主邊框與容器
             Border outerBorder = new Border
             {
                 BorderBrush = new SolidColorBrush(accentColor),
-                BorderThickness = new Thickness(1.5),
-                CornerRadius = new CornerRadius(4),
-                Background = new SolidColorBrush(Color.FromArgb(35, 10, 20, 30))
+                BorderThickness = new Thickness(2),
+                CornerRadius = new CornerRadius(6),
+                Background = new SolidColorBrush(Color.FromArgb(30, 15, 20, 30))
             };
 
             Grid rootGrid = new Grid();
@@ -86,8 +89,8 @@ namespace FarmFenceSandbox
             // 標題列
             _headerBorder = new Border
             {
-                Background = new SolidColorBrush(Color.FromArgb(180, 25, 30, 40)),
-                CornerRadius = new CornerRadius(3, 3, 0, 0),
+                Background = new SolidColorBrush(Color.FromArgb(190, 25, 32, 45)),
+                CornerRadius = new CornerRadius(4, 4, 0, 0),
                 Padding = new Thickness(10, 0, 8, 0)
             };
 
@@ -126,7 +129,8 @@ namespace FarmFenceSandbox
                 Width = 24,
                 Height = 24,
                 Cursor = Cursors.Hand,
-                VerticalAlignment = VerticalAlignment.Center
+                VerticalAlignment = VerticalAlignment.Center,
+                ToolTip = "取消並解散此柵欄 (圖示安全保留在桌面原地)"
             };
             _closeBtn.Click += (s, e) =>
             {
@@ -143,7 +147,7 @@ namespace FarmFenceSandbox
             Grid.SetRow(_headerBorder, 0);
             rootGrid.Children.Add(_headerBorder);
 
-            // 柵欄中央工作區（視覺上半透明指示）
+            // 柵欄內部工作區 (視覺指示，滑鼠完全穿透)
             Border canvasArea = new Border
             {
                 Background = Brushes.Transparent,
@@ -162,14 +166,20 @@ namespace FarmFenceSandbox
         private void OnLoaded(object sender, RoutedEventArgs e)
         {
             _isLoaded = true;
-            _lastWindowPos = new Point(this.Left, this.Top);
+
+            try
+            {
+                _lastPhysicalPos = PointToScreen(new Point(0, 0));
+            }
+            catch
+            {
+                _lastPhysicalPos = new Point(this.Left, this.Top);
+            }
 
             var helper = new WindowInteropHelper(this);
-            // 啟用 WS_EX_NOACTIVATE，點擊柵欄不搶走前台焦點
             int exStyle = GetWindowLong(helper.Handle, GWL_EXSTYLE);
             SetWindowLong(helper.Handle, GWL_EXSTYLE, exStyle | WS_EX_NOACTIVATE);
 
-            // 掛鉤 WndProc 實現點擊穿透與邊框拖曳
             var source = HwndSource.FromHwnd(helper.Handle);
             source?.AddHook(WndProc);
         }
@@ -178,14 +188,19 @@ namespace FarmFenceSandbox
         {
             if (!_isLoaded) return;
 
-            double deltaX = this.Left - _lastWindowPos.X;
-            double deltaY = this.Top - _lastWindowPos.Y;
-
-            if (Math.Abs(deltaX) > 0.01 || Math.Abs(deltaY) > 0.01)
+            try
             {
-                _lastWindowPos = new Point(this.Left, this.Top);
-                FenceMoved?.Invoke(this, deltaX, deltaY);
+                Point currentPhysical = PointToScreen(new Point(0, 0));
+                double deltaX = currentPhysical.X - _lastPhysicalPos.X;
+                double deltaY = currentPhysical.Y - _lastPhysicalPos.Y;
+
+                if (Math.Abs(deltaX) > 0.01 || Math.Abs(deltaY) > 0.01)
+                {
+                    _lastPhysicalPos = currentPhysical;
+                    FenceMoved?.Invoke(this, deltaX, deltaY);
+                }
             }
+            catch { }
         }
 
         public void UpdateItemCount(int count)
@@ -196,20 +211,50 @@ namespace FarmFenceSandbox
             });
         }
 
-        public Rect GetFenceBounds()
+        /// <summary>
+        /// 取得外框工作區在螢幕上的真實物理像素邊界 (Physical Pixels Bounds，扣除標題列高度，支援 DPI 縮放)
+        /// </summary>
+        public Rect GetPhysicalContentBounds()
         {
-            return new Rect(this.Left, this.Top, this.ActualWidth, this.ActualHeight);
+            if (!_isLoaded) return new Rect(this.Left, this.Top, this.ActualWidth, this.ActualHeight);
+
+            try
+            {
+                Point topLeft = PointToScreen(new Point(0, 0));
+                Point bottomRight = PointToScreen(new Point(ActualWidth, ActualHeight));
+                Point headerBottom = PointToScreen(new Point(0, HeaderHeight));
+
+                double x = topLeft.X;
+                double y = headerBottom.Y;
+                double w = Math.Max(10, bottomRight.X - topLeft.X);
+                double h = Math.Max(10, bottomRight.Y - headerBottom.Y);
+
+                return new Rect(x, y, w, h);
+            }
+            catch
+            {
+                return new Rect(this.Left, this.Top + HeaderHeight, this.ActualWidth, Math.Max(10, this.ActualHeight - HeaderHeight));
+            }
         }
 
         /// <summary>
-        /// 核心命中測試 (WM_NCHITTEST)：
-        /// 1. 四邊與四角 ➜ 返回 Resize 代碼 (可自由縮放)
-        /// 2. 標題列關閉按鈕 ➜ HTCLIENT (可點擊關閉)
-        /// 3. 標題列其餘區域 ➜ HTCAPTION (滑鼠按住可拖動整個柵欄)
-        /// 4. 柵欄內部圖示區 ➜ HTTRANSPARENT (滑鼠穿透到底層桌面 SysListView32，原生操作毫不受阻！)
+        /// 核心命中測試 (WM_NCHITTEST) 與拖動狀態追蹤
         /// </summary>
         private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
         {
+            if (msg == WM_NCLBUTTONDOWN && (int)wParam == HTCAPTION)
+            {
+                IsUserMoving = true;
+            }
+            else if (msg == WM_EXITSIZEMOVE || msg == WM_NCLBUTTONUP)
+            {
+                if (IsUserMoving)
+                {
+                    IsUserMoving = false;
+                    MoveCompleted?.Invoke(this);
+                }
+            }
+
             if (msg == WM_NCHITTEST)
             {
                 short screenX = unchecked((short)(long)lParam);
@@ -243,14 +288,14 @@ namespace FarmFenceSandbox
                 if (isTop) { handled = true; return (IntPtr)HTTOP; }
                 if (isBottom) { handled = true; return (IntPtr)HTBOTTOM; }
 
-                // 3. 標題列區域判定 ➜ 可拖動視窗
+                // 3. 標題列區域 ➜ 可拖曳外框
                 if (mousePt.Y <= HeaderHeight)
                 {
                     handled = true;
                     return (IntPtr)HTCAPTION;
                 }
 
-                // 4. 內部工作區 ➜ 完全穿透給桌面原生圖示
+                // 4. 柵欄內部工作區 ➜ 完全穿透給桌面原生圖示
                 handled = true;
                 return (IntPtr)HTTRANSPARENT;
             }

@@ -81,7 +81,10 @@ namespace FarmFenceSandbox
                 }
                 catch (Exception ex)
                 {
-                    Log($"\n[FATAL ERROR in --test]: {ex}");
+                    string err = $"[FATAL ERROR in --test]: {ex}\nInner: {ex.InnerException}";
+                    Log(err);
+                    try { Console.Error.WriteLine(err); } catch { }
+                    try { File.WriteAllText(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "last_error.txt"), err); } catch { }
                     Shutdown(1);
                     return;
                 }

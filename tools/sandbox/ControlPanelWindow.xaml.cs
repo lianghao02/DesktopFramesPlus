@@ -25,6 +25,11 @@ namespace FarmFenceSandbox
             });
         }
 
+        private void BtnAddFence_Click(object sender, RoutedEventArgs e)
+        {
+            _fenceManager.CreateNewFence();
+        }
+
         private void BtnClearLog_Click(object sender, RoutedEventArgs e)
         {
             TxtLogs.Clear();

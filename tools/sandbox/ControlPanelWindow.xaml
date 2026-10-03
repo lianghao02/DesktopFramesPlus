@@ -26,9 +26,12 @@
                      BorderThickness="0" Background="Transparent" TextWrapping="Wrap"/>
         </Border>
 
-        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,12,0,0">
-            <Button x:Name="BtnClearLog" Content="清除日誌" Width="90" Height="28" Margin="0,0,8,0" Click="BtnClearLog_Click"/>
-            <Button x:Name="BtnExit" Content="結束原型測試" Width="100" Height="28" FontWeight="SemiBold" Click="BtnExit_Click"/>
-        </StackPanel>
+        <DockPanel Grid.Row="2" Margin="0,12,0,0">
+            <Button x:Name="BtnAddFence" Content="➕ 新增柵欄" Width="100" Height="28" DockPanel.Dock="Left" Click="BtnAddFence_Click" Background="#2563EB" Foreground="White" FontWeight="SemiBold"/>
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                <Button x:Name="BtnClearLog" Content="清除日誌" Width="90" Height="28" Margin="0,0,8,0" Click="BtnClearLog_Click"/>
+                <Button x:Name="BtnExit" Content="結束原型測試" Width="100" Height="28" FontWeight="SemiBold" Click="BtnExit_Click"/>
+            </StackPanel>
+        </DockPanel>
     </Grid>
 </Window>
