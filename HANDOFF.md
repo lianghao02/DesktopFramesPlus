@@ -3,7 +3,7 @@
 ## 核心元資料
 - Repository：`lianghao02/DesktopFramesPlus`
 - Branch：`main`
-- Commit SHA：本輪基準 `886fa85`；已完成「解除隱藏失靈」之徹底修復與全流程整合驗證。
+- Commit SHA：`b799657`；已完成「設定頁面適配螢幕大小與多螢幕DPI縮放」。
 - Task Type：FEAT / BUGFIX / REFACTOR
 - Local Path Hint：`16_DesktopFramesPlus`
 
@@ -72,11 +72,10 @@
 - 若使用者在 Windows 檔案總管中勾選了「顯示隱藏的檔案、資料夾及磁碟機」，接管期間（處於柵欄中時）實體檔案在桌面上會呈現半透明圖示；移回桌面或關閉專案後會立即恢復為 100% 正常鮮豔圖示。
 
 ## Git 狀態
-- Commit：待提交
-- Push：待推送
-- Working Tree：Modified (`Code/Desktop Frames/OptionsFormManager.cs`, `HANDOFF.md`)
+- Commit：`b799657`
+- Push：是
+- Working Tree：Clean
 - Branch：main
 
 ## 下一步
-1. 提交本輪修改並推播至 GitHub：`feat: 設定頁面適配螢幕大小與多螢幕DPI縮放`。
-2. 邀請使用者啟動程式（`Desktop Frames.exe`）驗證設定頁面之縮放、最大化與儲存功能。
+1. 邀請使用者啟動程式（`Desktop Frames.exe`）驗證設定頁面之縮放、最大化與儲存功能。
