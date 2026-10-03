@@ -947,13 +947,13 @@
     <value>以目標路徑命名此面板</value>
   </data>
   <data name="MenuNewFrame" xml:space="preserve">
-    <value>新建面板</value>
+    <value>新建標準圖示面板（收納柵欄）</value>
   </data>
   <data name="MenuNewNoteFrame" xml:space="preserve">
-    <value>新建便籤面板</value>
+    <value>新建桌面便籤面板（便利貼備忘）</value>
   </data>
   <data name="MenuNewPortalFrame" xml:space="preserve">
-    <value>新建資料夾面板</value>
+    <value>新建資料夾鏡像面板（Folder Portal）…</value>
   </data>
   <data name="MenuNoPluginsAvailable" xml:space="preserve">
     <value>（此級別沒有可用外掛）</value>
@@ -1943,7 +1943,7 @@
     <value>語言模板已成功匯出！</value>
   </data>
 <data name="MsgProfileInitializationError" xml:space="preserve"><value>設定檔初始化錯誤：{0}</value></data><data name="DlgStartupError" xml:space="preserve"><value>啟動錯誤</value></data><data name="MsgCriticalStartupError" xml:space="preserve"><value>嚴重啟動錯誤：{0}</value></data><data name="MsgShowAboutFailed" xml:space="preserve"><value>無法顯示「關於」視窗：{0}</value></data><data name="LogCategoryBackgroundValidation" xml:space="preserve"><value>背景驗證</value></data><data name="LogCategoryGeneral" xml:space="preserve"><value>一般</value></data><data name="LogCategorySettings" xml:space="preserve"><value>設定</value></data><data name="LogCategoryFrameUpdate" xml:space="preserve"><value>框架更新</value></data><data name="DefaultFrameTitle" xml:space="preserve"><value>新增框架 — 將快捷方式拖放到這裡</value></data><data name="DefaultTipsTitle" xml:space="preserve"><value>Desktop Frames + 啟動提示</value></data><data name="LogCategoryImportExport" xml:space="preserve"><value>匯入與匯出</value></data><data name="LogCategoryUI" xml:space="preserve"><value>使用者介面</value></data><data name="DefaultTipsContent" xml:space="preserve"><value>歡迎使用 DESKTOP FRAMES +&#xD;&#xA;---------------------------&#xD;&#xA;• 收合／展開：按兩下框架標題列。&#xD;&#xA;• 重新命名：Ctrl + 按一下標題列（按 Enter 儲存）。&#xD;&#xA;• 搜尋（SpotSearch）：按 Ctrl + &#96;（波浪符號）即可立即尋找任何圖示。&#xD;&#xA;• 選項：按一下左上角的「♥」選單圖示。&#xD;&#xA;• 重新排列圖示：Ctrl + 拖曳圖示至新位置。&#xD;&#xA;• 快顯功能表：在圖示或框架上按滑鼠右鍵，查看更多選項。&#xD;&#xA;&#xD;&#xA;提示：Ctrl + 按一下或 Ctrl + 按滑鼠右鍵，可顯示更多選項。&#xD;&#xA;&#xD;&#xA;試著自訂這個框架吧！在標題列上按滑鼠右鍵 → 自訂…</value></data><data name="LogCategoryIconHandling" xml:space="preserve"><value>圖示處理</value></data>  <data name="MenuDrawFrame" xml:space="preserve">
-    <value>框選建立面板…</value>
+    <value>滑鼠框選範圍建立面板…</value>
   </data>
   <data name="DrawFrameHint" xml:space="preserve">
     <value>拖曳滑鼠以框選建立面板（按 Esc 取消）</value>

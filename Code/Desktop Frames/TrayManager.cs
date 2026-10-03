@@ -547,6 +547,18 @@ namespace Desktop_Frames
             Instance?.UpdateHiddenFramesMenu();
             Instance?.UpdateTrayIcon();
         }
+
+        public static void RemoveHiddenFrame(NonActivatingWindow win, string title = null)
+        {
+            try
+            {
+                HiddenFrames.RemoveAll(f => (win != null && f.Window == win) || (!string.IsNullOrEmpty(title) && f.Title == title));
+                Instance?.UpdateHiddenFramesMenu();
+                Instance?.UpdateTrayIcon();
+            }
+            catch { }
+        }
+
         public void UpdateHiddenFramesMenu()
         {
             if (_showHiddenFramesItem == null) return;

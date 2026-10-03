@@ -993,13 +993,13 @@
     <value>以目标路径命名此面板</value>
   </data>
   <data name="MenuNewFrame" xml:space="preserve">
-    <value>新建面板</value>
+    <value>新建标准图标面板（收纳栅栏）</value>
   </data>
   <data name="MenuNewNoteFrame" xml:space="preserve">
-    <value>新建便签面板</value>
+    <value>新建桌面便签面板（便签备忘）</value>
   </data>
   <data name="MenuNewPortalFrame" xml:space="preserve">
-    <value>新建文件夹面板</value>
+    <value>新建文件夹镜像面板（Folder Portal）…</value>
   </data>
   <data name="MenuNoPluginsAvailable" xml:space="preserve">
     <value>（此级别没有可用插件）</value>
@@ -1928,7 +1928,7 @@
     <value>导出语言模板…</value>
   </data>
   <data name="MenuDrawFrame" xml:space="preserve">
-    <value>框选创建面板…</value>
+    <value>鼠标框选范围创建面板…</value>
   </data>
   <data name="DrawFrameHint" xml:space="preserve">
     <value>拖动鼠标以框选创建面板（按 Esc 取消）</value>

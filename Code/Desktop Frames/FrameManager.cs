@@ -1167,6 +1167,87 @@ namespace Desktop_Frames
 
 
 
+        /// <summary>
+        /// 統一安全刪除面板：依據 GUID 徹底刪除、安全歸還所屬動物回桌面、清理所有內部集合與托盤追蹤
+        /// </summary>
+        public static void DeleteFrameWithConfirmation(dynamic frame, Window parentWindow = null)
+        {
+            if (frame == null) return;
+
+            bool result = MessageBoxesManager.ShowCustomMessageBoxForm();
+            if (result != true) return;
+
+            string frameIdStr = frame.Id?.ToString();
+            string frameTitle = frame.Title?.ToString();
+
+            if (SettingsManager.ExportShortcutsOnFrameDeletion && frame.ItemsType?.ToString() == "Data")
+            {
+                ExportAllIconsToDesktop(frame, false);
+            }
+
+            // 農場圍籬安全釋放協議：刪除面板時，所屬動物安全倒回一般桌面
+            try
+            {
+                if (!string.IsNullOrEmpty(frameIdStr))
+                {
+                    Services.FenceInventoryManager.Instance.ReleaseFrameItemsToDesktop(frameIdStr);
+                }
+            }
+            catch (Exception ex)
+            {
+                LogManager.Log(LogManager.LogLevel.Error, LogManager.LogCategory.FrameCreation,
+                    $"Failed to release fence items on frame deletion: {ex.Message}");
+            }
+
+            try
+            {
+                BackupManager.BackupDeletedFrame(frame);
+            }
+            catch { }
+
+            // 徹底依據 ID 移除，防止 JObject 參照比對失敗導致殘留
+            if (!string.IsNullOrEmpty(frameIdStr))
+            {
+                FrameDataManager.FrameData.RemoveAll(f =>
+                {
+                    try { return string.Equals(f.Id?.ToString(), frameIdStr, StringComparison.OrdinalIgnoreCase); }
+                    catch { return false; }
+                });
+            }
+            else
+            {
+                FrameDataManager.FrameData.Remove(frame);
+            }
+
+            // 清理 TextBlock 與 Portal 追蹤
+            var heartEntry = _heartTextBlocks.FirstOrDefault(kvp => kvp.Key?.Id?.ToString() == frameIdStr);
+            if (heartEntry.Key != null) _heartTextBlocks.Remove(heartEntry.Key);
+
+            var targetPortal = _portalFrames.FirstOrDefault(kvp => kvp.Key?.Id?.ToString() == frameIdStr);
+            if (targetPortal.Value != null)
+            {
+                targetPortal.Value.Dispose();
+                _portalFrames.Remove(targetPortal.Key);
+            }
+
+            // 立即落盤儲存 frames.json
+            FrameDataManager.SaveFrameData();
+
+            // 尋找並關閉對應視窗
+            var windows = System.Windows.Application.Current?.Windows.OfType<NonActivatingWindow>();
+            var targetWin = windows?.FirstOrDefault(w => string.Equals(w.Tag?.ToString(), frameIdStr, StringComparison.OrdinalIgnoreCase)) ?? (parentWindow as NonActivatingWindow);
+
+            // 從系統列托盤的隱藏清單徹底清除
+            TrayManager.RemoveHiddenFrame(targetWin, frameTitle);
+
+            if (targetWin != null)
+            {
+                targetWin.Close();
+            }
+
+            UpdateAllHeartContextMenus();
+        }
+
         // Builds the heart ContextMenu for a frame with consistent items and dynamic state
         // v2.5.4 .183: Swapped Tabs/Delete position for better UX safety
         private static ContextMenu BuildHeartContextMenu(dynamic frame, bool showTabsOption = false)
@@ -1266,6 +1347,8 @@ namespace Desktop_Frames
             drawFrameItem.Click += (s, e) => StartDrawMode();
             menu.Items.Add(drawFrameItem);
 
+            menu.Items.Add(new Separator());
+
             var newFrameItem = new MenuItem { Header = Strings.MenuNewFrame };
             newFrameItem.Click += (s, e) =>
             {
@@ -1317,50 +1400,7 @@ namespace Desktop_Frames
             // --- REORDERED: Delete Option Second ---
             // Delete this frames
             var deleteThisFrame = new MenuItem { Header = Strings.MenuDeleteThisFrame };
-            deleteThisFrame.Click += (s, e) =>
-            {
-                bool result = MessageBoxesManager.ShowCustomMessageBoxForm();
-                if (result == true)
-                {
-                    if (SettingsManager.ExportShortcutsOnFrameDeletion && frame.ItemsType?.ToString() == "Data")
-                    {
-                        ExportAllIconsToDesktop(frame, false);
-                    }
-
-                    // 農場圍籬安全釋放協議：刪除面板時，所屬動物安全倒回一般桌面
-                    try
-                    {
-                        string frameIdStr = frame.Id?.ToString();
-                        Services.FenceInventoryManager.Instance.ReleaseFrameItemsToDesktop(frameIdStr);
-                    }
-                    catch (Exception ex)
-                    {
-                        LogManager.Log(LogManager.LogLevel.Error, LogManager.LogCategory.FrameCreation,
-                            $"Failed to release fence items on frame deletion: {ex.Message}");
-                    }
-
-                    BackupManager.BackupDeletedFrame(frame);
-
-                    FrameDataManager.FrameData.Remove(frame);
-                    _heartTextBlocks.Remove(frame);
-
-                    // --- BUG FIX: Avoid JObject HashCode Mutation ---
-                    var targetPortal = _portalFrames.FirstOrDefault(kvp => kvp.Key?.Id?.ToString() == frame.Id?.ToString());
-                    if (targetPortal.Value != null)
-                    {
-                        targetPortal.Value.Dispose();
-                        _portalFrames.Remove(targetPortal.Key);
-                    }
-
-                    FrameDataManager.SaveFrameData();
-
-                    var windows = System.Windows.Application.Current.Windows.OfType<NonActivatingWindow>();
-                    var win = windows.FirstOrDefault(w => w.Tag?.ToString() == frame.Id?.ToString());
-                    if (win != null) win.Close();
-
-                    UpdateAllHeartContextMenus();
-                }
-            };
+            deleteThisFrame.Click += (s, e) => DeleteFrameWithConfirmation(frame);
             menu.Items.Add(deleteThisFrame);
 
             menu.Items.Add(new Separator());
@@ -3568,7 +3608,9 @@ namespace Desktop_Frames
                 FrameDataManager.SaveFrameData();
             }
 
-            ReloadFrames();
+            // 直接針對新建立的面板建立視窗，杜絕 ReloadFrames() 關閉既有視窗與全域圖示刷新造成的被迫顯示問題
+            CreateFrame(frame, _currentTargetChecker ?? new TargetChecker(1000));
+            UpdateAllHeartContextMenus();
         }
 
         public static bool AddItemToDataFrame(dynamic frame, string droppedFile)
@@ -4507,6 +4549,12 @@ namespace Desktop_Frames
                 }
             };
             CnMnFramemanager.Items.Add(miCustomize);
+
+            // --- EXPLICIT DELETE FRAME MENU ITEM ---
+            CnMnFramemanager.Items.Add(new Separator());
+            MenuItem miDeleteThisFrame = new MenuItem { Header = Strings.MenuDeleteThisFrame };
+            miDeleteThisFrame.Click += (s, e) => DeleteFrameWithConfirmation(frame, win);
+            CnMnFramemanager.Items.Add(miDeleteThisFrame);
             // CnMnFramemanager.Items.Add(new Separator());
             // CnMnFramemanager.Items.Add(new Separator());
             // CnMnFramemanager.Items.Add(miXT);

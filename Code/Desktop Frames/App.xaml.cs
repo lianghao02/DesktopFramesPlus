@@ -21,6 +21,9 @@ namespace Desktop_Frames
 
         private void Application_Startup(object sender, StartupEventArgs e)
         {
+            // 確保視窗關閉時絕不自動觸發應用程式結束（由使用者顯式關閉或托盤選單控制）
+            this.ShutdownMode = ShutdownMode.OnExplicitShutdown;
+
             // --- 1. INITIALIZE PROFILES & SETTINGS FIRST ---
             // This ensures we know the user's true DisableSingleInstance preference immediately
             try

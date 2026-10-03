@@ -8,20 +8,26 @@
 - Local Path Hint：`16_DesktopFramesPlus`
 
 ## 目前狀態
-可交付／已完成「設定頁面適配螢幕大小」與「多螢幕 / 高 DPI 自適應縮放」、MSBuild Release 編譯（0 錯誤）。
-已解決小螢幕或 125%/150% 縮放時選項視窗底部被工作列截斷、無法點擊儲存/取消按鈕的問題，並支援雙擊標題列與最大化/還原按鈕、視窗邊框拉伸調整大小、全分頁 ScrollViewer 自動滾動。
+可交付／已完成「新增面板不破壞既有隱藏圖示」、「選單語意明確化」與「面板徹底刪除與右鍵支援」、MSBuild Release 編譯（0 錯誤）、整合測試 18 項全數 PASS。
+已徹底解決：
+1. 框選建立新面板時呼叫 `ReloadFrames()` 導致關閉現有視窗、刷新桌面圖示並迫使隱藏檔案現形的問題。
+2. 新增面板選單選項模糊不清的問題（明確拆分為自訂範圍框選、標準圖示收納、資料夾鏡像、桌面便籤）。
+3. 刪除面板只藏不刪的問題（標題列右鍵選單加入刪除選項，核心邏輯以 GUID 精準移除、釋放所屬動物回桌面、清理托盤隱藏追蹤、即時落盤 frames.json）。
 
 ## 本輪目標
-1. **設定頁面螢幕與 DPI 自適應縮放**：
-   - 根據滑鼠當前游標所在螢幕（多螢幕支援），動態取得 `WorkingArea`（扣除工作列之可用範圍）。
-   - 透過 Win32 原生 DPI API 轉換為 WPF 裝置獨立像素 (DIU)，按螢幕可用寬高動態設限（寬度最大 800、上限 94% 螢幕寬，高度最大 780、上限 90% 螢幕高），安全置中顯示。
-2. **視窗縮放與最大化功能**：
-   - 啟用 `ResizeMode.CanResizeWithGrip` 支援邊框拉動調整大小。
-   - 標題列新增「最大化／還原」按鈕（🗖 / 🗗），並支援雙擊標題列切換全螢幕工作區最大化與原尺寸還原。
-3. **全分頁滾動防截斷**：
-   - 左側 Tab 清單外層包裹 `ScrollViewer`，避免在超低垂直解析度下按鈕超高被裁切。
-   - Tab 2（Tools）補齊 `ScrollViewer`。
-   - `SaveOptions` 導入通用 `GetTabContentStackPanel` 安全解包，保證設定存取 100% 穩定無例外。
+1. **新增面板圖示隱藏狀態保護**：
+   - 修正 `CreateFrameFromDraw`，直接為新面板建立視窗，移除破壞性的 `ReloadFrames()` 調用，防止既有視窗關閉重啟與桌面圖示強制刷新。
+   - 在 `App.xaml.cs` 明確設定 `ShutdownMode = ShutdownMode.OnExplicitShutdown`，杜絕任何視窗關閉瞬間誤觸發退出的休眠歸還機制。
+2. **選單語意明確化**：
+   - 更新中英資源檔：
+     - `MenuDrawFrame`: 「滑鼠框選範圍建立面板…」
+     - `MenuNewFrame`: 「新建標準圖示面板（收納柵欄）」
+     - `MenuNewPortalFrame`: 「新建資料夾鏡像面板（Folder Portal）…」
+     - `MenuNewNoteFrame`: 「新建桌面便籤面板（便利貼備忘）」
+   - 在心形選單中以 Separator 明確區分「框選繪製操作」與「不同類型面板直接建立」。
+3. **刪除面板機制徹底重構**：
+   - 在面板標題列與空白處右鍵選單（`CnMnFramemanager`）新增「刪除此面板」（`MenuDeleteThisFrame`）。
+   - 抽出統一的 `DeleteFrameWithConfirmation` 方法，刪除時依 GUID 精準自 `FrameData` 移除，安全釋放所屬動物回桌面，同步清理 `_heartTextBlocks`、`_portalFrames` 與 `TrayManager` 隱藏清單，並立即落盤 `SaveFrameData()`。
 
 ## 已完成
 1. **解除隱藏與屬性防禦強化（`FenceInventoryManager.cs`）**：
@@ -48,6 +54,13 @@
    - 移除 Grid 中多餘的 80px Row 3 空白佔位。
    - 左側 Tab 清單與 Tab 2（Tools）補齊 `ScrollViewer`，各頁籤內容在小螢幕下皆可流暢垂直滾動。
    - `SaveOptions` 導入 `GetTabContentStackPanel` 安全解包，保證相容性與穩定性。
+7. **新增面板圖示隱藏狀態保護與選單語意明確化（`FrameManager.cs`, `App.xaml.cs`, `Strings.*.resx`）**：
+   - 消除 `CreateFrameFromDraw` 呼叫 `ReloadFrames()` 造成關閉現有視窗與全域 SysListView32 刷新導致隱藏圖示現形的漏洞，改為直接針對新面板呼叫 `CreateFrame`。
+   - 設定 `App.Current.ShutdownMode = ShutdownMode.OnExplicitShutdown`，徹底防禦視窗關閉時誤觸發生命週期退出。
+   - 將「框選建立面板」與「新建面板」的模糊字串，改為「滑鼠框選範圍建立面板…」、「新建標準圖示面板（收納柵欄）」、「新建資料夾鏡像面板（Folder Portal）…」、「新建桌面便籤面板（便利貼備忘）」，並在選單加入分隔線區隔動作與類型。
+8. **刪除面板機制徹底重構（`FrameManager.cs`, `TrayManager.cs`）**：
+   - 在面板右鍵選單（`CnMnFramemanager`）新增「刪除此面板」（`MenuDeleteThisFrame`）。
+   - 抽出 `DeleteFrameWithConfirmation` 靜態方法，依 GUID 精準從 `FrameData` 清除，安全釋放所屬動物回桌面（`ReleaseFrameItemsToDesktop`），同步清除托盤隱藏清單（`TrayManager.RemoveHiddenFrame`）與內部快取，並立即落盤儲存 `frames.json`，徹底解決過去「只是隱藏、重啟又出現」的問題。
 
 ## 刻意未修改
 - 未修改既有 `options.json`、`frames.json` 核心儲存架構，確保向下相容性與免安裝可攜性。
@@ -72,10 +85,11 @@
 - 若使用者在 Windows 檔案總管中勾選了「顯示隱藏的檔案、資料夾及磁碟機」，接管期間（處於柵欄中時）實體檔案在桌面上會呈現半透明圖示；移回桌面或關閉專案後會立即恢復為 100% 正常鮮豔圖示。
 
 ## Git 狀態
-- Commit：`b799657`
-- Push：是
-- Working Tree：Clean
+- Commit：待提交
+- Push：待推送
+- Working Tree：Modified
 - Branch：main
 
 ## 下一步
-1. 邀請使用者啟動程式（`Desktop Frames.exe`）驗證設定頁面之縮放、最大化與儲存功能。
+1. 提交本次修改並推播至 GitHub：`fix: 新增面板圖示保護、選單語意明確化與刪除面板徹底重構`。
+2. 邀請使用者啟動程式驗收新功能。
