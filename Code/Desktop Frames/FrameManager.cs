@@ -3610,8 +3610,16 @@ namespace Desktop_Frames
                     FrameDataManager.SaveFrameData();
                 }
 
-                // 直接針對新建立的面板建立視窗，杜絕 ReloadFrames() 關閉既有視窗與全域圖示刷新造成的被迫顯示問題
-                CreateFrame(frame, _currentTargetChecker ?? new TargetChecker(1000));
+                // 優先由原生農場柵欄核心接管（原地託管，自動寫入 farm-fences.json 與 frames.json）
+                try
+                {
+                    FarmFences.FarmFenceHost.Adopt(frame, null, newlyCreated: true, drawnBounds: r);
+                }
+                catch (Exception adoptEx)
+                {
+                    LogManager.Log(LogManager.LogLevel.Warn, LogManager.LogCategory.UI, $"FarmFenceHost.Adopt failed, fallback to CreateFrame: {adoptEx.Message}");
+                    CreateFrame(frame, _currentTargetChecker ?? new TargetChecker(1000));
+                }
                 UpdateAllHeartContextMenus();
             }
             catch (Exception ex)
