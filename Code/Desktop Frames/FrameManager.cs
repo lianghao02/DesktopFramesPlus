@@ -4948,6 +4948,21 @@ namespace Desktop_Frames
                         var currentFrame = FrameDataManager.FrameData.FirstOrDefault(f => f.Id?.ToString() == frameIdForTimer);
                         double unrolledHeight = currentFrame != null ? Convert.ToDouble(currentFrame.UnrolledHeight?.ToString() ?? "130") : 130;
 
+                        // --- UX 優化：展開動畫開始時立即恢復可見，配合邊界遮罩呈現絲滑拉開抽屜的效果 ---
+                        var borderNodePre = win.Content as Border;
+                        if (borderNodePre?.Child is DockPanel dockNodePre)
+                        {
+                            var scrollNodePre = dockNodePre.Children.OfType<ScrollViewer>().FirstOrDefault();
+                            if (scrollNodePre?.Content is WrapPanel wpNodePre)
+                            {
+                                wpNodePre.Visibility = Visibility.Visible;
+                            }
+                            else if (dockNodePre.Children.OfType<TextBox>().FirstOrDefault() is TextBox tbNodePre)
+                            {
+                                tbNodePre.Visibility = Visibility.Visible;
+                            }
+                        }
+
                         var heightAnimation = new DoubleAnimation(win.Height, unrolledHeight, TimeSpan.FromSeconds(0.3))
                         {
                             EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseInOut }
@@ -6806,10 +6821,12 @@ namespace Desktop_Frames
                                 if (!isDroppedShortcut && !isDroppedUrlFile)
                                 {
                                     // CASE A: Creating new shortcut from raw file/folder
-                                    shortcutName = baseShortcutName + ".lnk";
+                                    string rawFileName = isFolder ? System.IO.Path.GetFileName(droppedFile.TrimEnd('\\', '/')) : System.IO.Path.GetFileName(droppedFile);
+                                    if (string.IsNullOrEmpty(rawFileName)) rawFileName = "Item";
+                                    shortcutName = System.IO.Path.Combine("Shortcuts", rawFileName + ".lnk");
                                     while (System.IO.File.Exists(shortcutName))
                                     {
-                                        shortcutName = System.IO.Path.Combine("Shortcuts", $"{System.IO.Path.GetFileNameWithoutExtension(droppedFile)} ({counter++}).lnk");
+                                        shortcutName = System.IO.Path.Combine("Shortcuts", $"{rawFileName} ({counter++}).lnk");
                                     }
 
                                     try
@@ -6875,8 +6892,17 @@ namespace Desktop_Frames
                                 newItemDict["IsLink"] = isWebLink;
                                 newItemDict["IsNetwork"] = IsNetworkPath(shortcutName);
 
-                                // --- BUG FIX: Display Name for Network Roots & Folders ---
-                                string displayFileName = System.IO.Path.GetFileNameWithoutExtension(droppedFile);
+                                // --- 顯示名稱智能處理：實體檔案保留副檔名便於辨識，捷徑/目錄則維持不顯示副檔名 ---
+                                string displayFileName;
+                                if (isDroppedShortcut || isDroppedUrlFile || isFolder)
+                                {
+                                    displayFileName = System.IO.Path.GetFileNameWithoutExtension(droppedFile);
+                                }
+                                else
+                                {
+                                    // 實體檔案保留副檔名（如 .csv, .svg, .pdf, .zip 等），徹底解決同主檔名無法區分的盲區
+                                    displayFileName = System.IO.Path.GetFileName(droppedFile);
+                                }
 
                                 // If Path.GetFileName fails (happens for UNC roots like \\Server\Share or C:\)
                                 if (string.IsNullOrWhiteSpace(displayFileName))
@@ -8996,6 +9022,9 @@ namespace Desktop_Frames
 
                     e.Handled = true; // Mark handled immediately so the UI thread is freed
 
+                    // --- UX 優化：UI 執行緒立即播放點擊反饋動畫（0ms 零延遲手感，不等待背景解析） ---
+                    TriggerLaunchEffect(sp, frame);
+
                     // --- HANG FIX 2 (Click): Move network resolution to an STA Background Thread ---
                     System.Threading.Thread launchThread = new System.Threading.Thread(() =>
                     {
@@ -9049,7 +9078,7 @@ namespace Desktop_Frames
                             System.Windows.Application.Current.Dispatcher.BeginInvoke(new Action(() =>
                             {
                                 try { UpdateIcon(sp, path, dynamicIsFolder, resolvedPath); } catch { }
-                                LaunchItem(sp, path, dynamicIsFolder, arguments);
+                                LaunchItem(sp, path, dynamicIsFolder, arguments, triggerEffect: false);
                             }));
                         }
                         catch (Exception ex)
@@ -9225,28 +9254,26 @@ namespace Desktop_Frames
         }
 
 
-        public static void LaunchItem(StackPanel sp, string path, bool isFolder, string arguments = null)
+        public static void TriggerLaunchEffect(StackPanel sp, dynamic frame = null)
         {
+            if (sp == null) return;
             try
             {
-                // --- NEW: Ignore clicks on internal placeholders ---
-                if (path != null && path.StartsWith("INTERNAL_BLANK_")) return;
-                // 1. Visual Feedback
-                NonActivatingWindow win = FindVisualParent<NonActivatingWindow>(sp);
-
-                // FIX: Use ID (Tag) lookup instead of Title (Robust)
-                string frameId = win?.Tag?.ToString();
-                dynamic frame = null;
-
-                if (!string.IsNullOrEmpty(frameId))
-                {
-                    frame = FrameDataManager.FrameData.FirstOrDefault(f => f.Id?.ToString() == frameId);
-                }
-
-                // Fallback to Title only if ID lookup failed
                 if (frame == null)
                 {
-                    frame = FrameDataManager.FrameData.FirstOrDefault(f => f.Title == win?.Title);
+                    NonActivatingWindow win = FindVisualParent<NonActivatingWindow>(sp);
+                    string frameId = win?.Tag?.ToString();
+
+                    if (!string.IsNullOrEmpty(frameId))
+                    {
+                        frame = FrameDataManager.FrameData.FirstOrDefault(f => f.Id?.ToString() == frameId);
+                    }
+
+                    // Fallback to Title only if ID lookup failed
+                    if (frame == null)
+                    {
+                        frame = FrameDataManager.FrameData.FirstOrDefault(f => f.Title == win?.Title);
+                    }
                 }
 
                 // FIX: Read LIVE Global Setting directly from SettingsManager
@@ -9265,6 +9292,40 @@ namespace Desktop_Frames
                 }
 
                 LaunchEffectsManager.ExecuteLaunchEffect(sp, effect);
+            }
+            catch (Exception ex)
+            {
+                LogManager.Log(LogManager.LogLevel.Error, LogManager.LogCategory.UI, $"Launch effect error: {ex.Message}");
+            }
+        }
+
+        public static void LaunchItem(StackPanel sp, string path, bool isFolder, string arguments = null, bool triggerEffect = true)
+        {
+            try
+            {
+                // --- NEW: Ignore clicks on internal placeholders ---
+                if (path != null && path.StartsWith("INTERNAL_BLANK_")) return;
+
+                NonActivatingWindow win = FindVisualParent<NonActivatingWindow>(sp);
+                string frameId = win?.Tag?.ToString();
+                dynamic frame = null;
+
+                if (!string.IsNullOrEmpty(frameId))
+                {
+                    frame = FrameDataManager.FrameData.FirstOrDefault(f => f.Id?.ToString() == frameId);
+                }
+
+                // Fallback to Title only if ID lookup failed
+                if (frame == null)
+                {
+                    frame = FrameDataManager.FrameData.FirstOrDefault(f => f.Title == win?.Title);
+                }
+
+                // 1. Visual Feedback
+                if (triggerEffect)
+                {
+                    TriggerLaunchEffect(sp, frame);
+                }
 
                 // 2. Path Resolution
                 string fullPath = path;

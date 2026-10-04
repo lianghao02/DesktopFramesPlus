@@ -13,6 +13,9 @@
 - **Improved**: 📦 Release packaging pipeline: automated local profile backup and restore in `tools/package-release.ps1` to prevent wiping user fences during packaging.
 - **Fixed**: 📌 Windows+D "Show Desktop" flickering/disappearance: removed unreliable boolean toggle, enforcing immediate 80ms recovery across all frames, Farm Fences, and sticky notes to stay firmly pinned on the desktop.
 - **Fixed**: 🪲 Red-X broken icon glitch: prioritized shortcut icon extraction before target validation, preserving true shell/cached icons even when target paths are on network drives, sleeping NAS, or have access latency.
+- **Added**: ⚡ 0ms Click Feedback: instantly trigger visual launch animation on UI thread without blocking for background target resolution.
+- **Improved**: 🪄 Smooth AutoRoll Drawer Expansion: make frame content visible at the start of roll-out animation to eliminate the 0.3s blank delay.
+- **Improved**: 🏷️ Smart Extension Preservation: preserve file extensions when dropping raw physical files (e.g. .csv, .svg, .pdf) to distinguish identically named files, while keeping shortcuts clean.
 
 ---
 
