@@ -143,7 +143,10 @@ namespace Desktop_Frames
 
                     this.Close();
 
-                    Framemanager.CreateFrameFromDraw(finalRect);
+                    Application.Current?.Dispatcher?.BeginInvoke(new Action(() =>
+                    {
+                        Framemanager.CreateFrameFromDraw(finalRect);
+                    }));
                 }
                 else
                 {

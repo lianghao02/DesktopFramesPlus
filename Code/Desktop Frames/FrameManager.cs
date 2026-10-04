@@ -3589,28 +3589,36 @@ namespace Desktop_Frames
 
         public static void CreateFrameFromDraw(Rect r)
         {
-            string defaultName = CoreUtilities.GenerateUniqueFrameName();
-
-            var dialog = new DrawFrameConfirmDialog(r, defaultName);
-            dialog.ShowDialog();
-
-            if (!dialog.Confirmed) return;
-
-            string name = dialog.FrameTitle;
-            var frame = FrameDataManager.CreateNewFrame(name, "Data", r.X, r.Y);
-
-            var frameDict = frame as System.Collections.Generic.IDictionary<string, object>;
-            if (frameDict != null)
+            try
             {
-                frameDict["Width"] = r.Width;
-                frameDict["Height"] = r.Height;
-                frameDict["Title"] = name;
-                FrameDataManager.SaveFrameData();
-            }
+                string defaultName = CoreUtilities.GenerateUniqueFrameName();
 
-            // 直接針對新建立的面板建立視窗，杜絕 ReloadFrames() 關閉既有視窗與全域圖示刷新造成的被迫顯示問題
-            CreateFrame(frame, _currentTargetChecker ?? new TargetChecker(1000));
-            UpdateAllHeartContextMenus();
+                var dialog = new DrawFrameConfirmDialog(r, defaultName);
+                dialog.ShowDialog();
+
+                if (!dialog.Confirmed) return;
+
+                string name = dialog.FrameTitle;
+                var frame = FrameDataManager.CreateNewFrame(name, "Data", r.X, r.Y, width: r.Width, height: r.Height);
+
+                var frameDict = frame as System.Collections.Generic.IDictionary<string, object>;
+                if (frameDict != null)
+                {
+                    frameDict["Width"] = r.Width;
+                    frameDict["Height"] = r.Height;
+                    frameDict["Title"] = name;
+                    FrameDataManager.SaveFrameData();
+                }
+
+                // 直接針對新建立的面板建立視窗，杜絕 ReloadFrames() 關閉既有視窗與全域圖示刷新造成的被迫顯示問題
+                CreateFrame(frame, _currentTargetChecker ?? new TargetChecker(1000));
+                UpdateAllHeartContextMenus();
+            }
+            catch (Exception ex)
+            {
+                LogManager.Log(LogManager.LogLevel.Error, LogManager.LogCategory.UI, $"CreateFrameFromDraw failed: {ex}");
+                MessageBox.Show($"建立框架失敗：{ex.Message}", Strings.DlgError, MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
 
         public static bool AddItemToDataFrame(dynamic frame, string droppedFile)
@@ -3909,7 +3917,11 @@ namespace Desktop_Frames
         public static void CreateFrame(dynamic frame, TargetChecker targetChecker)
         {
             // 原地面板只由共用原生核心顯示，同一 Id 不再建立捷徑面板視窗。
-
+            string frameIdStr = frame?.Id?.ToString();
+            if (!string.IsNullOrEmpty(frameIdStr) && FarmFences.FarmFenceHost.IsPanel(frameIdStr))
+            {
+                return;
+            }
 
             // --- FIX: Declare Title TextBox EARLY ---
             TextBox titletb = new TextBox

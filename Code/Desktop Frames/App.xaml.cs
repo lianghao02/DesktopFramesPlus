@@ -17,7 +17,42 @@ namespace Desktop_Frames
         private static Mutex _mutex;
         private const string UNIQUE_APP_NAME = "Global\\DesktopFramesPlus_Mutex_UniqueId_v2";
 
+        public App()
+        {
+            this.DispatcherUnhandledException += (s, e) =>
+            {
+                try
+                {
+                    string logDir = AppDomain.CurrentDomain.BaseDirectory;
+                    string crashPath = System.IO.Path.Combine(logDir, "crash.log");
+                    string logMessage = $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] [DispatcherUnhandledException]\n{e.Exception}\n\n";
+                    System.IO.File.AppendAllText(crashPath, logMessage);
+                    LogManager.Log(LogManager.LogLevel.Error, LogManager.LogCategory.Error, $"DispatcherUnhandledException: {e.Exception}");
+                }
+                catch { }
 
+                MessageBox.Show(
+                    $"應用程式發生未攔截的錯誤：\n{e.Exception.Message}\n\n詳細資訊已記錄至 crash.log。",
+                    "Desktop Frames 執行期錯誤",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+
+                e.Handled = true; // 阻斷進一步拋出，防止應用程式直接閃退
+            };
+
+            AppDomain.CurrentDomain.UnhandledException += (s, e) =>
+            {
+                try
+                {
+                    string logDir = AppDomain.CurrentDomain.BaseDirectory;
+                    string crashPath = System.IO.Path.Combine(logDir, "crash.log");
+                    string logMessage = $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] [AppDomain UnhandledException]\n{e.ExceptionObject}\n\n";
+                    System.IO.File.AppendAllText(crashPath, logMessage);
+                    LogManager.Log(LogManager.LogLevel.Error, LogManager.LogCategory.Error, $"AppDomain UnhandledException: {e.ExceptionObject}");
+                }
+                catch { }
+            };
+        }
 
         private void Application_Startup(object sender, StartupEventArgs e)
         {

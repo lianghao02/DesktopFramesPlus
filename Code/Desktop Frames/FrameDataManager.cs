@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -282,16 +282,16 @@ namespace Desktop_Frames
         /// Category: Frame Creation
         /// </summary>
         public static dynamic CreateNewFrame(string title, string itemsType, double x = 20, double y = 20,
-            string customColor = null, string customLaunchEffect = null)
+            string customColor = null, string customLaunchEffect = null, double width = 230, double height = 130)
         {
             try
             {
-                // Generate appropriate frame name
-                string frameName = (itemsType != "Portal") ?
-                    CoreUtilities.GenerateRandomName() : title;
+                // Generate appropriate frame name if title is not specified
+                string frameName = !string.IsNullOrWhiteSpace(title) ? title :
+                    ((itemsType != "Portal") ? CoreUtilities.GenerateRandomName() : "Portal Frame");
 
-                // Create new frame object
-                dynamic newFrame = new System.Dynamic.ExpandoObject();
+                // Create new frame object with safe dynamic wrapper
+                dynamic newFrame = new DynamicFrameData();
                 newFrame.Id = Guid.NewGuid().ToString();
                 IDictionary<string, object> newframeDict = newFrame;
 
@@ -299,8 +299,8 @@ namespace Desktop_Frames
                 newframeDict["Title"] = frameName;
                 newframeDict["X"] = x;
                 newframeDict["Y"] = y;
-                newframeDict["Width"] = 230;
-                newframeDict["Height"] = 130;
+                newframeDict["Width"] = width > 0 ? width : 230;
+                newframeDict["Height"] = height > 0 ? height : 130;
                 newframeDict["ItemsType"] = itemsType;
 
                 // Set items based on frame type
@@ -470,12 +470,29 @@ namespace Desktop_Frames
         private static void ApplyFrameDefaults(IDictionary<string, object> frameDict,
              string customColor, string customLaunchEffect)
         {
+            frameDict["IsLocked"] = "false";
             frameDict["IsHidden"] = "false";
             frameDict["IsRolled"] = "false";
-            frameDict["UnrolledHeight"] = frameDict["Height"].ToString();
+            frameDict["AutoRoll"] = "false";
+            frameDict["AlwaysOnTop"] = "false";
+            frameDict["UnrolledHeight"] = frameDict.ContainsKey("Height") && frameDict["Height"] != null ? frameDict["Height"].ToString() : "130";
+            frameDict["TextColor"] = null;
+            frameDict["BoldTitleText"] = "false";
+            frameDict["TitleTextColor"] = null;
+            frameDict["DisableTextShadow"] = "false";
+            frameDict["IconSize"] = "Medium";
+            frameDict["GrayscaleIcons"] = "false";
+            frameDict["IconSpacing"] = 5;
+            frameDict["TitleTextSize"] = "Medium";
+            frameDict["FrameBorderColor"] = null;
+            frameDict["FrameBorderThickness"] = 2;
             frameDict["TabsEnabled"] = "false";
             frameDict["CurrentTab"] = 0;
             frameDict["Tabs"] = new JArray();
+            frameDict["SortMode"] = null;
+            frameDict["SubFolder"] = null;
+            frameDict["PluginId"] = null;
+            frameDict["PluginSettings"] = null;
 
             string itemsType = frameDict["ItemsType"]?.ToString();
             if (itemsType == "Note") NoteFramemanager.ApplyNoteDefaults(frameDict);
@@ -624,5 +641,59 @@ namespace Desktop_Frames
         }
 
         #endregion
+    }
+
+    /// <summary>
+    /// 安全動態框架資料容器，實作 IDictionary&lt;string, object&gt; 並提供對不存在成員安全返回 null 的行為（與 JObject 一致），杜絕 RuntimeBinderException 崩潰。
+    /// </summary>
+    public class DynamicFrameData : System.Dynamic.DynamicObject, IDictionary<string, object>
+    {
+        private readonly Dictionary<string, object> _properties = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
+
+        public DynamicFrameData() { }
+
+        public DynamicFrameData(IDictionary<string, object> dictionary)
+        {
+            if (dictionary != null)
+            {
+                foreach (var kvp in dictionary)
+                    _properties[kvp.Key] = kvp.Value;
+            }
+        }
+
+        public override bool TryGetMember(System.Dynamic.GetMemberBinder binder, out object result)
+        {
+            if (_properties.TryGetValue(binder.Name, out result)) return true;
+            result = null;
+            return true; // 關鍵安全機制：未定義成員安全回傳 null，避免 DLR 拋出例外
+        }
+
+        public override bool TrySetMember(System.Dynamic.SetMemberBinder binder, object value)
+        {
+            _properties[binder.Name] = value;
+            return true;
+        }
+
+        public object this[string key]
+        {
+            get => _properties.TryGetValue(key, out var val) ? val : null;
+            set => _properties[key] = value;
+        }
+
+        public ICollection<string> Keys => _properties.Keys;
+        public ICollection<object> Values => _properties.Values;
+        public int Count => _properties.Count;
+        public bool IsReadOnly => false;
+        public void Add(string key, object value) => _properties[key] = value;
+        public void Add(KeyValuePair<string, object> item) => _properties[item.Key] = item.Value;
+        public void Clear() => _properties.Clear();
+        public bool Contains(KeyValuePair<string, object> item) => _properties.ContainsKey(item.Key);
+        public bool ContainsKey(string key) => _properties.ContainsKey(key);
+        public void CopyTo(KeyValuePair<string, object>[] array, int arrayIndex) => ((IDictionary<string, object>)_properties).CopyTo(array, arrayIndex);
+        public IEnumerator<KeyValuePair<string, object>> GetEnumerator() => _properties.GetEnumerator();
+        System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator() => _properties.GetEnumerator();
+        public bool Remove(string key) => _properties.Remove(key);
+        public bool Remove(KeyValuePair<string, object> item) => _properties.Remove(item.Key);
+        public bool TryGetValue(string key, out object value) => _properties.TryGetValue(key, out value);
     }
 }

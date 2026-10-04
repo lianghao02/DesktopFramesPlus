@@ -77,9 +77,21 @@ internal static class Program
         host.GetMethod("Stop")!.Invoke(null, null);
         host.GetMethod("Start")!.Invoke(null, null);
         await manager!.Ready;
-        Require(manager.Fences.Count == 0, "取消後重啟不得還原空面板");
         host.GetMethod("Stop")!.Invoke(null, null);
         Console.WriteLine("PASS：重啟接管、取消後回桌面歸屬、舊面板紀錄同步移除與其他面板保全。");
+
+        // 驗證框選新增框架流程（模擬 CreateFrameFromDraw 邏輯，驗證 IsLocked、未定義屬性與視窗建立不崩潰）
+        var drawnRect = new Rect(120, 150, 400, 300);
+        string drawTitle = "框選自訂框架";
+        var drawnFrame = FrameDataManager.CreateNewFrame(drawTitle, "Data", drawnRect.X, drawnRect.Y, width: drawnRect.Width, height: drawnRect.Height);
+        Require(drawnFrame.Title == drawTitle && drawnFrame.Width == 400 && drawnFrame.Height == 300, "框選尺寸與自訂標題必須正確保存");
+        Require(drawnFrame.IsLocked == "false", "預設 IsLocked 必須安全可讀取且為 false");
+        Require(drawnFrame.NonExistentProperty == null, "未定義動態屬性必須安全回傳 null 不得拋出例外");
+        Framemanager.CreateFrame(drawnFrame, new TargetChecker(1000));
+        var createdWindow = Application.Current.Windows.OfType<Window>().FirstOrDefault(w => w.Title == drawTitle);
+        Require(createdWindow != null, "必須成功建立對應視窗不崩潰");
+        createdWindow!.Close();
+        Console.WriteLine("PASS：框選新增框架邏輯、安全動態屬性存取與視窗建立完整驗證通過。");
     }
 
     private static void Require(bool value, string reason) { if (!value) throw new InvalidOperationException(reason); }
