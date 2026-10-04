@@ -26,6 +26,10 @@
   - **託管存檔交易原子化**：`FenceInventoryManager.cs` 與資料儲存全面採用 `.tmp` 寫入完成後再以 `File.Replace` 替換，防止突發斷電造成 0 位元組空檔案。
 - **打包發布本機資料零刪除防線**：
   - 優化 `tools/package-release.ps1`，在執行發布打包前自動暫存備份本機 `Profiles`，產出乾淨 ZIP 發布包後立即無損還原，確保本機開發與使用時現有柵欄設定永不丟失。
+- **徹底解決按 Win+D 框架有時留著、有時消失之問題**：
+  - 移除 `App.xaml.cs` 中不可靠的 `_desktopIsShown` 布林 Toggle 狀態切換，確保每次按下 `Win + D` 或點擊工作列顯示桌面按鈕時，均無條件在 80ms 內迅速喚醒並恢復所有桌面框架、農場柵欄（`FenceWindow`）與桌面便箋，真正實現無感穩定「鎖定在桌面上」。
+- **修復捷徑圖示突然變成紅色 X 的不良體驗**：
+  - 調整 `FrameManager.cs` 中 `UpdateIcon` 優先權順序，將 `isShortcut` 移至 `!targetExists` 之前。當捷徑目標位於網路磁碟機、NAS 待機或權限路徑時，優先從 `.lnk` 快取與系統 Shell 提取真實圖示，不再粗暴將其塗成白底紅 X 警告圖示，使用者無須再手動「拉回桌面再拉回」。
 
 ---
 

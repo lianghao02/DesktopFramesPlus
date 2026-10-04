@@ -11,9 +11,11 @@
 - **Fixed**: 🪲 Unified dual-track frame creation: redirected `FrameManager.CreateNewFrame` to type-guarded `FrameDataManager.CreateNewFrame`, resolving dynamic dictionary key collision and casting errors.
 - **Fixed**: 🔒 Security & Data Integrity P1: Profile workspace isolation (clearing in-memory notes on profile switch), sticky note corruption guard with `.corrupt` fallback, atomic transaction writes using `File.Replace`.
 - **Improved**: 📦 Release packaging pipeline: automated local profile backup and restore in `tools/package-release.ps1` to prevent wiping user fences during packaging.
-- **Improved**: 🌏 Traditional Chinese localization: fully localized startup tips and automated migration from legacy English tips note.
+- **Fixed**: 📌 Windows+D "Show Desktop" flickering/disappearance: removed unreliable boolean toggle, enforcing immediate 80ms recovery across all frames, Farm Fences, and sticky notes to stay firmly pinned on the desktop.
+- **Fixed**: 🪲 Red-X broken icon glitch: prioritized shortcut icon extraction before target validation, preserving true shell/cached icons even when target paths are on network drives, sleeping NAS, or have access latency.
 
 ---
+
 
 v 2.7.7.294            
 <img width="301" height="73" alt="image" src="https://github.com/user-attachments/assets/9b71557a-3fe3-4d29-a31f-256824ec9dcb" />

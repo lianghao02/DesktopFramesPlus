@@ -8635,24 +8635,10 @@ namespace Desktop_Frames
                         if (newIcon == null) newIcon = new BitmapImage(new Uri("pack://application:,,,/Resources/folder-White.png"));
                     }
                 }
-                // CASE C: BROKEN FILES
-                else if (!targetExists)
-                {
-                    if (Utility.IsStoreAppShortcut(filePath))
-                    {
-                        // --- BUG FIX: Remove arrows from Store Apps ---
-                        // GetShellIcon forces an arrow on .lnk files. ExtractAssociatedIcon grabs the raw cached PE icon.
-                        try { newIcon = System.Drawing.Icon.ExtractAssociatedIcon(filePath).ToImageSource(); }
-                        catch { newIcon = Utility.GetShellIcon(filePath, isFolder); }
-                    }
-                    else
-                    {
-                        newIcon = new BitmapImage(new Uri("pack://application:,,,/Resources/file-WhiteX.png"));
-                    }
-                }
-                // CASE D: SHORTCUT FILES
+                // CASE C: SHORTCUT FILES (.lnk) - 優先解析，即使目標暫時不可達亦保留捷徑原始圖示
                 else if (isShortcut)
                 {
+                    // 1. 嘗試由捷徑指定的 IconLocation 提取自訂圖示
                     try
                     {
                         WshShell shell = new WshShell();
@@ -8670,21 +8656,42 @@ namespace Desktop_Frames
                     }
                     catch { }
 
+                    // 2. 目標存在時，提取目標之高解析圖示
+                    if (newIcon == null && targetPath != null && targetExists)
+                    {
+                        newIcon = Utility.GetShellIcon(targetPath, isTargetFolder);
+                    }
+
+                    // 3. 若目標暫時未就緒（網路磁碟機、NAS 待機、或權限路徑），從 .lnk 自身快取提取真實圖示，絕不隨意塗成紅 X
                     if (newIcon == null)
                     {
-                        // --- BUG FIX: Remove arrows from Folders and URIs ---
-                        // 1. targetExists checks BOTH File and Directory (Fixes Folders like "Downloads")
-                        if (targetPath != null && targetExists)
+                        if (Utility.IsStoreAppShortcut(filePath))
                         {
-                            newIcon = Utility.GetShellIcon(targetPath, isTargetFolder);
+                            try { newIcon = System.Drawing.Icon.ExtractAssociatedIcon(filePath).ToImageSource(); }
+                            catch { newIcon = Utility.GetShellIcon(filePath, isFolder); }
                         }
-                        // 2. If forced to fallback to the .lnk, bypass the Shell's arrow overlay natively
                         else
                         {
                             try { newIcon = System.Drawing.Icon.ExtractAssociatedIcon(filePath).ToImageSource(); }
-                            catch { newIcon = Utility.GetShellIcon(filePath, false); }
+                            catch { }
+
+                            if (newIcon == null)
+                            {
+                                newIcon = Utility.GetShellIcon(filePath, false);
+                            }
                         }
                     }
+
+                    // 4. 僅在捷徑本體完全損毀且目標確實不存在時，才顯示損毀警告圖示
+                    if (newIcon == null && !targetExists)
+                    {
+                        newIcon = new BitmapImage(new Uri("pack://application:,,,/Resources/file-WhiteX.png"));
+                    }
+                }
+                // CASE D: BROKEN FILES (非捷徑且檔案不存在之一般檔案)
+                else if (!targetExists)
+                {
+                    newIcon = new BitmapImage(new Uri("pack://application:,,,/Resources/file-WhiteX.png"));
                 }
                 // CASE E: STANDARD FILES
                 //else

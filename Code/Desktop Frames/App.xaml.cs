@@ -309,31 +309,18 @@ namespace Desktop_Frames
         {
             try
             {
-                _desktopIsShown = !_desktopIsShown;
-                if (_desktopIsShown)
+                // 只要偵測到 Win+D 或點擊工作列顯示桌面按鈕，使用者的意圖皆為回到桌面
+                // 立即設定極短延遲（80ms）等待 Windows DWM 最小化動作完成後，無條件喚醒所有桌面框架視窗
+                var restoreTimer = new System.Windows.Threading.DispatcherTimer
                 {
-                    var restoreTimer = new System.Windows.Threading.DispatcherTimer
-                    {
-                        Interval = TimeSpan.FromMilliseconds(800)
-                    };
-                    restoreTimer.Tick += (timerSender, timerArgs) =>
-                    {
-                        restoreTimer.Stop();
-                        RestoreAllframeWindows();
-                    };
-                    restoreTimer.Start();
-                }
-
-                var resetTimer = new System.Windows.Threading.DispatcherTimer
-                {
-                    Interval = TimeSpan.FromSeconds(10)
+                    Interval = TimeSpan.FromMilliseconds(80)
                 };
-                resetTimer.Tick += (timerSender, timerArgs) =>
+                restoreTimer.Tick += (timerSender, timerArgs) =>
                 {
-                    resetTimer.Stop();
-                    _desktopIsShown = false;
+                    restoreTimer.Stop();
+                    RestoreAllframeWindows();
                 };
-                resetTimer.Start();
+                restoreTimer.Start();
             }
             catch { }
         }
@@ -342,22 +329,33 @@ namespace Desktop_Frames
         {
             try
             {
-                var frameWindows = System.Windows.Application.Current.Windows
-                    .OfType<NonActivatingWindow>()
+                var allWindows = System.Windows.Application.Current.Windows
+                    .Cast<Window>()
                     .ToList();
 
-                foreach (var frameWindow in frameWindows)
+                foreach (var win in allWindows)
                 {
                     try
                     {
-                        if (frameWindow.WindowState == WindowState.Minimized)
-                            frameWindow.WindowState = WindowState.Normal;
+                        // 包含傳統桌面框架、原生農場柵欄 (FenceWindow) 以及桌面便箋視窗
+                        bool isDesktopWidget = win is NonActivatingWindow ||
+                                              win is Desktop_Frames.FarmFences.FenceWindow ||
+                                              win.GetType().Name.Contains("NoteWindow");
 
-                        if (!frameWindow.IsVisible)
-                            frameWindow.Show();
+                        if (!isDesktopWidget) continue;
 
-                        frameWindow.Topmost = true;
-                        frameWindow.Topmost = false;
+                        if (win.WindowState == WindowState.Minimized)
+                            win.WindowState = WindowState.Normal;
+
+                        if (!win.IsVisible)
+                            win.Show();
+
+                        // 針對 NonActivatingWindow 重新刷過 Z-Order 確保顯示
+                        if (win is NonActivatingWindow frameWindow)
+                        {
+                            frameWindow.Topmost = true;
+                            frameWindow.Topmost = false;
+                        }
                     }
                     catch { }
                 }

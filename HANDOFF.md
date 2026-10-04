@@ -18,6 +18,9 @@
 4. **發布與工程一致性（P2）**：
    - `tools/run-app.ps1` 增加 `-Rebuild` 與原始碼修改時間自動比對重建。
    - `tools/package-release.ps1` 發布版本號對齊為 `v2.8.1-zh-TW`。
+5. **桌面鎖定與圖示體驗優化（P0/P1）**：
+   - `App.xaml.cs`：移除 Win+D 易失態 Toggle，每次按下 Win+D 均於 80ms 內喚醒全部桌面框架、農場柵欄與便箋，徹底杜絕偶發性消失。
+   - `FrameManager.cs`：調整 `UpdateIcon` 優先級，捷徑目標遇網路延遲或待機時優先保留 `.lnk` 與真實 Shell 圖示，徹底杜絕捷徑被覆蓋為白底紅 X。
 
 ## 驗證結果
 - **VS 2022 MSBuild Release 編譯**：`0 個錯誤`，1252 個警告（常規 nullability 提示）。
