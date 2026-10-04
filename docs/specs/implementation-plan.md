@@ -73,8 +73,22 @@ Shell 枚舉與四類新建資產位置讀回／雜湊／屬性驗證通過。�
 - [ ] 人工拖入、跨框、拖出、取消、重啟與排隊／碰撞驗收。
 - [ ] 含內容舊面板遷移及原完整選單接入尚未實作；分頁／捲起／隱藏不宣稱已支援原生模式。
 
-## 最新方向覆蓋（交由 Anti 接續，尚未實作）
-使用者不接受透明空框，要求原本面板的感覺。前述透明原生內容接入僅是已驗證的過渡實作，不是最終產品方向。
-新提案：原捷徑託管搬移＋實體檔案原地 Hidden，面板引用同一份項目；跨框僅改歸屬，取消時安全釋放。
-先建立庫存／交易／復原防護，再恢復原面板呈現與各操作入口。顯示隱藏項目會使 Hidden 失去唯一可見入口效果；同名衝突不得覆寫，恢復失敗必須留復原紀錄。詳細邊界與未測情境以 HANDOFF 最新章節為準。
-此模型尚未實作，沒有本模型的建置、搬移／Hidden 或復原驗收證據。
+## 2026-10-04 落地成果與收斂 (v2.8.1 正式版)
+- [x] **農場柵欄拖曳所放即所得**：
+  - 徹底廢除 `FenceLayout.Plan` 之九宮格強制作標重排，直接採納 Windows Explorer 原生放置真實座標。
+  - 視窗移動時內部圖示相對等量平移向量 $(\Delta X, \Delta Y)$；框外圖示維持原位不動。
+- [x] **右鍵框選新增框架崩潰根治**：
+  - `FrameManager.CreateFrameFromDraw` 接入 `FarmFenceHost.Adopt`，框選直接成為原生農場柵欄，雙重落盤 `farm-fences.json` 與 `frames.json`。
+  - `FrameManager.CreateNewFrame` 統一轉導至 `FrameDataManager.CreateNewFrame`，消除 `ExpandoObject` 弱型別拋錯風險。
+- [x] **資料安全與穩定性 P1 加固**：
+  - 便箋切換工作區記憶體卸載隔離（`ProfileManager.cs`）。
+  - 便箋讀取損毀防覆寫並自動備份至 `.corrupt`（`NoteStorageService.cs`）。
+  - 託管存檔交易原子化寫入（`FenceInventoryManager.cs`）。
+  - 打包腳本本地 Profiles 暫存隔離保護（`tools/package-release.ps1`）。
+- [x] **啟動提示中文化**：
+  - 預設便箋中文化，舊版英文便箋平順無感升級（`FrameManager.cs`）。
+- [x] **建置與測試**：
+  - MSBuild Release 建置退出碼 0。
+  - `tools/panel-tests` 測試通過率 100%。
+  - 發布封裝檔 `dist/DesktopFramesPlus-v2.8.1-zh-TW.zip` 完成產出。
+

@@ -1,6 +1,20 @@
 #  Version history  
 
 
+## v 2.8.1 (zh-TW Release) - 2026-10-04
+- **Added**: 🌾 Native Farm Fences "Drop-Where-You-Want" free placement: abolished forced tight-grid rearrangement; desktop icons reliably retain their exact native drop coordinates.
+- **Added**: 🌾 Relative panning vector for Farm Fences: moving the fence frame translates all nested desktop icons with zero layout distortion.
+- **Added**: 🌾 Zero interference for unmanaged desktop icons: desktop icons outside fences remain completely untouched.
+- **Added**: 🌾 Safe detachment: dismissing/deleting a fence only unbinds grouping metadata, leaving 100% of physical files and shortcuts intact on the desktop.
+- **Added**: 🌾 Full state persistence: fence counts, window bounds, and individual icon coordinates are persisted in `Profiles/Default/farm-fences.json`.
+- **Fixed**: 🪲 Draw Frame Overlay crash: creating a custom frame via right-click desktop overlay is seamlessly adopted as a native Farm Fence via `FarmFenceHost.Adopt`, fixing `RuntimeBinderException`.
+- **Fixed**: 🪲 Unified dual-track frame creation: redirected `FrameManager.CreateNewFrame` to type-guarded `FrameDataManager.CreateNewFrame`, resolving dynamic dictionary key collision and casting errors.
+- **Fixed**: 🔒 Security & Data Integrity P1: Profile workspace isolation (clearing in-memory notes on profile switch), sticky note corruption guard with `.corrupt` fallback, atomic transaction writes using `File.Replace`.
+- **Improved**: 📦 Release packaging pipeline: automated local profile backup and restore in `tools/package-release.ps1` to prevent wiping user fences during packaging.
+- **Improved**: 🌏 Traditional Chinese localization: fully localized startup tips and automated migration from legacy English tips note.
+
+---
+
 v 2.7.7.294            
 <img width="301" height="73" alt="image" src="https://github.com/user-attachments/assets/9b71557a-3fe3-4d29-a31f-256824ec9dcb" />
   
