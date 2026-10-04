@@ -9,7 +9,7 @@ $projectRoot = Split-Path -Parent $scriptDir
 
 $releaseDir = Join-Path $projectRoot "Code\Desktop Frames\bin\Release\net8.0-windows7.0"
 $distDir = Join-Path $projectRoot "dist\DesktopFramesPlus"
-$zipPath = Join-Path $projectRoot "DesktopFramesPlus-$Version.zip"
+$zipPath = Join-Path $projectRoot "dist\DesktopFramesPlus-$Version.zip"
 
 if (-not (Test-Path $releaseDir)) {
     throw "找不到 Release 建置輸出目錄: $releaseDir"

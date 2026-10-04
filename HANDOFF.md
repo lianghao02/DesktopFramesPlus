@@ -3,74 +3,44 @@
 ## 核心元資料
 - Repository：`lianghao02/DesktopFramesPlus`
 - Branch：`main`
-- Commit SHA：`2f371e1`
-- Task Type：FEAT / BUGFIX / REFACTOR / UI / DOCS
-- Local Path Hint：`16_DesktopFramesPlus`
+- Commit SHA：`46806e2`
+- Task Type：CHORE / REFACTOR / DOCS / CLEANUP
+- Local Path Hint：`DesktopFramesPlus`
 
 ## 目前狀態
-可交付／已完成「設定視窗全 7 大分頁現代化卡片式群組分類（一般、樣式與效果、工具、工作區、快捷鍵、智慧桌面、高階日誌）」、「泛型視覺樹控制項查找架構（FindDescendants<T>）」、「多語系資源檔補充同步（zh-TW, en, zh-Hans）」、「更新 README.md 與新版 CHANGELOG.md」，MSBuild Release 編譯（0 錯誤），整合測試 18 項全數 PASS，已完成遠端推播。
+可交付／已完成專案目錄瘦身整併、清除過期建置產物、集中文件至 `docs/`、建立根目錄薄啟動器 `Run-Latest.bat` 與 `Run-Sandbox.bat`，完成 Visual Studio 2022 BuildTools MSBuild Release 編譯（0 錯誤）。
 
 ## 本輪目標
-1. **設定視窗所有分頁群組化分類重構（`OptionsFormManager.cs`）**：
-   - 解決過去設定項目平鋪堆疊、分類模糊、各分頁樣式不一的問題。
-   - 打造標準化 `CreateGroupCard` 現代圓角邊框卡片，左側帶有分頁主題專屬強調色條與副標題說明。
-   - 7 大分頁完整分類：
-     - **一般 (General)**：【語言】、【系統與啟動】、【操作與吸附】、【資料夾鏡像面板】、【公用桌面收納權限】。
-     - **樣式與效果 (Style & Effects)**：【外觀主題與色彩】、【自動隱藏與閒置效果】、【桌面圖示顯示行為】、【面板按鈕圖示樣式】、【便箋預設樣式】。
-     - **工具 (Tools)**：【資料備份與還原】、【面板邊界維護】、【系統重設與清除】。
-     - **工作區 (Profiles)**：【工作區版面管理】、【智慧情境自動化】。
-     - **快捷鍵 (Hotkeys)**：【工作區切換快捷鍵】、【輔助與搜尋快捷鍵】。
-     - **智慧桌面 (Smart Desktop)**：【自動整理引擎】、【分類規則與手動執行】。
-     - **高階 (Look Deeper)**：【診斷日誌】、【日誌層級】、【追蹤分類】。
-2. **泛型視覺樹查找架構（`FindDescendants<T>`）**：
-   - 解決容器巢狀嵌套時 `SaveOptions()` 無法讀取子孫元素控制項的致命缺陷。
-   - 遍歷所有 `Panel`、`ContentControl`、`Border`、`ScrollViewer`，確保卡片重構後 100% 正確存取所有設定。
-3. **文件與日誌全面更新**：
-   - 建立並維護 `CHANGELOG.md`，詳述 v2.4.0 核心更新歷程。
-   - 更新 `README.md`，同步核心特色與卡片式設定說明。
-   - 補充 `Strings.zh-TW.resx`、`Strings.resx`、`Strings.zh-Hans.resx` 新增之群組多語系鍵。
+1. **專案資料夾瘦身與雜亂結構整併**：
+   - 解決執行檔新舊混淆、根目錄散落大量 Markdown 文件與過期未追蹤壓縮檔的問題。
+2. **清理舊版執行序與發布產物**：
+   - 終止背景常駐鎖死之舊程序（PID 6972）。
+   - 清理根目錄過期 `.zip`，將 `tools/package-release.ps1` 打包輸出統一收斂至 `dist/`。
+   - 使用 VS 2022 BuildTools `MSBuild.exe` 將正式主程式編譯至最新版（0 錯誤），並同步更新 `dist/DesktopFramesPlus/`。
+3. **建立 `docs/` 集中收納架構**：
+   - 根目錄維持標準乾淨結構（`README.md`, `CHANGELOG.md`, `LICENSE.md`, `AGENTS.md`, `HANDOFF.md`）。
+   - 將使用手冊、技巧、微調與規格文件透過 `git mv` 保留歷史搬遷至 `docs/` 與 `docs/specs/`。
+4. **根目錄防呆一鍵啟動器**：
+   - 新增 `Run-Latest.bat`（薄啟動器呼叫 `tools/run-app.ps1`，自動偵測建置並啟動最新正式主程式）。
+   - 新增 `Run-Sandbox.bat`（一鍵啟動農場柵欄驗證沙盒）。
 
 ## 已完成
-1. **OptionsFormManager.cs 現代化卡片分組重構**：
-   - 實作 `CreateGroupCard` 與 `FindDescendants<T>`。
-   - 全 7 大分頁邏輯卡片化組裝完成。
-   - `SaveOptions()` 全面升級為泛型視覺樹查找，持久化存取穩定可靠。
-2. **多語系資源檔同步**：
-   - `SecBackup`、`SecReset`、`SecProfileLayouts`、`SecProfileAutomation`、`SecSmartDesktopRules` 已同步於繁中、英文、簡中三檔。
-3. **文件與變更日誌**：
-   - 新增 `CHANGELOG.md`。
-   - 更新 `README.md`。
-4. **建置與回歸驗證**：
-   - MSBuild Release 建置通過（0 錯誤）。
-   - `tools/rescue/Test-FenceInventory.ps1` 18 項測試全數 PASS。
-
-## 刻意未修改
-- 未修改既有 `options.json`、`frames.json` 核心儲存鍵值結構，確保向前與向後相容性。
-
-## 尚未完成
-- 邀請使用者啟動 `Desktop Frames.exe` 進行設定視窗全分頁視覺驗收。
+1. **發布與執行檔清理**：
+   - 舊版程序（PID 6972）已終止。
+   - `dist/DesktopFramesPlus/Desktop Frames.exe` 與 `Code/Desktop Frames/bin/Release/...` 皆已同步為最新編譯版（2026/10/4 最新產物）。
+2. **文件目錄整併**：
+   - 根目錄散落之 7 份 Markdown 檔案移入 `docs/` 與 `docs/specs/`。
+   - 統一授權條款為根目錄 `LICENSE.md`，清理重複之 `Code/LICENSE`。
+   - 更新 `README.md` 中所有相應連結。
+3. **啟動器建立**：
+   - 實作根目錄 `Run-Latest.bat` 與 `Run-Sandbox.bat`。
 
 ## 驗證結果
-### 已執行
-1. **正式 MSBuild 建置**：
-   - 指令：`MSBuild.exe "Code\Desktop Frames\Desktop Frames.csproj" /p:Configuration=Release`
-   - 結果：建置成功，0 個錯誤（Exit code 0）。
-2. **自動化整合驗證腳本**：
-   - 指令：`pwsh.exe tools\rescue\Test-FenceInventory.ps1`
-   - 結果：18 項斷言全數 PASS，0 項 FAIL（Exit code 0）。
-
-### 尚未驗證
-- 真實桌面環境下，使用者在非 100% 縮放螢幕（如 125%/150%）拉動邊界並拖曳圖示進行視覺驗收。
-
-### 已知風險
-- 無。
-
-## Git 狀態
-- Commit：`2f371e1`
-- Push：是
-- Working Tree：Clean
-- Branch：main
+- **正式 MSBuild 建置**：0 錯誤。
+- **最新打包驗證**：`tools/package-release.ps1` 成功執行，產物收納於 `dist/`。
+- **根目錄結構驗證**：根目錄無多餘 zip 與散落雜項說明，乾淨清爽。
 
 ## 下一步
-1. 執行 `git add`、`git commit` 與 `git push` 推送至 GitHub 遠端儲存庫。
-2. 向使用者說明全分頁分類成果與文件更新。
+1. 執行 `git commit` 與 `git push` 推送整併成果。
+2. 告知使用者可直接在根目錄雙擊 `Run-Latest.bat` 體驗最新版本。
+
