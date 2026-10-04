@@ -3152,6 +3152,21 @@ namespace Desktop_Frames
                         jsonModified = true;
                     }
 
+                    // --- 自動升級預設啟動提示便箋至本地化語言 ---
+                    if (string.Equals(frameDict.ContainsKey("ItemsType") ? frameDict["ItemsType"]?.ToString() : null, "Note", StringComparison.OrdinalIgnoreCase))
+                    {
+                        string title = frameDict.ContainsKey("Title") ? frameDict["Title"]?.ToString() : null;
+                        string noteContent = frameDict.ContainsKey("NoteContent") ? frameDict["NoteContent"]?.ToString() : null;
+                        if ((title == Strings.Get("DefaultTipsTitle") || title == "Desktop Frames + 啟動提示" || title == "Desktop Frames + Startup Tips") &&
+                            !string.IsNullOrEmpty(noteContent) &&
+                            noteContent.StartsWith("WELCOME TO DESKTOP FRAMES", StringComparison.OrdinalIgnoreCase))
+                        {
+                            frameDict["Title"] = Strings.Get("DefaultTipsTitle");
+                            frameDict["NoteContent"] = Strings.Get("DefaultTipsContent");
+                            jsonModified = true;
+                        }
+                    }
+
                     // --- 2. PORTAL frame MIGRATION ---
                     if (frame.ItemsType?.ToString() == "Portal")
                     {
@@ -3868,17 +3883,7 @@ namespace Desktop_Frames
                     TextColor = "Teal",         // Teal text
 
                     // Note Settings
-                    NoteContent = "WELCOME TO DESKTOP FRAMES +\r\n" +
-                                  "---------------------------\r\n" +
-                                  "• Roll Up/Down: Double-click the frame title bar.\r\n" +
-                                  "• Rename: Ctrl + Click the title bar (Enter to save).\r\n" +
-                                  "• Search (SpotSearch): Press Ctrl + ` (Tilde) to find any icon instantly.\r\n" +
-                                  "• Options: Click the '♥' menu icon (top-left).\r\n" +
-                                  "• Reorder Icons on a frame: Ctrl + Drag icon to new position.\r\n" +
-                                  "• Context Menu: Right-click icons or Frames for more options.\r\n" +
-                                  " \r\n" +
-                                  "TIP: Ctrl + Click or Ctrl + Right-click, gives even more options.\r\n\r\n" +
-                                  "Try customizing this frame! Right-click the title bar -> Customize...",
+                    NoteContent = Strings.Get("DefaultTipsContent"),
 
                     NoteFontSize = "Medium",
                     NoteFontFamily = "Segoe UI",
