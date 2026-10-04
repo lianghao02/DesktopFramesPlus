@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -411,6 +411,14 @@ namespace Desktop_Frames
             // ----------------------------------------
 
             Desktop_Frames.FarmFences.FarmFenceHost.Stop();
+            try
+            {
+                Desktop_Frames.Notes.Services.NoteManager.Instance?.FlushAndCloseAll();
+            }
+            catch (Exception ex)
+            {
+                LogManager.Log(LogManager.LogLevel.Error, LogManager.LogCategory.General, $"Profile switch NoteManager.FlushAndCloseAll error: {ex.Message}");
+            }
             _currentProfileName = profileName;
             SaveConfigInternal();
 
@@ -430,6 +438,14 @@ namespace Desktop_Frames
             // 2. NOW load the new fences (which will re-populate the list correctly)
             Framemanager.ReloadFrames();
             Desktop_Frames.FarmFences.FarmFenceHost.Start();
+            try
+            {
+                Desktop_Frames.Notes.Services.NoteManager.Initialize();
+            }
+            catch (Exception ex)
+            {
+                LogManager.Log(LogManager.LogLevel.Error, LogManager.LogCategory.General, $"Profile switch NoteManager.Initialize error: {ex.Message}");
+            }
             // -----------------------------------------
 
             if (TrayManager.Instance != null)

@@ -381,42 +381,54 @@ namespace Desktop_Frames.Services
                 _state.LastUpdated = DateTime.UtcNow;
                 string json = JsonConvert.SerializeObject(_state, Formatting.Indented);
 
-                SaveAtomic(_primaryJsonPath, json);
+                bool primarySuccess = SaveAtomic(_primaryJsonPath, json);
                 if (!string.Equals(_primaryJsonPath, _backupJsonPath, StringComparison.OrdinalIgnoreCase))
                 {
                     SaveAtomic(_backupJsonPath, json);
                 }
+                if (!primarySuccess)
+                {
+                    LogManager.Log(LogManager.LogLevel.Error, LogManager.LogCategory.General,
+                        "Warning: Primary inventory state file failed to save atomically.");
+                }
             }
         }
 
-        private void SaveAtomic(string targetPath, string content)
+        private bool SaveAtomic(string targetPath, string content)
         {
             try
             {
                 string dir = Path.GetDirectoryName(targetPath);
-                if (!Directory.Exists(dir)) Directory.CreateDirectory(dir);
+                if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir)) Directory.CreateDirectory(dir);
 
                 string tempPath = targetPath + ".tmp";
-                File.WriteAllText(tempPath, content);
+                File.WriteAllText(tempPath, content, System.Text.Encoding.UTF8);
 
                 if (File.Exists(targetPath))
                 {
-                    try { File.Replace(tempPath, targetPath, null); }
+                    string backupPath = targetPath + ".bak";
+                    try
+                    {
+                        File.Replace(tempPath, targetPath, backupPath, true);
+                    }
                     catch
                     {
-                        File.Delete(targetPath);
-                        File.Move(tempPath, targetPath);
+                        File.Copy(targetPath, backupPath, true);
+                        File.Copy(tempPath, targetPath, true);
+                        try { File.Delete(tempPath); } catch { }
                     }
                 }
                 else
                 {
                     File.Move(tempPath, targetPath);
                 }
+                return true;
             }
             catch (Exception ex)
             {
                 LogManager.Log(LogManager.LogLevel.Error, LogManager.LogCategory.General,
                     $"Failed to atomically save inventory to '{targetPath}': {ex.Message}");
+                return false;
             }
         }
         #endregion

@@ -107,22 +107,12 @@ namespace Desktop_Frames.FarmFences
                     Place(result, members[n], fence.Content.Left + (n % columns) * cellWidth,
                         fence.Content.Top + (n / columns) * cellHeight);
             }
-            // 未分組項目只排列於框外；絕不依新位置推導歸屬。
-            var outside = icons.Where(i => !assigned.ContainsKey(i.ResolvedPath)).OrderBy(i => i.ScreenPoint.X)
-                .ThenBy(i => i.ScreenPoint.Y).ThenBy(i => i.ResolvedPath, StringComparer.OrdinalIgnoreCase).ToArray();
-            var outsideSize = CellSize(outside);
-            int next = 0;
-            foreach (var area in workAreas.OrderBy(a => a.Left).ThenBy(a => a.Top))
+            // 未分組項目直接保留原位，絕不將使用者原桌面圖示強制洗牌重排
+            var outside = icons.Where(i => !assigned.ContainsKey(i.ResolvedPath)).ToArray();
+            foreach (var item in outside)
             {
-                for (double x = area.Left; x + outsideSize.Width <= area.Right && next < outside.Length; x += outsideSize.Width)
-                    for (double y = area.Top; y + outsideSize.Height <= area.Bottom && next < outside.Length; y += outsideSize.Height)
-                    {
-                        var cell = new Rect(x, y, outsideSize.Width, outsideSize.Height);
-                        if (planned.Any(f => Overlaps(f.Bounds, cell))) continue;
-                        Place(result, outside[next++], x, y);
-                    }
+                result.Positions[item.ResolvedPath] = item.ScreenPoint;
             }
-            if (next != outside.Length) throw new InvalidOperationException("FarmNoSpace");
             return result;
         }
 

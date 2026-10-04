@@ -7997,95 +7997,47 @@ namespace Desktop_Frames
 
         public static void CreateNewFrame(string title, string itemsType, double x = 20, double y = 20, string customColor = null, string customLaunchEffect = null, string pluginId = null)
         {
-            // Generate random name instead of using the passed title
-            string frameName = CoreUtilities.GenerateRandomName();
-
-            dynamic newFrame = new System.Dynamic.ExpandoObject();
-            newFrame.Id = Guid.NewGuid().ToString();
-            IDictionary<string, object> newframeDict = newFrame;
-            // newframeDict["Title"] = title;
-
-
-            //  newframeDict["Title"] = newFrame; // Use random name
-            //Option to set Portal frames fodler nane
-            // Only use random name for non-Portal frames
-            if (itemsType != "Portal")
-            {
-                newframeDict["Title"] = frameName; // Use random name
-            }
-
-            newframeDict["X"] = x;
-            newframeDict["Y"] = y;
-            newframeDict["Width"] = 230;
-            newframeDict["Height"] = 130;
-            newframeDict["ItemsType"] = itemsType;
-
-            // --- NEW: Plugin Configuration ---
-            if (itemsType == "Plugin")
-            {
-                newframeDict["PluginId"] = pluginId;
-                newframeDict["PluginSettings"] = new JObject();
-                newframeDict["Items"] = new JArray(); // Safe default
-            }
-            else
-            {
-                newframeDict["Items"] = itemsType == "Portal" ? "" : new JArray();
-            }
-
-            newframeDict["CustomColor"] = customColor; // Use passed value
-            newframeDict["IsHidden"] = false; // Use passed value
-            newframeDict["IsLocked"] = false; // Init ISLocked
-
-            // Initialize ALL frame properties with defaults to match JSON structure
-            newframeDict["IsLocked"] = "false";
-            newframeDict["IsHidden"] = "false";
-            newframeDict["CustomColor"] = customColor;
-            newframeDict["CustomLaunchEffect"] = customLaunchEffect;
-            newframeDict["IsRolled"] = "false";
-            newframeDict["AutoRoll"] = "false"; // --- NEW ---
-            newframeDict["AlwaysOnTop"] = "false"; // --- NEW ---
-            newframeDict["UnrolledHeight"] = 130;
-            newframeDict["TextColor"] = null;
-            newframeDict["BoldTitleText"] = "false";
-            newframeDict["TitleTextColor"] = null;
-            newframeDict["DisableTextShadow"] = "false";
-            newframeDict["IconSize"] = "Medium";
-            newframeDict["GrayscaleIcons"] = "false";
-            newframeDict["IconSpacing"] = 5;
-            newframeDict["TitleTextSize"] = "Medium";
-            newframeDict["FrameBorderColor"] = null;
-            newframeDict["FrameBorderThickness"] = 2;
-            // TABS FEATURE: Initialize tab properties for new frames
-            newframeDict["TabsEnabled"] = "false";  // Default to no tabs
-            newframeDict["CurrentTab"] = 0;         // Default to first tab
-            newframeDict["Tabs"] = new JArray();    // Empty tabs array
-
+            string selectedPath = null;
             if (itemsType == "Portal")
-                if (itemsType == "Portal")
+            {
+                using (var dialog = new System.Windows.Forms.FolderBrowserDialog())
                 {
-                    using (var dialog = new System.Windows.Forms.FolderBrowserDialog())
+                    dialog.Description = "Select the folder to monitor for this Portal Frame";
+                    if (dialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
                     {
-                        dialog.Description = "Select the folder to monitor for this Portal Frame";
-                        if (dialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
-                        {
-                            newframeDict["Path"] = dialog.SelectedPath;
-
-                            // Get the folder name from the selected path
-                            // should add and option to be checked for the below
-                            // Set title to folder name for Portal frames
-                            string folderName = System.IO.Path.GetFileName(dialog.SelectedPath);
-                            newframeDict["Title"] = folderName;
-
-                        }
-                        else
-                        {
-                            return;
-                        }
+                        selectedPath = dialog.SelectedPath;
+                        string folderName = System.IO.Path.GetFileName(selectedPath);
+                        title = !string.IsNullOrEmpty(folderName) ? folderName : title;
+                    }
+                    else
+                    {
+                        return;
                     }
                 }
-            FrameDataManager.FrameData.Add(newFrame);
-            FrameDataManager.SaveFrameData();
-            CreateFrame(newFrame, new TargetChecker(1000));
+            }
+
+            var newFrame = FrameDataManager.CreateNewFrame(title, itemsType, x, y, customColor, customLaunchEffect);
+            if (newFrame != null)
+            {
+                IDictionary<string, object> dict = newFrame;
+                bool needsSave = false;
+                if (!string.IsNullOrEmpty(selectedPath))
+                {
+                    dict["Path"] = selectedPath;
+                    needsSave = true;
+                }
+                if (itemsType == "Plugin" && !string.IsNullOrEmpty(pluginId))
+                {
+                    dict["PluginId"] = pluginId;
+                    dict["PluginSettings"] = new JObject();
+                    needsSave = true;
+                }
+                if (needsSave)
+                {
+                    FrameDataManager.SaveFrameData();
+                }
+                CreateFrame(newFrame, new TargetChecker(1000));
+            }
         }
 
 

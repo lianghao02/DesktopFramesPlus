@@ -51,13 +51,16 @@ namespace Desktop_Frames.Notes.Services
             return null;
         }
 
+        private bool _hasLoadFailed = false;
+
         public List<NoteItem> LoadNotes()
         {
             lock (_lock)
             {
-            string? filePath = GetNotesFilePath();
+                string? filePath = GetNotesFilePath();
                 if (string.IsNullOrEmpty(filePath) || !File.Exists(filePath))
                 {
+                    _hasLoadFailed = false;
                     return new List<NoteItem>();
                 }
 
@@ -65,10 +68,21 @@ namespace Desktop_Frames.Notes.Services
                 {
                     string json = File.ReadAllText(filePath, Encoding.UTF8);
                     var notes = JsonConvert.DeserializeObject<List<NoteItem>>(json);
+                    _hasLoadFailed = false;
                     return notes ?? new List<NoteItem>();
                 }
                 catch (Exception ex)
                 {
+                    _hasLoadFailed = true;
+                    try
+                    {
+                        string backupPath = $"{filePath}.corrupt.{DateTime.Now:yyyyMMddHHmmss}";
+                        File.Copy(filePath, backupPath, true);
+                        LogManager.Log(LogManager.LogLevel.Warn, LogManager.LogCategory.General,
+                            $"NoteStorageService: Corrupted notes backed up to {backupPath}");
+                    }
+                    catch { }
+
                     LogManager.Log(LogManager.LogLevel.Error, LogManager.LogCategory.General,
                         $"NoteStorageService: Error loading notes from {filePath}: {ex.Message}");
                     return new List<NoteItem>();
@@ -116,6 +130,13 @@ namespace Desktop_Frames.Notes.Services
 
         private void SaveImmediateInternal(List<NoteItem> notes)
         {
+            if (_hasLoadFailed && (notes == null || notes.Count == 0))
+            {
+                LogManager.Log(LogManager.LogLevel.Warn, LogManager.LogCategory.General,
+                    "NoteStorageService: Skipped saving empty list to prevent overwriting corrupted file.");
+                return;
+            }
+
             string? targetPath = GetNotesFilePath();
             if (string.IsNullOrEmpty(targetPath))
             {

@@ -287,7 +287,41 @@ namespace Desktop_Frames.FarmFences
                 if (_overlapBlocked) { Warn("FarmOverlap"); success = true; return; }
                 var before = await snapshot;
                 if (_stopped) return;
-                success = await ArrangeAsync(before, new Dictionary<string, string>(_assigned, StringComparer.OrdinalIgnoreCase), before, new HashSet<string> { window.FenceId });
+
+                if (_committedMoveBounds.TryGetValue(window, out var originalBounds))
+                {
+                    var newBounds = window.GetPhysicalBounds();
+                    double deltaX = newBounds.Left - originalBounds.Left;
+                    double deltaY = newBounds.Top - originalBounds.Top;
+                    if (Math.Abs(deltaX) > 0.5 || Math.Abs(deltaY) > 0.5)
+                    {
+                        var requested = new Dictionary<string, Point>(StringComparer.OrdinalIgnoreCase);
+                        var originals = new Dictionary<string, Point>(StringComparer.OrdinalIgnoreCase);
+                        foreach (var item in before)
+                        {
+                            originals[item.ResolvedPath] = item.ScreenPoint;
+                            if (_assigned.TryGetValue(item.ResolvedPath, out var owner) && owner == window.FenceId)
+                            {
+                                var newPoint = new Point(Math.Round(item.ScreenPoint.X + deltaX), Math.Round(item.ScreenPoint.Y + deltaY));
+                                requested[item.ResolvedPath] = newPoint;
+                                _positions[item.ResolvedPath] = newPoint;
+                            }
+                            else
+                            {
+                                requested[item.ResolvedPath] = item.ScreenPoint;
+                            }
+                        }
+                        success = await MovePositionsAsync(requested, originals);
+                    }
+                    else
+                    {
+                        success = true;
+                    }
+                }
+                else
+                {
+                    success = true;
+                }
             }
             catch (Exception ex) { Fail("FarmOperationFailed", ex); }
             finally
@@ -341,14 +375,24 @@ namespace Desktop_Frames.FarmFences
                     dragged.Add(item);
                     proposed.TryGetValue(item.ResolvedPath, out var previous);
                     var owner = FenceLayout.DropOwner(item.BoundsOnScreen, LayoutFences(), previous);
-                    if (owner != null) proposed[item.ResolvedPath] = owner;
-                    else proposed.Remove(item.ResolvedPath);
+                    if (owner != null)
+                    {
+                        proposed[item.ResolvedPath] = owner;
+                        _positions[item.ResolvedPath] = item.ScreenPoint;
+                    }
+                    else
+                    {
+                        proposed.Remove(item.ResolvedPath);
+                        _positions.Remove(item.ResolvedPath);
+                    }
                 }
                 if (dragged.Count == 0) return;
-                // 只回復本次真正移動的選取項目；其他桌面項目以目前讀回位置為回復基準。
-                var originals = after.Select(i => dragged.Any(d => Same(d.ResolvedPath, i.ResolvedPath)) ? before.Single(b => Same(b.ResolvedPath, i.ResolvedPath)) : i).ToList();
-                var targets = dragged.Where(i => proposed.ContainsKey(i.ResolvedPath)).Select(i => proposed[i.ResolvedPath]).ToHashSet(StringComparer.Ordinal);
-                if (await ArrangeAsync(after, proposed, originals, targets)) { SaveState(); LogMessage?.Invoke("原生拖曳與分區排列已完成，歸屬已提交。"); }
+
+                // 保持原生 Explorer 放手落點（所放即所得），不發動強制網格重排
+                _assigned.Clear();
+                foreach (var pair in proposed) _assigned.Add(pair.Key, pair.Value);
+                SaveState();
+                LogMessage?.Invoke("原生拖曳已完成，保持放手位置，歸屬已更新。");
             }
             catch (Exception ex) { Fail("FarmOperationFailed", ex); }
             finally { _dragBusy = false; _dropOriginalSnapshot = null; }

@@ -3,38 +3,33 @@
 ## 核心元資料
 - Repository：`lianghao02/DesktopFramesPlus`
 - Branch：`main`
-- Commit SHA：`e087d90`
-- Task Type：FIX / ROBUSTNESS / TEST
+- Task Type：CONVERGENCE / UX_FIX / ROBUSTNESS / RELEASE
+- Version：`v2.8.1-zh-TW`
 - Local Path Hint：`DesktopFramesPlus`
 
 ## 目前狀態
-可交付／已徹底查明並修復右鍵新增框架框選後崩潰的根因，完成動態框架物件安全包裝（`DynamicFrameData`）、預設屬性完整補齊、遮罩關閉時序非同步解耦與全域未處理例外防護，通過 VS 2022 MSBuild Release 建置與迴歸測試套件（100% 通過）。
-
-## 本輪目標
-1. **精準定位右鍵新增框架框選後崩潰之原因**：
-   - 經由 Windows Application Event Log 與單元迴歸測試，精準定位崩潰根因為 DLR 拋出 `Microsoft.CSharp.RuntimeBinder.RuntimeBinderException: 'System.Dynamic.ExpandoObject' does not contain a definition for 'IsLocked'`。
-   - `FrameDataManager.CreateNewFrame` 建立新框架時缺少 `IsLocked` 等二十多個標準屬性，且 `ExpandoObject` 存取未定義成員時 DLR 直接拋出例外導致行程閃退。
-2. **核心修復方案**：
-   - 在 `FrameDataManager.cs` 實作 `DynamicFrameData`（繼承自 `DynamicObject`，實作 `IDictionary<string, object>`），提供對任何未定義成員安全返回 `null`（與 `JObject` 一致）的安全機制，徹底杜絕 DLR 拋出例外。
-   - 完整補齊 `ApplyFrameDefaults` 中缺失的標準屬性（包含 `IsLocked`、`AutoRoll`、`AlwaysOnTop` 等）。
-   - `CreateNewFrame` 正確支援 `width` 與 `height` 參數並採納自訂標題。
-3. **視窗關閉時序與全域例外防護**：
-   - `DrawFrameOverlay.cs` 在 `OnMouseUp` 中透過 `Dispatcher.BeginInvoke` 非同步解耦喚起 `CreateFrameFromDraw`，確保全螢幕遮罩視窗完整銷毀與滑鼠訊息泵處置完成後再彈出模態對話框。
-   - `FrameManager.CreateFrameFromDraw` 加上完整 `try...catch` 捕捉。
-   - `App.xaml.cs` 增加全域例外處理常式（`DispatcherUnhandledException` 與 `AppDomain.CurrentDomain.UnhandledException`），未處理錯誤寫入 `crash.log` 並提示使用者，杜絕行程直接無聲閃退。
-4. **原生面板重複開窗防護**：
-   - 在 `CreateFrame` 開頭加入 `FarmFenceHost.IsPanel` 防護，已由原生核心接管之面板不重複建立 WPF 視窗。
+**可交付（正式收斂定版）**。已整合三大維度完成專案修訂與收斂：
+1. **體驗核心（所放即所得）**：修復柵欄內圖示拖曳偏離問題，廢除拖曳放手後的強制緊湊九宮格覆蓋重排，直接採納 Windows Explorer 當下放手之真實座標；視窗平移時內部圖示隨視窗同步相對位移；框外未分組桌面項目維持原位不洗牌。
+2. **防崩潰（消除雙軌分裂）**：將 `FrameManager.CreateNewFrame` 統一轉導至 `FrameDataManager.CreateNewFrame`，杜絕未保護之 `ExpandoObject` 與字串型別 `"false"` 衝突。
+3. **資料安全與邊界隔離（P1 加固）**：
+   - 便箋工作區切換隔離：`ProfileManager.cs` 在切換前 Flush 舊便箋，切換後重新載入新工作區便箋。
+   - 便箋損毀防覆寫：`NoteStorageService.cs` 在讀取失敗時自動備份 `.corrupt.{timestamp}`，並阻止空清單抹除原檔案。
+   - 託管交易存檔原子化：`FenceInventoryManager.cs` 補齊備份與布林回傳檢查。
+4. **發布與工程一致性（P2）**：
+   - `tools/run-app.ps1` 增加 `-Rebuild` 與原始碼修改時間自動比對重建。
+   - `tools/package-release.ps1` 發布版本號對齊為 `v2.8.1-zh-TW`。
 
 ## 驗證結果
-- **VS 2022 MSBuild Release 編譯**：0 錯誤，1255 警告（正常）。
-- **迴歸測試套件驗證（`tools/panel-tests`）**：
+- **VS 2022 MSBuild Release 編譯**：`0 個錯誤`，1252 個警告（常規 nullability 提示）。
+- **迴歸與功能測試套件（`tools/panel-tests`）**：
   - PASS：已有捷徑資料不轉換、不清除。
   - PASS：既有面板原位與尺寸保留、同一 Id 單一面板、禁止建立捷徑、舊 Items 格式保持空清單。
   - PASS：重啟接管、取消後回桌面歸屬、舊面板紀錄同步移除與其他面板保全。
   - PASS：框選新增框架邏輯、安全動態屬性存取與視窗建立完整驗證通過（Exit Code 0）。
-- **打包發布驗證**：`tools/package-release.ps1` 執行成功，最新產物已同步輸出至 `dist/DesktopFramesPlus` 與 `dist/DesktopFramesPlus-v2.8.0-zh-TW.zip`。
+- **正式發布打包（`tools/package-release.ps1`）**：
+  - 產物已成功輸出至 `dist/DesktopFramesPlus-v2.8.1-zh-TW.zip` (13.3 MB) 與 `dist/DesktopFramesPlus/`。
 
 ## 下一步
-1. 提交並推播修復成果至遠端儲存庫。
-2. 回報使用者修復診斷根因與驗證結果。
+1. 提交並推播本輪修訂與定版檔案至遠端。
+2. 遵循開發憲法停止條件，全案封存交付。
 
