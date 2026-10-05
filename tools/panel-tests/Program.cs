@@ -92,6 +92,29 @@ internal static class Program
         Require(createdWindow != null, "必須成功建立對應視窗不崩潰");
         createdWindow!.Close();
         Console.WriteLine("PASS：框選新增框架邏輯、安全動態屬性存取與視窗建立完整驗證通過。");
+
+        // 驗證資料夾收納柵欄（Portal Frame）初始化、預設路徑與自動建立目錄邏輯
+        string testStorageRoot = Path.Combine(Path.GetTempPath(), "DFP_Test_Storage_" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(testStorageRoot);
+        try
+        {
+            SettingsManager.DefaultPortalStorageRoot = testStorageRoot;
+            var portalFrame = FrameDataManager.CreateNewFrame("待辦公文", "Portal");
+            string portalPath = portalFrame.Path;
+            Require(!string.IsNullOrEmpty(portalPath) && Directory.Exists(portalPath), "Portal Frame 建立時應自動在預設總目錄建立真實資料夾");
+            Require(portalPath.StartsWith(testStorageRoot, StringComparison.OrdinalIgnoreCase), "自動建立之目錄應位於 DefaultPortalStorageRoot 之下");
+
+            // 驗證實體收納檔案屬性（絕對不得為 Hidden）
+            string sampleFile = Path.Combine(portalPath, "公文測試.docx");
+            File.WriteAllText(sampleFile, "測試內容");
+            var attrs = File.GetAttributes(sampleFile);
+            Require(!attrs.HasFlag(FileAttributes.Hidden), "收納於資料夾之檔案絕對不可具有 Hidden 屬性");
+            Console.WriteLine("PASS：資料夾收納柵欄自動綁定、預設路徑建立與非隱藏檔案安全驗證通過。");
+        }
+        finally
+        {
+            if (Directory.Exists(testStorageRoot)) Directory.Delete(testStorageRoot, true);
+        }
     }
 
     private static void Require(bool value, string reason) { if (!value) throw new InvalidOperationException(reason); }

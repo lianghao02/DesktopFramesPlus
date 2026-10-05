@@ -276,6 +276,7 @@ namespace Desktop_Frames.Localization
         public static string MenuNoPluginsAvailable => Get("MenuNoPluginsAvailable");
         public static string MenuOpenFrameFolder => Get("MenuOpenFrameFolder");
         public static string MenuOpenTargetFolder => Get("MenuOpenTargetFolder");
+        public static string MenuChangeStoragePath => Get("MenuChangeStoragePath");
         public static string MenuOpenWith => Get("MenuOpenWith");
         public static string MenuOptions => Get("MenuOptions");
         public static string MenuPasteItem => Get("MenuPasteItem");

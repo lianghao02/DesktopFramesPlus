@@ -696,6 +696,58 @@ namespace Desktop_Frames
             CreateCheckBox(cardPortals, Strings.OptPortalWatermark, "EnablePortalWatermark", SettingsManager.ShowBackgroundImageOnPortalFrames);
             CreateCheckBox(cardPortals, Strings.OptRecycleBin, "UseRecycleBin", SettingsManager.UseRecycleBin);
 
+            // 預設檔案收納總目錄設定
+            TextBlock lblStorageDesc = new TextBlock
+            {
+                Text = "預設檔案收納總目錄（新建立的收納柵欄預設在此自動產生子資料夾）：",
+                FontSize = 12,
+                Foreground = new SolidColorBrush(Color.FromRgb(110, 110, 110)),
+                TextWrapping = TextWrapping.Wrap,
+                Margin = new Thickness(6, 6, 6, 2)
+            };
+            cardPortals.Children.Add(lblStorageDesc);
+
+            Grid storageGrid = new Grid { Margin = new Thickness(6, 2, 6, 6) };
+            storageGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            storageGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(80) });
+
+            TextBox tbStorageRoot = new TextBox
+            {
+                Name = "DefaultPortalStorageRootTextBox",
+                Text = SettingsManager.DefaultPortalStorageRoot,
+                Height = 26,
+                FontSize = 12,
+                VerticalContentAlignment = VerticalAlignment.Center,
+                Margin = new Thickness(0, 0, 6, 0)
+            };
+            Grid.SetColumn(tbStorageRoot, 0);
+
+            Button btnBrowseStorage = new Button
+            {
+                Content = "瀏覽...",
+                Height = 26,
+                FontSize = 12,
+                Cursor = Cursors.Hand
+            };
+            btnBrowseStorage.Click += (s, e) =>
+            {
+                using var dialog = new System.Windows.Forms.FolderBrowserDialog
+                {
+                    Description = "請選擇資料夾收納柵欄的預設存放總目錄",
+                    SelectedPath = tbStorageRoot.Text
+                };
+                if (dialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
+                {
+                    tbStorageRoot.Text = dialog.SelectedPath;
+                    SettingsManager.DefaultPortalStorageRoot = dialog.SelectedPath;
+                }
+            };
+            Grid.SetColumn(btnBrowseStorage, 1);
+
+            storageGrid.Children.Add(tbStorageRoot);
+            storageGrid.Children.Add(btnBrowseStorage);
+            cardPortals.Children.Add(storageGrid);
+
             // 5. 公用桌面收納權限
             var cardPublicDesktop = CreateGroupCard(c, Strings.Get("SecPublicDesktop"), _userAccentColor);
             cardPublicDesktop.Children.Add(new TextBlock
@@ -1359,6 +1411,12 @@ namespace Desktop_Frames
                     if (pvCombo?.SelectedItem != null)
                     {
                         SettingsManager.DefaultPortalView = (pvCombo.SelectedItem as ComboBoxItem)?.Tag?.ToString() ?? SettingsManager.DefaultPortalView;
+                    }
+
+                    var tbStorage = FindDescendants<TextBox>(generalContent).FirstOrDefault(t => t.Name == "DefaultPortalStorageRootTextBox");
+                    if (tbStorage != null && !string.IsNullOrWhiteSpace(tbStorage.Text))
+                    {
+                        SettingsManager.DefaultPortalStorageRoot = tbStorage.Text.Trim();
                     }
                 }
 

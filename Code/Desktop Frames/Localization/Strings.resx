@@ -882,6 +882,9 @@ Desktop Frames + is maintained by Nikos Georgousis (Hand Water Pump), has been e
   <data name="MenuAutoRoll" xml:space="preserve">
     <value>Auto roll</value>
   </data>
+  <data name="MenuChangeStoragePath" xml:space="preserve">
+    <value>Change Folder Location...</value>
+  </data>
   <data name="MenuClearDeadShortcuts" xml:space="preserve">
     <value>Clear Dead Shortcuts</value>
   </data>

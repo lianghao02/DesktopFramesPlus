@@ -883,17 +883,20 @@
   <data name="MenuAutoRoll" xml:space="preserve">
     <value>自動收起</value>
   </data>
+  <data name="MenuChangeStoragePath" xml:space="preserve">
+    <value>變更收納資料夾位置…</value>
+  </data>
   <data name="MenuClearDeadShortcuts" xml:space="preserve">
-    <value>清除失效的快捷方式</value>
+    <value>清除失效的捷徑</value>
   </data>
   <data name="MenuCopyFolderPath" xml:space="preserve">
     <value>複製資料夾路徑</value>
   </data>
   <data name="MenuCopyItem" xml:space="preserve">
-    <value>複製專案</value>
+    <value>複製項目</value>
   </data>
   <data name="MenuCopyItemPath" xml:space="preserve">
-    <value>複製專案路徑</value>
+    <value>複製項目路徑</value>
   </data>
   <data name="MenuCopyPath" xml:space="preserve">
     <value>複製路徑</value>
@@ -944,16 +947,16 @@
     <value>移動…</value>
   </data>
   <data name="MenuNameAfterPath" xml:space="preserve">
-    <value>以目標路徑命名此面板</value>
+    <value>以目標路徑命名此柵欄</value>
   </data>
   <data name="MenuNewFrame" xml:space="preserve">
-    <value>新建標準圖示面板（收納柵欄）</value>
+    <value>新增標準捷徑柵欄</value>
   </data>
   <data name="MenuNewNoteFrame" xml:space="preserve">
-    <value>新建桌面便籤面板（便利貼備忘）</value>
+    <value>新增桌面便箋柵欄（便利貼備忘）</value>
   </data>
   <data name="MenuNewPortalFrame" xml:space="preserve">
-    <value>新建資料夾鏡像面板（Folder Portal）…</value>
+    <value>新增資料夾收納柵欄（直接對映真實資料夾）…</value>
   </data>
   <data name="MenuNoPluginsAvailable" xml:space="preserve">
     <value>（此級別沒有可用外掛）</value>
@@ -962,7 +965,7 @@
     <value>開啟面板所在資料夾</value>
   </data>
   <data name="MenuOpenTargetFolder" xml:space="preserve">
-    <value>開啟目標資料夾…</value>
+    <value>開啟實體收納資料夾</value>
   </data>
   <data name="MenuOpenWith" xml:space="preserve">
     <value>開啟方式…</value>
@@ -971,7 +974,7 @@
     <value>選項…</value>
   </data>
   <data name="MenuPasteItem" xml:space="preserve">
-    <value>貼上專案</value>
+    <value>貼上項目</value>
   </data>
   <data name="MenuPeekBehind" xml:space="preserve">
     <value>臨時檢視桌面</value>
@@ -1199,7 +1202,7 @@
     <value>開啟文字格式視窗時出錯：{0}</value>
   </data>
   <data name="MsgPasteItemFailed" xml:space="preserve">
-    <value>貼上專案時出錯：{0}</value>
+    <value>貼上項目時出錯：{0}</value>
   </data>
   <data name="MsgPortalInitFailed" xml:space="preserve">
     <value>無法初始化資料夾面板：{0}</value>
@@ -1327,10 +1330,10 @@
     <value>清除全部文字</value>
   </data>
   <data name="NoteClickEdit" xml:space="preserve">
-    <value>單擊以編輯便籤內容</value>
+    <value>點擊以編輯便箋內容</value>
   </data>
   <data name="NoteClickFinish" xml:space="preserve">
-    <value>單擊以完成編輯</value>
+    <value>點擊以完成編輯</value>
   </data>
   <data name="NoteCopyAll" xml:space="preserve">
     <value>複製全部文字</value>
@@ -1396,7 +1399,7 @@
     <value>Desktop Frames + - 選項</value>
   </data>
   <data name="OptNewFrameContextMenu" xml:space="preserve">
-    <value>在桌面右鍵選單中顯示「新建面板」</value>
+    <value>在桌面右鍵選單中顯示「新增柵欄」</value>
   </data>
   <data name="OptNoteWatermark" xml:space="preserve">
     <value>啟用便箋面板浮水印（即將推出）</value>

@@ -305,6 +305,28 @@ namespace Desktop_Frames
 
                 // Set items based on frame type
                 newframeDict["Items"] = itemsType == "Portal" ? "" : new JArray();
+                if (itemsType == "Portal")
+                {
+                    if (!newframeDict.ContainsKey("Path") || string.IsNullOrEmpty(newframeDict["Path"]?.ToString()))
+                    {
+                        string safeFolderName = string.Join("_", frameName.Split(Path.GetInvalidFileNameChars()));
+                        if (string.IsNullOrWhiteSpace(safeFolderName)) safeFolderName = "收納柵欄";
+                        string targetDir = Path.Combine(SettingsManager.DefaultPortalStorageRoot, safeFolderName);
+                        try
+                        {
+                            if (!Directory.Exists(targetDir))
+                            {
+                                Directory.CreateDirectory(targetDir);
+                            }
+                            newframeDict["Path"] = targetDir;
+                        }
+                        catch (Exception ex)
+                        {
+                            LogManager.Log(LogManager.LogLevel.Warn, LogManager.LogCategory.FrameCreation,
+                                $"Failed to auto-create portal directory '{targetDir}': {ex.Message}");
+                        }
+                    }
+                }
 
                 // Apply default properties with simple validation
                 ApplyFrameDefaults(newframeDict, customColor, customLaunchEffect);

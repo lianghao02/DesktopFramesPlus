@@ -123,7 +123,31 @@ namespace Desktop_Frames
         public static bool EnableDimensionSnap { get; set; } = false;
         public static bool SingleClickToLaunch { get; set; } = true;
 
-      
+        private static string _defaultPortalStorageRoot;
+        public static string DefaultPortalStorageRoot
+        {
+            get
+            {
+                if (string.IsNullOrWhiteSpace(_defaultPortalStorageRoot))
+                {
+                    // 智慧偵測：若有 D 槽優先設為 D:\DesktopFrames_Storage，否則放在「我的文件」
+                    if (Directory.Exists(@"D:\"))
+                    {
+                        _defaultPortalStorageRoot = @"D:\DesktopFrames_Storage";
+                    }
+                    else
+                    {
+                        string docs = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+                        _defaultPortalStorageRoot = Path.Combine(docs, "DesktopFrames_Storage");
+                    }
+                }
+                return _defaultPortalStorageRoot;
+            }
+            set
+            {
+                _defaultPortalStorageRoot = value;
+            }
+        }
 
         public static LaunchEffectsManager.LaunchEffect LaunchEffect { get; set; } = LaunchEffectsManager.LaunchEffect.Zoom;
         public static LogManager.LogLevel MinLogLevel { get; set; } = LogManager.LogLevel.Info;
@@ -263,6 +287,7 @@ namespace Desktop_Frames
                 ApplyTintToIcons,
                 EnableContextMenu,
                 DefaultPortalView,
+                DefaultPortalStorageRoot,
                 Language,
                 GlobalFontFamily,
                 DefaultItemFontSize,
@@ -360,6 +385,7 @@ namespace Desktop_Frames
             try { ApplyTintToIcons = data.ApplyTintToIcons ?? false; } catch { ApplyTintToIcons = false; }
             try { EnableContextMenu = data.EnableContextMenu ?? false; } catch { EnableContextMenu = false; }
             try { DefaultPortalView = data.DefaultPortalView?.ToString() ?? "Icons"; } catch { DefaultPortalView = "Icons"; }
+            try { if (data.DefaultPortalStorageRoot != null) DefaultPortalStorageRoot = data.DefaultPortalStorageRoot.ToString(); } catch { }
             try { Language = data.Language?.ToString() ?? ""; } catch { Language = ""; }
             try { GlobalFontFamily = data.GlobalFontFamily?.ToString() ?? "Segoe UI"; } catch { GlobalFontFamily = "Segoe UI"; }
             try { DefaultItemFontSize = data.DefaultItemFontSize ?? 12; } catch { DefaultItemFontSize = 12; }

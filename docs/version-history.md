@@ -1,6 +1,16 @@
 #  Version history  
 
 
+## v 2.9.0 (zh-TW Release) - 2026-10-05
+- **Added**: 📂 Folder Portal Frames architecture overhaul: completely eliminated the hidden file attribute issue from legacy frames. Items stored inside portals remain 100% normal and visible in Windows Explorer and file dialogs.
+- **Added**: 📂 Two-tier storage structure: configurable global default root (`DefaultPortalStorageRoot`) prioritizing `D:\DesktopFrames_Storage` when drive D is available to protect drive C; automatic folder creation for new portals.
+- **Added**: 🚚 Move-by-Default on file drops: dragging desktop files into portal frames moves files into the physical directory by default (clearing desktop clutter); hold Ctrl to copy. Safe cross-drive fallback included.
+- **Added**: 📂 Context menu integration: added "Open Storage Folder" to quickly navigate in Explorer, and "Change Folder Location..." to remount targets on the fly.
+- **Improved**: 🇹🇼 Localization: fully aligned terms to standard Traditional Chinese (Taiwan), eliminating mainland phrasing (便箋, 新增, 捷徑, 貼上項目).
+- **Added**: 🧪 Test suite expansion: `PanelTests.exe` now verifies automatic portal directory creation, default paths, and non-hidden file safety.
+
+---
+
 ## v 2.8.1 (zh-TW Release) - 2026-10-04
 - **Added**: 🌾 Native Farm Fences "Drop-Where-You-Want" free placement: abolished forced tight-grid rearrangement; desktop icons reliably retain their exact native drop coordinates.
 - **Added**: 🌾 Relative panning vector for Farm Fences: moving the fence frame translates all nested desktop icons with zero layout distortion.

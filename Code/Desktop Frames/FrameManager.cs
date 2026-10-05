@@ -5164,6 +5164,9 @@ namespace Desktop_Frames
             MenuItem miNameAfterPath = null; // New: For Portal Renaming
             Separator sepNameAfterPath = null; // New: Separator for layout
             MenuItem miFitToContent = null; // 調整至最適大小
+            MenuItem miOpenStorageFolder = null; // NEW: Portal 開啟實體收納資料夾
+            MenuItem miChangeStoragePath = null; // NEW: Portal 變更收納資料夾位置
+            Separator sepPortalStorage = null;   // NEW: Portal 功能分隔線
 
             CnMnFramemanager.Opened += (contextSender, contextArgs) =>
             {
@@ -5194,8 +5197,6 @@ namespace Desktop_Frames
                 bool isDataFrame = frame.ItemsType?.ToString() == "Data";
                 bool isPortalFrame = frame.ItemsType?.ToString() == "Portal";
 
-
-
                 // Clean up previous dynamic items to prevent duplicates
                 if (miExportAllToDesktop != null && CnMnFramemanager.Items.Contains(miExportAllToDesktop))
                     CnMnFramemanager.Items.Remove(miExportAllToDesktop);
@@ -5210,12 +5211,19 @@ namespace Desktop_Frames
                     CnMnFramemanager.Items.Remove(miFitToContent);
 
                 if (miNameAfterPath != null && CnMnFramemanager.Items.Contains(miNameAfterPath))
-
-
                     CnMnFramemanager.Items.Remove(miNameAfterPath);
 
                 if (sepNameAfterPath != null && CnMnFramemanager.Items.Contains(sepNameAfterPath))
                     CnMnFramemanager.Items.Remove(sepNameAfterPath);
+
+                if (miOpenStorageFolder != null && CnMnFramemanager.Items.Contains(miOpenStorageFolder))
+                    CnMnFramemanager.Items.Remove(miOpenStorageFolder);
+
+                if (miChangeStoragePath != null && CnMnFramemanager.Items.Contains(miChangeStoragePath))
+                    CnMnFramemanager.Items.Remove(miChangeStoragePath);
+
+                if (sepPortalStorage != null && CnMnFramemanager.Items.Contains(sepPortalStorage))
+                    CnMnFramemanager.Items.Remove(sepPortalStorage);
 
                 // C. Export All (Data Frame + Ctrl 才顯示)
                 if (isCtrlPressed && isDataFrame)
@@ -5388,7 +5396,94 @@ namespace Desktop_Frames
                     CnMnFramemanager.Items.Insert(fitInsertIndex, miFitToContent);
                 }
 
-                // D. Name After Target (Portal Frame + Ctrl)
+                // D1. Portal Frame 操作功能（無需按 Ctrl，一般右鍵直接可用）
+                if (isPortalFrame)
+                {
+                    miOpenStorageFolder = new MenuItem { Header = Strings.MenuOpenTargetFolder };
+                    miOpenStorageFolder.Click += (s, e) =>
+                    {
+                        try
+                        {
+                            string targetPath = frame.Path?.ToString();
+                            if (!string.IsNullOrEmpty(targetPath) && Directory.Exists(targetPath))
+                            {
+                                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                                {
+                                    FileName = targetPath,
+                                    UseShellExecute = true
+                                });
+                            }
+                            else
+                            {
+                                string msg = !string.IsNullOrEmpty(targetPath)
+                                    ? string.Format(Strings.MsgTargetNotFound, targetPath)
+                                    : "找不到指定的收納資料夾。";
+                                MessageBox.Show(msg, "Desktop Frames +", MessageBoxButton.OK, MessageBoxImage.Warning);
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            LogManager.Log(LogManager.LogLevel.Error, LogManager.LogCategory.UI, $"Failed to open storage folder: {ex.Message}");
+                        }
+                    };
+
+                    miChangeStoragePath = new MenuItem { Header = Strings.MenuChangeStoragePath };
+                    miChangeStoragePath.Click += (s, e) =>
+                    {
+                        try
+                        {
+                            using (var fbd = new System.Windows.Forms.FolderBrowserDialog())
+                            {
+                                fbd.Description = Strings.MenuChangeStoragePath;
+                                fbd.UseDescriptionForTitle = true;
+                                string currentPath = frame.Path?.ToString();
+                                if (!string.IsNullOrEmpty(currentPath) && Directory.Exists(currentPath))
+                                {
+                                    fbd.SelectedPath = currentPath;
+                                }
+
+                                if (fbd.ShowDialog() == System.Windows.Forms.DialogResult.OK && !string.IsNullOrWhiteSpace(fbd.SelectedPath))
+                                {
+                                    string newPath = fbd.SelectedPath;
+                                    string id = frame.Id?.ToString();
+                                    var liveFrame = GetFrameData().FirstOrDefault(f => f.Id?.ToString() == id);
+                                    if (liveFrame != null)
+                                    {
+                                        if (liveFrame is JObject jFrame)
+                                        {
+                                            jFrame["Path"] = newPath;
+                                        }
+                                        else
+                                        {
+                                            liveFrame.Path = newPath;
+                                        }
+                                        frame.Path = newPath;
+                                        FrameDataManager.SaveFrameData();
+                                        RefreshFrameUsingFormApproach(win, liveFrame);
+                                        LogManager.Log(LogManager.LogLevel.Info, LogManager.LogCategory.UI, $"Changed portal frame storage path to: {newPath}");
+                                    }
+                                }
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            LogManager.Log(LogManager.LogLevel.Error, LogManager.LogCategory.UI, $"Failed to change storage folder: {ex.Message}");
+                        }
+                    };
+
+                    sepPortalStorage = new Separator();
+
+                    int portalInsertIndex = CnMnFramemanager.Items.Count - 1;
+                    var customizeItemPortal = CnMnFramemanager.Items.OfType<MenuItem>()
+                        .FirstOrDefault(m => m.Header.ToString() == Strings.MenuCustomize);
+                    if (customizeItemPortal != null) portalInsertIndex = CnMnFramemanager.Items.IndexOf(customizeItemPortal);
+
+                    CnMnFramemanager.Items.Insert(portalInsertIndex, miOpenStorageFolder);
+                    CnMnFramemanager.Items.Insert(portalInsertIndex + 1, miChangeStoragePath);
+                    CnMnFramemanager.Items.Insert(portalInsertIndex + 2, sepPortalStorage);
+                }
+
+                // D2. Name After Target (Portal Frame + Ctrl)
                 if (isCtrlPressed && isPortalFrame)
                 {
                     miNameAfterPath = new MenuItem { Header = Strings.MenuNameAfterPath };
@@ -6681,7 +6776,8 @@ namespace Desktop_Frames
                     }
                     if (droppedFiles == null) return;
 
-                    int portalCopiedCount = 0; // --- NEW: Track successful portal copies ---
+                    int portalMovedCount = 0;  // 追蹤成功移動的項目數量（收納）
+                    int portalCopiedCount = 0; // 追蹤成功複製的項目數量
 
                     foreach (string droppedFile in droppedFiles)
                     {
@@ -7060,15 +7156,51 @@ namespace Desktop_Frames
                                     destinationPath = System.IO.Path.Combine(destinationFolder, $"{baseName} ({counter++}){extension}");
                                 }
 
+                                bool isCtrlPressed = (Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control;
+                                bool shouldMove = !isCtrlPressed; // 預設拖曳為收納搬移（Move），按住 Ctrl 則維持複製（Copy）
+
                                 if (System.IO.File.Exists(droppedFile))
                                 {
-                                    System.IO.File.Copy(droppedFile, destinationPath, false);
-                                    portalCopiedCount++; // --- NEW ---
+                                    if (shouldMove)
+                                    {
+                                        try
+                                        {
+                                            System.IO.File.Move(droppedFile, destinationPath);
+                                        }
+                                        catch
+                                        {
+                                            // 跨磁碟機或檔案鎖定時，降級為安全複製後刪除來源
+                                            System.IO.File.Copy(droppedFile, destinationPath, true);
+                                            try { System.IO.File.Delete(droppedFile); } catch { }
+                                        }
+                                        portalMovedCount++;
+                                    }
+                                    else
+                                    {
+                                        System.IO.File.Copy(droppedFile, destinationPath, false);
+                                        portalCopiedCount++;
+                                    }
                                 }
                                 else if (System.IO.Directory.Exists(droppedFile))
                                 {
-                                    BackupManager.CopyDirectory(droppedFile, destinationPath);
-                                    portalCopiedCount++; // --- NEW ---
+                                    if (shouldMove)
+                                    {
+                                        try
+                                        {
+                                            System.IO.Directory.Move(droppedFile, destinationPath);
+                                        }
+                                        catch
+                                        {
+                                            BackupManager.CopyDirectory(droppedFile, destinationPath);
+                                            try { System.IO.Directory.Delete(droppedFile, true); } catch { }
+                                        }
+                                        portalMovedCount++;
+                                    }
+                                    else
+                                    {
+                                        BackupManager.CopyDirectory(droppedFile, destinationPath);
+                                        portalCopiedCount++;
+                                    }
                                 }
                             }
                         }
@@ -7079,9 +7211,18 @@ namespace Desktop_Frames
                     }
 
                     // --- NEW: Visual Feedback for Portal Frames ---
-                    if (frame.ItemsType?.ToString() == "Portal" && portalCopiedCount > 0)
+                    if (frame.ItemsType?.ToString() == "Portal")
                     {
-                        ShowPortalToast(win, $"Copied {portalCopiedCount} item{(portalCopiedCount > 1 ? "s" : "")}");
+                        string frameTitle = frame.Title?.ToString() ?? "收納柵欄";
+                        if (portalMovedCount > 0)
+                        {
+                            ShowPortalToast(win, $"已將 {portalMovedCount} 個項目收納至 [{frameTitle}]");
+                            Services.FenceInventoryManager.RefreshDesktopShell();
+                        }
+                        else if (portalCopiedCount > 0)
+                        {
+                            ShowPortalToast(win, $"已將 {portalCopiedCount} 個項目複製至 [{frameTitle}]");
+                        }
                     }
 
                     FrameDataManager.SaveFrameData();

@@ -1,6 +1,6 @@
-﻿[CmdletBinding()]
+[CmdletBinding()]
 param(
-    [string]$Version = "v2.8.1-zh-TW"
+    [string]$Version = "v2.9.0-zh-TW"
 )
 
 $ErrorActionPreference = "Stop"
@@ -15,46 +15,57 @@ if (-not (Test-Path $releaseDir)) {
     throw "找不到 Release 建置輸出目錄: $releaseDir"
 }
 
-# 若 dist/DesktopFramesPlus 內已有使用者的 Profiles 設定檔，先安全暫存備份，絕不刪除使用者資料
-$existingProfiles = Join-Path $distDir "Profiles"
-$tempBackup = $null
-if (Test-Path $existingProfiles) {
-    $tempBackup = Join-Path $env:TEMP "DFP_Profiles_Backup_$([Guid]::NewGuid().ToString('N'))"
-    Copy-Item -Path $existingProfiles -Destination $tempBackup -Recurse -Force
-    Write-Host "偵測到本機 Profiles 設定，已暫存保護: $tempBackup" -ForegroundColor Cyan
+$distParent = Split-Path -Parent $distDir
+if (-not (Test-Path $distParent)) {
+    New-Item -ItemType Directory -Path $distParent -Force | Out-Null
 }
 
-if (Test-Path $distDir) {
-    Remove-Item -Recurse -Force $distDir
-}
-New-Item -ItemType Directory -Path $distDir -Force | Out-Null
+# 1. 建立獨立臨時打包工作區，完全杜絕本機執行中行程鎖定與 Profiles 污染
+$tempPackDir = Join-Path $env:TEMP "DFP_Pack_$([Guid]::NewGuid().ToString('N'))"
+New-Item -ItemType Directory -Path $tempPackDir -Force | Out-Null
 
-$files = Get-ChildItem -Path $releaseDir -File
-foreach ($f in $files) {
-    if ($f.Extension -ne ".pdb") {
-        Copy-Item -Path $f.FullName -Destination $distDir
+try {
+    # 複製所有檔案（排除 .pdb）
+    Get-ChildItem -Path $releaseDir -File | Where-Object { $_.Extension -ne ".pdb" } | ForEach-Object {
+        Copy-Item -Path $_.FullName -Destination $tempPackDir
+    }
+
+    # 複製所有子目錄（排除 Profiles）
+    Get-ChildItem -Path $releaseDir -Directory | Where-Object { $_.Name -ne "Profiles" } | ForEach-Object {
+        Copy-Item -Path $_.FullName -Destination $tempPackDir -Recurse
+    }
+
+    # 2. 製作乾淨發布 ZIP
+    if (Test-Path $zipPath) {
+        Remove-Item -Force $zipPath
+    }
+    Compress-Archive -Path "$tempPackDir\*" -DestinationPath $zipPath
+    Write-Host "打包成功 (純淨發布包): $zipPath" -ForegroundColor Green
+
+    # 3. 安全同步至本機 distDir（供本機測試，略過鎖定檔案與保護 Profiles）
+    if (-not (Test-Path $distDir)) {
+        New-Item -ItemType Directory -Path $distDir -Force | Out-Null
+    }
+    Get-ChildItem -Path $tempPackDir -File | ForEach-Object {
+        try {
+            Copy-Item -Path $_.FullName -Destination $distDir -Force -ErrorAction Stop
+        } catch {
+            Write-Host "注意: $($_.Name) 目前被執行中行程鎖定，略過就地更新" -ForegroundColor Yellow
+        }
+    }
+    Get-ChildItem -Path $tempPackDir -Directory | ForEach-Object {
+        try {
+            Copy-Item -Path $_.FullName -Destination $distDir -Recurse -Force -ErrorAction Stop
+        } catch {
+            # 略過子目錄鎖定
+        }
     }
 }
-
-$dirs = Get-ChildItem -Path $releaseDir -Directory
-foreach ($d in $dirs) {
-    if ($d.Name -ne "Profiles") {
-        Copy-Item -Path $d.FullName -Destination $distDir -Recurse
+finally {
+    if (Test-Path $tempPackDir) {
+        Remove-Item -Recurse -Force $tempPackDir -ErrorAction SilentlyContinue
     }
-}
-
-# 製作乾淨的發布 ZIP（此時 distDir 完全不含 Profiles，保證 ZIP 乾淨）
-if (Test-Path $zipPath) {
-    Remove-Item -Force $zipPath
-}
-Compress-Archive -Path "$distDir\*" -DestinationPath $zipPath
-Write-Host "打包成功 (純淨發布包): $zipPath" -ForegroundColor Green
-
-# 打包完成後，將使用者的本機設定 Profiles 還原回 distDir，確保本地運行不丟失任何設定與柵欄
-if ($tempBackup -and (Test-Path $tempBackup)) {
-    Copy-Item -Path $tempBackup -Destination $existingProfiles -Recurse -Force
-    Remove-Item -Recurse -Force $tempBackup
-    Write-Host "已成功還原使用者本機 Profiles 設定至: $existingProfiles" -ForegroundColor Green
 }
 
 Get-Item $zipPath | Select-Object Name, Length, LastWriteTime | Format-Table -AutoSize
+
