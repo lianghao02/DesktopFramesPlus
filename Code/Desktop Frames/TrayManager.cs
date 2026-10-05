@@ -242,13 +242,10 @@ namespace Desktop_Frames
 
             var trayMenu = new ContextMenuStrip();
 
-            // Desktop Layouts Submenu (Promoted to top for instant switching)
-            _profilesMenuItem = new ToolStripMenuItem(Strings.MenuDesktopLayouts);
-            trayMenu.Items.Add(_profilesMenuItem);
+            // 1. 核心建立（高頻使用）
             trayMenu.Items.Add(Strings.MenuNewFrame, null, (s, e) => Framemanager.CreateNewFrame("", "Data"));
             trayMenu.Items.Add(Strings.MenuDrawFrame, null, (s, e) => Framemanager.StartDrawMode());
 
-            // Desktop Sticky Notes Submenu
             var notesMenuItem = new ToolStripMenuItem(Strings.Get("MenuDesktopNotes", "桌面便箋"));
             notesMenuItem.DropDownItems.Add(Strings.Get("MenuNewNote", "新增便箋 (Ctrl+Alt+N)"), null, (s, e) =>
             {
@@ -273,69 +270,25 @@ namespace Desktop_Frames
                 }));
             });
             trayMenu.Items.Add(notesMenuItem);
-
             trayMenu.Items.Add(new ToolStripSeparator());
 
-            trayMenu.Items.Add(Strings.MenuAbout, null, (s, e) => AboutFormManager.ShowAboutForm());
-            trayMenu.Items.Add(Strings.MenuOptions, null, (s, e) => OptionsFormManager.ShowOptionsForm());
+            // 2. 桌面版面切換
+            _profilesMenuItem = new ToolStripMenuItem(Strings.MenuDesktopLayouts);
+            trayMenu.Items.Add(_profilesMenuItem);
             trayMenu.Items.Add(new ToolStripSeparator());
 
-            // Standalone Automation Toggle with explicit Save
-            _automationMenuItem = new ToolStripMenuItem(Strings.LblEnableProfileAutomation) { CheckOnClick = true };
-            _automationMenuItem.Checked = SettingsManager.EnableProfileAutomation;
-            _automationMenuItem.Click += (s, e) => {
-                SettingsManager.EnableProfileAutomation = _automationMenuItem.Checked;
-                try { SettingsManager.SaveSettings(); } catch { }
-                if (SettingsManager.EnableProfileAutomation) AutomationManager.Start();
-            };
-            trayMenu.Items.Add(_automationMenuItem);
-
-            trayMenu.Items.Add(new ToolStripSeparator());
-
-            // --- SMART DESKTOP OPTIONS ---
-            trayMenu.Items.Add(Strings.BtnSmartDesktopRules, null, (s, e) =>
-            {
-                System.Windows.Application.Current?.Dispatcher.BeginInvoke(new Action(() =>
-                {
-                    new AutoOrganizeForm().ShowDialog();
-                }));
-            });
-
-            _autoOrganizeMenuItem = new ToolStripMenuItem(Strings.OptAutoOrganize) { CheckOnClick = true };
-            _autoOrganizeMenuItem.Checked = SettingsManager.EnableAutoOrganize;
-            _autoOrganizeMenuItem.Click += (s, e) =>
-            {
-                SettingsManager.EnableAutoOrganize = _autoOrganizeMenuItem.Checked;
-                try { SettingsManager.SaveSettings(); } catch { }
-
-                if (SettingsManager.EnableAutoOrganize)
-                    AutoOrganizeManager.Start();
-                else
-                    AutoOrganizeManager.Stop();
-            };
-            trayMenu.Items.Add(_autoOrganizeMenuItem);
-
-            trayMenu.Items.Add(new ToolStripSeparator());
-            // --- END SMART DESKTOP OPTIONS ---
-
-            trayMenu.Items.Add(Strings.TrayReloadAllFrames, null, async (s, e) => { await reloadallFrames(); });
-
-            trayMenu.Items.Add(new ToolStripSeparator());
-
+            // 3. 視窗檢視與重整
             _showHiddenFramesItem = new ToolStripMenuItem(Strings.TrayShowHiddenFrames) { Enabled = false };
             trayMenu.Items.Add(_showHiddenFramesItem);
-
-            string focusHotkeyStr = GetFocusFrameHotkeyString();
-            trayMenu.Items.Add(Strings.Get("TrayFocusFrame", focusHotkeyStr), null, (s, e) =>
-            {
-                System.Windows.Application.Current?.Dispatcher.BeginInvoke(new Action(() =>
-                {
-                    FrameFocusFormManager focusManager = new FrameFocusFormManager();
-                    focusManager.ShowDialog();
-                }));
-            });
-
+            trayMenu.Items.Add(Strings.TrayReloadAllFrames, null, async (s, e) => { await reloadallFrames(); });
             trayMenu.Items.Add(new ToolStripSeparator());
+
+            // 4. 設定與關於
+            trayMenu.Items.Add(Strings.MenuOptions, null, (s, e) => OptionsFormManager.ShowOptionsForm());
+            trayMenu.Items.Add(Strings.MenuAbout, null, (s, e) => AboutFormManager.ShowAboutForm());
+            trayMenu.Items.Add(new ToolStripSeparator());
+
+            // 5. 結束
             trayMenu.Items.Add(Strings.MenuExit, null, (s, e) => System.Windows.Application.Current.Shutdown());
 
             _trayIcon.ContextMenuStrip = trayMenu;

@@ -277,13 +277,14 @@ namespace Desktop_Frames
             CreateSmartDesktopTab();
             CreateLookDeeperTab();
 
+            if (_lastSelectedTabIndex == 5) _lastSelectedTabIndex = 0;
             _tabControl.SelectedIndex = _lastSelectedTabIndex;
             CreateTabButton(tabPanel, Strings.TabGeneral, 0, _lastSelectedTabIndex == 0);
             CreateTabButton(tabPanel, Strings.TabStyleFx, 1, _lastSelectedTabIndex == 1);
             CreateTabButton(tabPanel, Strings.TabTools, 2, _lastSelectedTabIndex == 2);
             CreateTabButton(tabPanel, Strings.TabProfiles, 3, _lastSelectedTabIndex == 3);
             CreateTabButton(tabPanel, Strings.TabHotkeys, 4, _lastSelectedTabIndex == 4);
-            CreateTabButton(tabPanel, Strings.TabSmartDesktop, 5, _lastSelectedTabIndex == 5);
+            // TabSmartDesktop (5) 入口已隱藏，不建立側邊按鈕
             CreateTabButton(tabPanel, Strings.TabLookDeeper, 6, _lastSelectedTabIndex == 6);
 
             contentBorder.Child = _tabControl;
@@ -297,6 +298,7 @@ namespace Desktop_Frames
             Button tabButton = new Button
             {
                 Content = title,
+                Tag = tabIndex,
                 Height = 40,
                 FontFamily = new FontFamily("Segoe UI"),
                 FontSize = 14,
@@ -329,7 +331,13 @@ namespace Desktop_Frames
             _lastSelectedTabIndex = tabIndex;
             _tabControl.SelectedIndex = tabIndex;
             StackPanel tabPanel = (StackPanel)selectedButton.Parent;
-            for (int i = 0; i < tabPanel.Children.Count; i++) if (tabPanel.Children[i] is Button btn) SetTabButtonColors(btn, i, i == tabIndex);
+            for (int i = 0; i < tabPanel.Children.Count; i++)
+            {
+                if (tabPanel.Children[i] is Button btn && btn.Tag is int idx)
+                {
+                    SetTabButtonColors(btn, idx, idx == tabIndex);
+                }
+            }
         }
 
         // --- Tabs ---
@@ -531,7 +539,9 @@ namespace Desktop_Frames
                 BorderThickness = new Thickness(1),
                 CornerRadius = new CornerRadius(6),
                 Margin = new Thickness(8, 4, 8, 14),
-                Padding = new Thickness(14, 10, 14, 12)
+                Padding = new Thickness(14, 10, 14, 12),
+                MaxWidth = 780,
+                HorizontalAlignment = HorizontalAlignment.Left
             };
 
             StackPanel cardContent = new StackPanel();
@@ -641,15 +651,16 @@ namespace Desktop_Frames
             CreateCheckBox(cardStartup, Strings.OptStartWithWindows, "StartWithWindows", TrayManager.IsStartWithWindows);
             CreateCheckBox(cardStartup, Strings.OptTrayIcon, "EnableTrayIcon", SettingsManager.ShowInTray);
             CreateCheckBox(cardStartup, Strings.OptNewFrameContextMenu, "EnableContextMenu", SettingsManager.EnableContextMenu);
-            CreateCheckBox(cardStartup, Strings.OptDisableScrollbars, "DisableFrameScrollbars", SettingsManager.DisableFrameScrollbars);
 
-            // 3. 操作與吸附
-            var cardInteractions = CreateGroupCard(c, Strings.Get("SecInteractions"), _userAccentColor);
+            // 3. 面板操作與吸附
+            var cardInteractions = CreateGroupCard(c, "面板操作與吸附", _userAccentColor, "面板捷徑點擊與邊界吸附行為");
             CreateCheckBox(cardInteractions, Strings.OptSingleClick, "SingleClickToLaunch", SettingsManager.SingleClickToLaunch);
             CreateCheckBox(cardInteractions, Strings.OptSnapNearFrames, "EnableSnapNearFrames", SettingsManager.IsSnapEnabled);
             CreateCheckBox(cardInteractions, Strings.OptDimensionSnap, "EnableDimensionSnap", SettingsManager.EnableDimensionSnap);
 
-            CheckBox cbSounds = CreateCheckBoxReturn(cardInteractions, Strings.OptEnableSounds, "EnableSounds", SettingsManager.EnableSounds);
+            // 4. 提示聲音
+            var cardSounds = CreateGroupCard(c, "提示聲音", _userAccentColor, "通知與操作提示音效設定");
+            CheckBox cbSounds = CreateCheckBoxReturn(cardSounds, Strings.OptEnableSounds, "EnableSounds", SettingsManager.EnableSounds);
             Grid soundGrid = new Grid { Margin = new Thickness(26, 2, 0, 6) };
             soundGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(140) });
             soundGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(200) });
@@ -674,140 +685,9 @@ namespace Desktop_Frames
             Grid.SetColumn(cbSoundType, 1);
             soundGrid.Children.Add(lblSound);
             soundGrid.Children.Add(cbSoundType);
-            cardInteractions.Children.Add(soundGrid);
+            cardSounds.Children.Add(soundGrid);
             soundGrid.IsEnabled = cbSounds.IsChecked == true;
             cbSounds.Click += (s, e) => soundGrid.IsEnabled = cbSounds.IsChecked == true;
-
-            // 4. 資料夾鏡像面板
-            var cardPortals = CreateGroupCard(c, Strings.Get("SecFolderPortals"), _userAccentColor);
-            Grid portalViewGrid = new Grid { Margin = new Thickness(6, 4, 0, 6) };
-            portalViewGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(140) });
-            portalViewGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(150) });
-            TextBlock lblPortalView = new TextBlock { Text = Strings.LblDefaultPortalView, FontFamily = new FontFamily("Segoe UI"), FontSize = 13, VerticalAlignment = VerticalAlignment.Center };
-            Grid.SetColumn(lblPortalView, 0);
-            ComboBox cbPortalView = new ComboBox { Name = "DefaultPortalViewComboBox", Height = 25, FontFamily = new FontFamily("Segoe UI"), FontSize = 13, VerticalAlignment = VerticalAlignment.Center };
-            cbPortalView.Items.Add(new ComboBoxItem { Content = Strings.ViewIcons, Tag = "Icons" });
-            cbPortalView.Items.Add(new ComboBoxItem { Content = Strings.ViewDetails, Tag = "Details" });
-            cbPortalView.SelectedIndex = string.Equals(SettingsManager.DefaultPortalView, "Details", StringComparison.OrdinalIgnoreCase) ? 1 : 0;
-            Grid.SetColumn(cbPortalView, 1);
-            portalViewGrid.Children.Add(lblPortalView);
-            portalViewGrid.Children.Add(cbPortalView);
-            cardPortals.Children.Add(portalViewGrid);
-            CreateCheckBox(cardPortals, Strings.OptPortalWatermark, "EnablePortalWatermark", SettingsManager.ShowBackgroundImageOnPortalFrames);
-            CreateCheckBox(cardPortals, Strings.OptRecycleBin, "UseRecycleBin", SettingsManager.UseRecycleBin);
-
-            // 預設檔案收納總目錄設定
-            TextBlock lblStorageDesc = new TextBlock
-            {
-                Text = "預設檔案收納總目錄（新建立的收納柵欄預設在此自動產生子資料夾）：",
-                FontSize = 12,
-                Foreground = new SolidColorBrush(Color.FromRgb(110, 110, 110)),
-                TextWrapping = TextWrapping.Wrap,
-                Margin = new Thickness(6, 6, 6, 2)
-            };
-            cardPortals.Children.Add(lblStorageDesc);
-
-            Grid storageGrid = new Grid { Margin = new Thickness(6, 2, 6, 6) };
-            storageGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-            storageGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(80) });
-
-            TextBox tbStorageRoot = new TextBox
-            {
-                Name = "DefaultPortalStorageRootTextBox",
-                Text = SettingsManager.DefaultPortalStorageRoot,
-                Height = 26,
-                FontSize = 12,
-                VerticalContentAlignment = VerticalAlignment.Center,
-                Margin = new Thickness(0, 0, 6, 0)
-            };
-            Grid.SetColumn(tbStorageRoot, 0);
-
-            Button btnBrowseStorage = new Button
-            {
-                Content = "瀏覽...",
-                Height = 26,
-                FontSize = 12,
-                Cursor = Cursors.Hand
-            };
-            btnBrowseStorage.Click += (s, e) =>
-            {
-                using var dialog = new System.Windows.Forms.FolderBrowserDialog
-                {
-                    Description = "請選擇資料夾收納柵欄的預設存放總目錄",
-                    SelectedPath = tbStorageRoot.Text
-                };
-                if (dialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
-                {
-                    tbStorageRoot.Text = dialog.SelectedPath;
-                    SettingsManager.DefaultPortalStorageRoot = dialog.SelectedPath;
-                }
-            };
-            Grid.SetColumn(btnBrowseStorage, 1);
-
-            storageGrid.Children.Add(tbStorageRoot);
-            storageGrid.Children.Add(btnBrowseStorage);
-            cardPortals.Children.Add(storageGrid);
-
-            // 5. 公用桌面收納權限
-            var cardPublicDesktop = CreateGroupCard(c, Strings.Get("SecPublicDesktop"), _userAccentColor);
-            cardPublicDesktop.Children.Add(new TextBlock
-            {
-                Text = Strings.Get("DescPublicDesktop"),
-                FontSize = 12,
-                Foreground = new SolidColorBrush(Color.FromRgb(110, 110, 110)),
-                TextWrapping = TextWrapping.Wrap,
-                Margin = new Thickness(6, 0, 6, 8)
-            });
-            bool isCommonGranted = Services.FenceInventoryManager.HasCommonDesktopWritePermission();
-            Grid publicDesktopGrid = new Grid { Margin = new Thickness(6, 4, 6, 6) };
-            publicDesktopGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-            publicDesktopGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(160) });
-            TextBlock lblCommonStatus = new TextBlock
-            {
-                Text = isCommonGranted ? Strings.Get("LblPublicDesktopGranted") : Strings.Get("LblPublicDesktopNotGranted"),
-                FontSize = 13,
-                FontWeight = FontWeights.SemiBold,
-                Foreground = isCommonGranted ? new SolidColorBrush(Color.FromRgb(34, 139, 34)) : new SolidColorBrush(Color.FromRgb(210, 105, 30)),
-                VerticalAlignment = VerticalAlignment.Center,
-                TextWrapping = TextWrapping.Wrap
-            };
-            Grid.SetColumn(lblCommonStatus, 0);
-            Button btnGrant = new Button
-            {
-                Content = isCommonGranted ? "✓ 已完成授權" : Strings.Get("BtnGrantPublicDesktop"),
-                Height = 30,
-                FontSize = 12,
-                FontWeight = FontWeights.SemiBold,
-                Background = isCommonGranted ? new SolidColorBrush(Color.FromRgb(235, 235, 235)) : new SolidColorBrush(Color.FromRgb(0, 120, 215)),
-                Foreground = isCommonGranted ? Brushes.Gray : Brushes.White,
-                BorderThickness = new Thickness(0),
-                Cursor = isCommonGranted ? Cursors.Arrow : Cursors.Hand,
-                IsEnabled = !isCommonGranted,
-                Margin = new Thickness(10, 0, 0, 0)
-            };
-            Grid.SetColumn(btnGrant, 1);
-            btnGrant.Click += (s, e) =>
-            {
-                bool success = Services.FenceInventoryManager.GrantCommonDesktopPermission();
-                if (success)
-                {
-                    lblCommonStatus.Text = Strings.Get("LblPublicDesktopGranted");
-                    lblCommonStatus.Foreground = new SolidColorBrush(Color.FromRgb(34, 139, 34));
-                    btnGrant.Content = "✓ 已完成授權";
-                    btnGrant.IsEnabled = false;
-                    btnGrant.Foreground = Brushes.Gray;
-                    btnGrant.Background = new SolidColorBrush(Color.FromRgb(235, 235, 235));
-                    btnGrant.Cursor = Cursors.Arrow;
-                    MessageBoxesManager.ShowOKOnlyMessageBoxForm("公用桌面收納權限已成功授權！日後可直接拖曳收納公用捷徑。", Strings.DlgInfo);
-                }
-                else
-                {
-                    MessageBoxesManager.ShowOKOnlyMessageBoxForm("未取得系統管理員授權或已取消確認。", Strings.DlgInfo);
-                }
-            };
-            publicDesktopGrid.Children.Add(lblCommonStatus);
-            publicDesktopGrid.Children.Add(btnGrant);
-            cardPublicDesktop.Children.Add(publicDesktopGrid);
 
             t.Content = new ScrollViewer { Content = c, VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
             _tabControl.Items.Add(t);
@@ -826,57 +706,10 @@ namespace Desktop_Frames
             CreateSliderControl(cardAppearance, Strings.SldMenuTint, "MenuTintSlider", SettingsManager.MenuTintValue);
             CreateColorAndEffectComboBoxes(cardAppearance, chamCb);
             CreateCheckBox(cardAppearance, Strings.OptFrameTint, "ApplyTintToIcons", SettingsManager.ApplyTintToIcons);
+            CreateCheckBox(cardAppearance, Strings.OptDisableScrollbars, "DisableFrameScrollbars", SettingsManager.DisableFrameScrollbars);
 
-            // 2. 自動隱藏與閒置效果
-            var cardAutoHide = CreateGroupCard(c, Strings.SecAutoHideFrames, ColorStyle);
-            CreateCheckBox(cardAutoHide, Strings.OptAutoHideFrames, "AutoHideFrames", SettingsManager.AutoHideFrames);
-            CreateSliderControl(cardAutoHide, Strings.SldAutoHideTime, "AutoHideTimeSlider", SettingsManager.AutoHideTime, 300);
-
-            cardAutoHide.Children.Add(new Separator { Margin = new Thickness(6, 8, 6, 8), Background = new SolidColorBrush(Color.FromRgb(235, 235, 235)) });
-            CreateCheckBox(cardAutoHide, Strings.OptIdleFadeOut, "FramesFadeOutFx", SettingsManager.FramesFadeOutFx);
-            CreateSliderControl(cardAutoHide, Strings.SldIdleTime, "FadeOutTimeSlider", SettingsManager.FadeOutTime, 300);
-            CreateSliderControl(cardAutoHide, Strings.SldFadeTargetOpacity, "FadeOutAlphaSlider", (int)(SettingsManager.FadeOutFxTargetAlpha * 100), 100);
-
-            cardAutoHide.Children.Add(new Separator { Margin = new Thickness(6, 8, 6, 8), Background = new SolidColorBrush(Color.FromRgb(235, 235, 235)) });
-            cardAutoHide.Children.Add(new TextBlock
-            {
-                Text = Strings.SecIdleAutoRoll + "：" + Strings.NoteAutoRoll,
-                FontStyle = FontStyles.Italic,
-                Foreground = Brushes.Gray,
-                FontSize = 12,
-                Margin = new Thickness(6, 2, 6, 6),
-                TextWrapping = TextWrapping.Wrap
-            });
-            CreateSliderControl(cardAutoHide, Strings.SldIdleTime, "AutoRollTimeSlider", SettingsManager.AutoRollTime, 300);
-
-            // 3. 桌面圖示顯示行為
-            var cardDesktopIcons = CreateGroupCard(c, Strings.SecDesktopIconVisibility, ColorStyle);
-            CreateCheckBox(cardDesktopIcons, Strings.OptHideIconsRunning, "HideDesktopElementsOnStart", SettingsManager.HideDesktopElementsOnStart);
-            CreateCheckBox(cardDesktopIcons, Strings.OptHideIconsWhenHidden, "HideDesktopElementsOnAllFramesHide", SettingsManager.HideDesktopElementsOnAllFramesHide);
-            CreateCheckBox(cardDesktopIcons, Strings.Get("OptShowDesktopDot"), "ShowDesktopDot", SettingsManager.ShowDesktopDot);
-
-            // 4. 面板按鈕圖示樣式
-            var cardIcons = CreateGroupCard(c, Strings.SecIcons, ColorStyle);
-            Grid iconGrid = new Grid { Margin = new Thickness(6, 4, 0, 8) };
-            iconGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-            iconGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-
-            StackPanel menuIconPanel = new StackPanel();
-            menuIconPanel.Children.Add(new TextBlock { Text = Strings.LblMenuIcon, FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 0, 0, 4) });
-            CreateIconRadioButtonGroup(menuIconPanel, "MenuIconGroup", new Dictionary<string, int> { { "♥", 0 }, { "☰", 1 }, { "≣", 2 }, { "𓃑", 3 } }, SettingsManager.MenuIcon);
-
-            StackPanel lockIconPanel = new StackPanel();
-            lockIconPanel.Children.Add(new TextBlock { Text = Strings.LblLockIcon, FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 0, 0, 4) });
-            CreateIconRadioButtonGroup(lockIconPanel, "LockIconGroup", new Dictionary<string, int> { { "🛡️", 0 }, { "🔑", 1 }, { "🔐", 2 }, { "🔒", 3 } }, SettingsManager.LockIcon);
-
-            Grid.SetColumn(menuIconPanel, 0);
-            Grid.SetColumn(lockIconPanel, 1);
-            iconGrid.Children.Add(menuIconPanel);
-            iconGrid.Children.Add(lockIconPanel);
-            cardIcons.Children.Add(iconGrid);
-
-            // 5. 便箋預設樣式
-            var cardNotes = CreateGroupCard(c, Strings.SecNotePreferences, ColorStyle);
+            // 2. 桌面便箋預設樣式
+            var cardNotes = CreateGroupCard(c, Strings.SecNotePreferences, ColorStyle, "自訂新便箋預設字型、字級與配色（僅套用於之後新增的便箋，不變更既有便箋）");
             Grid noteStyleGrid = new Grid { Margin = new Thickness(6, 4, 0, 8) };
             noteStyleGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(140) });
             noteStyleGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(200) });
@@ -924,6 +757,67 @@ namespace Desktop_Frames
             noteStyleGrid.Children.Add(_noteDefaultColorCombo);
             cardNotes.Children.Add(noteStyleGrid);
 
+            cardNotes.Children.Add(new TextBlock
+            {
+                Text = "※ 備註：此處設定僅套用於之後新建的桌面便箋，不會影響既有便箋的內容與樣式。",
+                FontSize = 11,
+                FontStyle = FontStyles.Italic,
+                Foreground = new SolidColorBrush(Color.FromRgb(120, 120, 120)),
+                Margin = new Thickness(6, 0, 6, 4)
+            });
+
+            // 3. 自動隱藏與閒置效果
+            var cardAutoHide = CreateGroupCard(c, Strings.SecAutoHideFrames, ColorStyle);
+            var cbAutoHide = CreateCheckBoxReturn(cardAutoHide, Strings.OptAutoHideFrames, "AutoHideFrames", SettingsManager.AutoHideFrames);
+            var slAutoHide = CreateSliderControl(cardAutoHide, Strings.SldAutoHideTime, "AutoHideTimeSlider", SettingsManager.AutoHideTime, 300);
+            slAutoHide.IsEnabled = cbAutoHide.IsChecked == true;
+            cbAutoHide.Click += (s, e) => slAutoHide.IsEnabled = cbAutoHide.IsChecked == true;
+
+            cardAutoHide.Children.Add(new Separator { Margin = new Thickness(6, 8, 6, 8), Background = new SolidColorBrush(Color.FromRgb(235, 235, 235)) });
+            var cbFadeOut = CreateCheckBoxReturn(cardAutoHide, Strings.OptIdleFadeOut, "FramesFadeOutFx", SettingsManager.FramesFadeOutFx);
+            var slFadeTime = CreateSliderControl(cardAutoHide, Strings.SldIdleTime, "FadeOutTimeSlider", SettingsManager.FadeOutTime, 300);
+            var slFadeAlpha = CreateSliderControl(cardAutoHide, Strings.SldFadeTargetOpacity, "FadeOutAlphaSlider", (int)(SettingsManager.FadeOutFxTargetAlpha * 100), 100);
+            slFadeTime.IsEnabled = slFadeAlpha.IsEnabled = cbFadeOut.IsChecked == true;
+            cbFadeOut.Click += (s, e) => slFadeTime.IsEnabled = slFadeAlpha.IsEnabled = cbFadeOut.IsChecked == true;
+
+            cardAutoHide.Children.Add(new Separator { Margin = new Thickness(6, 8, 6, 8), Background = new SolidColorBrush(Color.FromRgb(235, 235, 235)) });
+            cardAutoHide.Children.Add(new TextBlock
+            {
+                Text = Strings.SecIdleAutoRoll + "：" + Strings.NoteAutoRoll,
+                FontStyle = FontStyles.Italic,
+                Foreground = Brushes.Gray,
+                FontSize = 12,
+                Margin = new Thickness(6, 2, 6, 6),
+                TextWrapping = TextWrapping.Wrap
+            });
+            CreateSliderControl(cardAutoHide, Strings.SldIdleTime, "AutoRollTimeSlider", SettingsManager.AutoRollTime, 300);
+
+            // 4. 桌面圖示顯示行為
+            var cardDesktopIcons = CreateGroupCard(c, Strings.SecDesktopIconVisibility, ColorStyle);
+            CreateCheckBox(cardDesktopIcons, Strings.OptHideIconsRunning, "HideDesktopElementsOnStart", SettingsManager.HideDesktopElementsOnStart);
+            CreateCheckBox(cardDesktopIcons, Strings.OptHideIconsWhenHidden, "HideDesktopElementsOnAllFramesHide", SettingsManager.HideDesktopElementsOnAllFramesHide);
+            CreateCheckBox(cardDesktopIcons, Strings.Get("OptShowDesktopDot"), "ShowDesktopDot", SettingsManager.ShowDesktopDot);
+
+            // 5. 面板按鈕圖示樣式
+            var cardIcons = CreateGroupCard(c, Strings.SecIcons, ColorStyle);
+            Grid iconGrid = new Grid { Margin = new Thickness(6, 4, 0, 8) };
+            iconGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            iconGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+
+            StackPanel menuIconPanel = new StackPanel();
+            menuIconPanel.Children.Add(new TextBlock { Text = Strings.LblMenuIcon, FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 0, 0, 4) });
+            CreateIconRadioButtonGroup(menuIconPanel, "MenuIconGroup", new Dictionary<string, int> { { "♥", 0 }, { "☰", 1 }, { "≣", 2 }, { "𓃑", 3 } }, SettingsManager.MenuIcon);
+
+            StackPanel lockIconPanel = new StackPanel();
+            lockIconPanel.Children.Add(new TextBlock { Text = Strings.LblLockIcon, FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 0, 0, 4) });
+            CreateIconRadioButtonGroup(lockIconPanel, "LockIconGroup", new Dictionary<string, int> { { "🛡️", 0 }, { "🔑", 1 }, { "🔐", 2 }, { "🔒", 3 } }, SettingsManager.LockIcon);
+
+            Grid.SetColumn(menuIconPanel, 0);
+            Grid.SetColumn(lockIconPanel, 1);
+            iconGrid.Children.Add(menuIconPanel);
+            iconGrid.Children.Add(lockIconPanel);
+            cardIcons.Children.Add(iconGrid);
+
             t.Content = new ScrollViewer { Content = c, VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
             _tabControl.Items.Add(t);
         }
@@ -934,7 +828,7 @@ namespace Desktop_Frames
             StackPanel c = new StackPanel();
 
             // 1. 資料備份與還原
-            var cardBackup = CreateGroupCard(c, Strings.Get("SecBackup"), ColorTools, "隨時備份所有面板配置、捷徑資料與自訂樣式");
+            var cardBackup = CreateGroupCard(c, Strings.Get("SecBackup"), ColorTools, "隨時備份所有面板配置、捷徑資料與自訂樣式（點擊按鈕即刻生效，無需點擊下方儲存）");
             Grid g = new Grid { Margin = new Thickness(6, 6, 6, 6) };
             g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(140) });
             g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(12) });
@@ -954,7 +848,7 @@ namespace Desktop_Frames
             CreateCheckBox(cardBackup, Strings.OptAutomaticBackup, "EnableAutoBackup", SettingsManager.EnableAutoBackup);
 
             // 2. 面板邊界維護
-            var cardMaint = CreateGroupCard(c, Strings.SecMaintenance, ColorTools, "多螢幕插拔或更換解析度時，將跑出螢幕外的面板拉回可視範圍");
+            var cardMaint = CreateGroupCard(c, Strings.SecMaintenance, ColorTools, "多螢幕插拔或更換解析度時，將跑出螢幕外的面板拉回可視範圍（即刻生效）");
             Button btnBound = CreateStyledButton(Strings.BtnScreenBoundFrames, ColorTools);
             btnBound.Width = 260;
             btnBound.Height = 40;
@@ -977,7 +871,7 @@ namespace Desktop_Frames
             cardMaint.Children.Add(btnBound);
 
             // 3. 系統重設與清除
-            var cardReset = CreateGroupCard(c, Strings.Get("SecReset"), Color.FromRgb(220, 53, 69), "危險操作：重設個人外觀風格或徹底抹除本機資料");
+            var cardReset = CreateGroupCard(c, Strings.Get("SecReset"), Color.FromRgb(220, 53, 69), "危險操作：重設個人外觀風格或徹底抹除本機資料（即刻生效，操作前建議先備份）");
             Button r1 = CreateStyledButton(Strings.BtnResetStyles, Color.FromRgb(108, 117, 125));
             r1.Width = 260; r1.Height = 38; r1.Margin = new Thickness(6, 4, 0, 10); r1.HorizontalAlignment = HorizontalAlignment.Left;
             r1.Click += (s, e) => { if (MessageBoxesManager.ShowCustomYesNoMessageBox(Strings.MsgConfirmResetCustomizations, Strings.BtnReset)) { Framemanager.ResetAllCustomizations(); _optionsWindow.Close(); } };
@@ -1070,13 +964,24 @@ namespace Desktop_Frames
             gSpot.IsEnabled = cbSpot.IsChecked == true;
             cbSpot.Click += (s, e) => gSpot.IsEnabled = cbSpot.IsChecked == true;
 
-            cardUtils.Children.Add(new TextBlock
+            // 3. 桌面便箋快捷鍵
+            var cardNoteHotkey = CreateGroupCard(c, "桌面便箋快捷鍵", ColorHotkeys, "全域快速建立便箋快捷鍵");
+            Grid gNoteHk = new Grid { Margin = new Thickness(6, 4, 0, 8) };
+            gNoteHk.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(160) });
+            gNoteHk.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            gNoteHk.Children.Add(new TextBlock { Text = "新增桌面便箋", FontSize = 13, VerticalAlignment = VerticalAlignment.Center });
+            TextBlock tbNoteHkVal = new TextBlock
             {
-                Text = Strings.NoteHotkeysRestart,
-                FontStyle = FontStyles.Italic,
-                Foreground = Brushes.Gray,
-                Margin = new Thickness(6, 10, 6, 4)
-            });
+                Text = "Ctrl + Alt + N",
+                FontFamily = new FontFamily("Consolas, Segoe UI"),
+                FontSize = 13,
+                FontWeight = FontWeights.Bold,
+                Foreground = new SolidColorBrush(Color.FromRgb(41, 74, 122)),
+                VerticalAlignment = VerticalAlignment.Center
+            };
+            Grid.SetColumn(tbNoteHkVal, 1);
+            gNoteHk.Children.Add(tbNoteHkVal);
+            cardNoteHotkey.Children.Add(gNoteHk);
 
             t.Content = new ScrollViewer { Content = c, VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
             _tabControl.Items.Add(t);
@@ -1214,7 +1119,7 @@ namespace Desktop_Frames
         private static CheckBox CreateCheckBoxReturn(StackPanel p, string t, string n, bool c) { var cb = new CheckBox { Name = n, Content = t, IsChecked = c, FontFamily = new FontFamily("Segoe UI"), FontSize = 13, Margin = new Thickness(15, 8, 0, 8) }; p.Children.Add(cb); return cb; }
 
         // FIX: Added 'max' parameter (defaulting to 100) to fix the Tint sliders while supporting AutoHideTime
-        private static void CreateSliderControl(StackPanel p, string l, string n, int v, int max = 100)
+        private static Grid CreateSliderControl(StackPanel p, string l, string n, int v, int max = 100)
         {
             Grid g = new Grid { Margin = new Thickness(15, 5, 0, 5) };
 
@@ -1247,6 +1152,7 @@ namespace Desktop_Frames
             Grid.SetColumn(lbl, 0); Grid.SetColumn(sl, 1); Grid.SetColumn(nud, 2);
             g.Children.Add(lbl); g.Children.Add(sl); g.Children.Add(nud);
             p.Children.Add(g);
+            return g;
         }
 
         private static void CreateIconRadioButtonGroup(StackPanel p, string gName, Dictionary<string, int> icons, int sel)
@@ -1444,6 +1350,7 @@ namespace Desktop_Frames
                             DesktopIconManager.SetDesktopIconsVisible(!SettingsManager.HideDesktopElementsOnStart);
                         }
                         if (cb.Name == "HideDesktopElementsOnAllFramesHide") SettingsManager.HideDesktopElementsOnAllFramesHide = cb.IsChecked == true;
+                        if (cb.Name == "DisableFrameScrollbars") SettingsManager.DisableFrameScrollbars = cb.IsChecked == true;
                         if (cb.Name == "ShowDesktopDot")
                         {
                             SettingsManager.ShowDesktopDot = cb.IsChecked == true;
@@ -1693,7 +1600,8 @@ namespace Desktop_Frames
 
         private static void PerformFullFactoryReset()
         {
-            if (MessageBoxesManager.ShowCustomYesNoMessageBox(Strings.MsgConfirmFactoryReset, Strings.DlgFactoryReset))
+            string msg = "確定要清除所有資料並恢復出廠預設值嗎？\n\n此操作將會清空：\n• 所有桌面分類面板及其捷徑入口配置（frames.json）\n• 所有桌面便箋內容與樣式\n• 所有個人化外觀與系統選項（options.json）\n• 本機備份快照與暫存資料\n\n※ 原生桌面上的實體檔案與公文不會被刪除。\n\n程式將在建立安全快照後自動重啟。此操作無法復原，是否確定繼續？";
+            if (MessageBoxesManager.ShowCustomYesNoMessageBox(msg, Strings.DlgFactoryReset))
             {
                 // KISS: Hijack cursor to show processing
                 System.Windows.Application.Current?.Dispatcher.Invoke(() => System.Windows.Input.Mouse.OverrideCursor = System.Windows.Input.Cursors.Wait);
