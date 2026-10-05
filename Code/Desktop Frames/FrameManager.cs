@@ -1186,19 +1186,7 @@ namespace Desktop_Frames
                 ExportAllIconsToDesktop(frame, false);
             }
 
-            // 農場圍籬安全釋放協議：刪除面板時，所屬動物安全倒回一般桌面
-            try
-            {
-                if (!string.IsNullOrEmpty(frameIdStr))
-                {
-                    Services.FenceInventoryManager.Instance.ReleaseFrameItemsToDesktop(frameIdStr);
-                }
-            }
-            catch (Exception ex)
-            {
-                LogManager.Log(LogManager.LogLevel.Error, LogManager.LogCategory.FrameCreation,
-                    $"Failed to release fence items on frame deletion: {ex.Message}");
-            }
+
 
             try
             {
@@ -1343,23 +1331,7 @@ namespace Desktop_Frames
             // Separator
             menu.Items.Add(new Separator());
 
-            // New frame items - Portal Frame prioritized as the primary storage fence
-            var newPortalFrameItem = new MenuItem { Header = Strings.MenuNewPortalFrame };
-            newPortalFrameItem.Click += (s, e) =>
-            {
-                var mousePosition = System.Windows.Forms.Cursor.Position;
-                CreateNewFrame("", "Portal", mousePosition.X, mousePosition.Y);
-            };
-            menu.Items.Add(newPortalFrameItem);
-
-            MenuItem newNoteFrameItem = new MenuItem { Header = Strings.MenuNewNoteFrame };
-            newNoteFrameItem.Click += (s, e) =>
-            {
-                var mousePosition = System.Windows.Forms.Cursor.Position;
-                CreateNewFrame("", "Note", mousePosition.X, mousePosition.Y);
-            };
-            menu.Items.Add(newNoteFrameItem);
-
+            // New frame items - 收斂為分類面板與獨立便箋
             var newFrameItem = new MenuItem { Header = Strings.MenuNewFrame };
             newFrameItem.Click += (s, e) =>
             {
@@ -1371,6 +1343,13 @@ namespace Desktop_Frames
             var drawFrameItem = new MenuItem { Header = Strings.MenuDrawFrame };
             drawFrameItem.Click += (s, e) => StartDrawMode();
             menu.Items.Add(drawFrameItem);
+
+            var newNoteItem = new MenuItem { Header = Strings.Get("MenuNewNote", "新增便箋 (Ctrl+Alt+N)") };
+            newNoteItem.Click += (s, e) =>
+            {
+                Desktop_Frames.Notes.Services.NoteManager.Instance?.CreateNewNote();
+            };
+            menu.Items.Add(newNoteItem);
 
             menu.Items.Add(new Separator());
 
@@ -1494,12 +1473,10 @@ namespace Desktop_Frames
                 MenuItem miEdit = new MenuItem { Header = Strings.MenuEdit };
                 MenuItem miMove = new MenuItem { Header = Strings.MenuMove };
                 MenuItem miRemove = new MenuItem { Header = Strings.MenuRemove };
-                MenuItem miReleaseToDesktop = new MenuItem { Header = Strings.Get("MenuReleaseToDesktop", "移回桌面 (解除收納)") };
 
                 iconContextMenu.Items.Add(miEdit);
                 iconContextMenu.Items.Add(miMove);
                 iconContextMenu.Items.Add(miRemove);
-                iconContextMenu.Items.Add(miReleaseToDesktop);
 
                 bool isSpacer = filePath != null && filePath.StartsWith("INTERNAL_BLANK_");
 
@@ -1646,7 +1623,15 @@ namespace Desktop_Frames
                                 try
                                 {
                                     string itemFilePath = liveItem["Filename"]?.ToString();
-                                    Services.FenceInventoryManager.Instance.ReleaseItemByPath(itemFilePath);
+                                    if (!string.IsNullOrEmpty(itemFilePath))
+                                    {
+                                        string fullItemPath = System.IO.Path.GetFullPath(itemFilePath);
+                                        string shortcutsDir = System.IO.Path.GetFullPath("Shortcuts");
+                                        if (fullItemPath.StartsWith(shortcutsDir, StringComparison.OrdinalIgnoreCase) && System.IO.File.Exists(fullItemPath))
+                                        {
+                                            System.IO.File.Delete(fullItemPath);
+                                        }
+                                    }
                                 }
                                 catch { }
 
@@ -1660,46 +1645,6 @@ namespace Desktop_Frames
                     catch (Exception ex)
                     {
                         LogManager.Log(LogManager.LogLevel.Error, LogManager.LogCategory.UI, $"Error removing: {ex.Message}");
-                    }
-                };
-
-                miReleaseToDesktop.Click += (s, e) =>
-                {
-                    try
-                    {
-                        var liveItem = GetLiveItem();
-                        string frameId = frame.Id?.ToString();
-                        var liveFrame = FrameDataManager.FrameData.FirstOrDefault(f => f.Id?.ToString() == frameId);
-
-                        if (liveFrame != null && liveItem != null)
-                        {
-                            string itemFilePath = liveItem["Filename"]?.ToString();
-                            Services.FenceInventoryManager.Instance.ReleaseItemByPath(itemFilePath);
-
-                            JArray targetArray = liveFrame.Items as JArray;
-                            bool tabsEnabled = liveFrame.TabsEnabled?.ToString().ToLower() == "true";
-                            if (tabsEnabled)
-                            {
-                                var tabs = liveFrame.Tabs as JArray;
-                                int tabIdx = Convert.ToInt32(liveFrame.CurrentTab?.ToString() ?? "0");
-                                if (tabs != null && tabIdx < tabs.Count)
-                                {
-                                    targetArray = tabs[tabIdx]["Items"] as JArray;
-                                }
-                            }
-
-                            if (targetArray != null)
-                            {
-                                targetArray.Remove(liveItem);
-                                FrameDataManager.SaveFrameData();
-                                var wp = VisualTreeHelper.GetParent(sp) as WrapPanel;
-                                if (wp != null) wp.Children.Remove(sp);
-                            }
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        LogManager.Log(LogManager.LogLevel.Error, LogManager.LogCategory.UI, $"Error releasing to desktop: {ex.Message}");
                     }
                 };
 
@@ -3623,16 +3568,8 @@ namespace Desktop_Frames
                     FrameDataManager.SaveFrameData();
                 }
 
-                // 優先由原生農場柵欄核心接管（原地託管，自動寫入 farm-fences.json 與 frames.json）
-                try
-                {
-                    FarmFences.FarmFenceHost.Adopt(frame, null, newlyCreated: true, drawnBounds: r);
-                }
-                catch (Exception adoptEx)
-                {
-                    LogManager.Log(LogManager.LogLevel.Warn, LogManager.LogCategory.UI, $"FarmFenceHost.Adopt failed, fallback to CreateFrame: {adoptEx.Message}");
-                    CreateFrame(frame, _currentTargetChecker ?? new TargetChecker(1000));
-                }
+                // 直接建立標準 Data 分類面板
+                CreateFrame(frame, _currentTargetChecker ?? new TargetChecker(1000));
                 UpdateAllHeartContextMenus();
             }
             catch (Exception ex)
@@ -6814,62 +6751,19 @@ namespace Desktop_Frames
                             if (frame.ItemsType?.ToString() == "Data")
                             {
                                 string targetFrameId = frame.Id?.ToString() ?? string.Empty;
-                                Services.ManagedItemRecord adoptedRecord = null;
-
-                                // 農場圍籬：檢查是否為來自桌面的項目（所有權互斥模型：動物只有一隻）
-                                if (Services.FenceInventoryManager.IsFromDesktop(droppedFile))
-                                {
-                                    // --- 智慧授權：若拖入公用桌面項目且尚未取得寫入權限，即時詢問並執行處方 1 ---
-                                    if (Services.FenceInventoryManager.IsInCommonDesktop(droppedFile) &&
-                                        !Services.FenceInventoryManager.HasCommonDesktopWritePermission())
-                                    {
-                                        string promptMsg = "此圖示位於 Windows「公用桌面」(Public Desktop，如 Steam、PotPlayer 等)。\n" +
-                                                           "Windows 預設限制一般使用者權限搬移此處的檔案。\n\n" +
-                                                           "是否立即授權本程式收納公用桌面圖示？\n\n" +
-                                                           "（點選「是」後只需確認一次 Windows UAC 系統確認，授權完成後即可直接收納，且主程式仍維持安全的一般權限，不會阻斷拖曳）";
-
-                                        bool userAgreed = MessageBoxesManager.ShowCustomYesNoMessageBox(promptMsg, Strings.Get("SecPublicDesktop"));
-                                        if (userAgreed)
-                                        {
-                                            bool granted = Services.FenceInventoryManager.GrantCommonDesktopPermission();
-                                            if (granted)
-                                            {
-                                                LogManager.Log(LogManager.LogLevel.Info, LogManager.LogCategory.FrameCreation,
-                                                    "Common desktop permission successfully granted via on-drop prompt.");
-                                            }
-                                            else
-                                            {
-                                                MessageBoxesManager.ShowOKOnlyMessageBoxForm("未取得管理員授權，圖示保留於桌面。", Strings.DlgInfo);
-                                                continue;
-                                            }
-                                        }
-                                        else
-                                        {
-                                            continue;
-                                        }
-                                    }
-
-                                    bool adoptSuccess = Services.FenceInventoryManager.Instance.TryAdopt(
-                                        droppedFile, targetFrameId, out adoptedRecord, out string adoptErrorMsg);
-
-                                    if (!adoptSuccess)
-                                    {
-                                        // 權限不足或檔案鎖定時，堅決拒絕接管，彈出提示並保留原狀，絕不留下雙份入口
-                                        if (!string.IsNullOrEmpty(adoptErrorMsg))
-                                        {
-                                            MessageBoxesManager.ShowOKOnlyMessageBoxForm(adoptErrorMsg, Strings.DlgInfo);
-                                        }
-                                        continue;
-                                    }
-                                }
+                                string userDesktopDir = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
+                                string fullDroppedPath = System.IO.Path.GetFullPath(droppedFile);
+                                bool isFromUserDesktop = !string.IsNullOrEmpty(userDesktopDir) &&
+                                                         fullDroppedPath.StartsWith(userDesktopDir, StringComparison.OrdinalIgnoreCase);
 
                                 if (!System.IO.Directory.Exists("Shortcuts")) System.IO.Directory.CreateDirectory("Shortcuts");
                                 string baseShortcutName = System.IO.Path.Combine("Shortcuts", System.IO.Path.GetFileName(droppedFile));
                                 string shortcutName = baseShortcutName;
                                 int counter = 1;
 
-                                bool isDroppedShortcut = System.IO.Path.GetExtension(droppedFile).ToLower() == ".lnk";
-                                bool isDroppedUrlFile = System.IO.Path.GetExtension(droppedFile).ToLower() == ".url";
+                                bool isDroppedShortcut = System.IO.Path.GetExtension(droppedFile).Equals(".lnk", StringComparison.OrdinalIgnoreCase);
+                                bool isDroppedUrlFile = System.IO.Path.GetExtension(droppedFile).Equals(".url", StringComparison.OrdinalIgnoreCase);
+                                bool isUserDesktopShortcut = isFromUserDesktop && (isDroppedShortcut || isDroppedUrlFile);
 
                                 // FIX: Trust the extension. If it ends in .url, it IS a link.
                                 // This bypasses content checks that fail on files with custom headers.
@@ -6930,12 +6824,6 @@ namespace Desktop_Frames
                                         shortcut.TargetPath = droppedFile;
                                         if (isFolder) shortcut.WorkingDirectory = droppedFile;
                                         shortcut.Save();
-
-                                        if (adoptedRecord != null)
-                                        {
-                                            adoptedRecord.ManagedStoragePath = shortcutName;
-                                            Services.FenceInventoryManager.Instance.UpdateItemStoragePath(adoptedRecord.Id, shortcutName);
-                                        }
                                     }
                                     catch { continue; }
                                 }
@@ -6957,25 +6845,7 @@ namespace Desktop_Frames
                                         shortcutName = System.IO.Path.Combine("Shortcuts", $"{nameNoExt} ({counter++}){ext}");
                                     }
 
-                                    if (adoptedRecord != null && adoptedRecord.Type == Services.AdoptionType.ShortcutMove)
-                                    {
-                                        if (System.IO.File.Exists(adoptedRecord.ManagedStoragePath))
-                                        {
-                                            System.IO.File.Move(adoptedRecord.ManagedStoragePath, shortcutName);
-                                            adoptedRecord.ManagedStoragePath = shortcutName;
-                                        }
-                                    }
-                                    else
-                                    {
-                                        if (isWebLink)
-                                        {
-                                            System.IO.File.Copy(droppedFile, shortcutName, true);
-                                        }
-                                        else
-                                        {
-                                            System.IO.File.Copy(droppedFile, shortcutName, true);
-                                        }
-                                    }
+                                    System.IO.File.Copy(droppedFile, shortcutName, true);
                                 }
 
                                 dynamic newItem = new System.Dynamic.ExpandoObject();
@@ -7103,21 +6973,22 @@ namespace Desktop_Frames
                                     // Attach Context Menu
                                     AttachIconContextMenu(sp, newItem, frame, win);
 
-                                    // --- HIDDEN TWEAK: Delete Original Shortcut On Drop ---
-                                    if (SettingsManager.DeleteOriginalShortcutsOnDrop && isDroppedShortcut && !isFolder && !isWebLink)
+                                    // --- TWO-PHASE TRANSACTIONAL ADOPTION: 個人桌面捷徑收納 ---
+                                    if (isUserDesktopShortcut && System.IO.File.Exists(shortcutName))
                                     {
                                         try
                                         {
-                                            string fileDir = System.IO.Path.GetDirectoryName(droppedFile);
-                                            string userDesktop = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
-                                            string commonDesktop = Environment.GetFolderPath(Environment.SpecialFolder.CommonDesktopDirectory);
-
-                                            bool isFromDesktop = string.Equals(fileDir, userDesktop, StringComparison.OrdinalIgnoreCase) ||
-                                                                 string.Equals(fileDir, commonDesktop, StringComparison.OrdinalIgnoreCase);
-
-                                            if (isFromDesktop) System.IO.File.Delete(droppedFile);
+                                            if (System.IO.File.Exists(droppedFile))
+                                            {
+                                                System.IO.File.Delete(droppedFile);
+                                                Services.FenceInventoryManager.RefreshDesktopShell();
+                                            }
                                         }
-                                        catch { }
+                                        catch (Exception delEx)
+                                        {
+                                            LogManager.Log(LogManager.LogLevel.Warn, LogManager.LogCategory.FrameCreation,
+                                                $"Two-phase cleanup: Failed to delete desktop shortcut '{droppedFile}': {delEx.Message}");
+                                        }
                                     }
                                 }
                             }

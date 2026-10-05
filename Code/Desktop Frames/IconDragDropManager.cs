@@ -433,17 +433,6 @@ namespace Desktop_Frames
             var transfer = FrameItemTransfer.Move(liveSourceList, targetList, liveDraggedToken,
                 draggedFilename, insertIndex);
 
-            // 農場圍籬：跨框移動轉移動物歸屬
-            try
-            {
-                Services.FenceInventoryManager.Instance.TransferItemOwnership(draggedFilename, targetFrameId);
-            }
-            catch (Exception ex)
-            {
-                LogManager.Log(LogManager.LogLevel.Warn, LogManager.LogCategory.IconHandling,
-                    $"Failed to transfer fence inventory ownership for '{draggedFilename}': {ex.Message}");
-            }
-
             // Save
             FrameDataManager.SaveFrameData();
             LogManager.Log(LogManager.LogLevel.Info, LogManager.LogCategory.IconHandling,

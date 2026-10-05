@@ -157,31 +157,8 @@ namespace Desktop_Frames
                     // Start the Background Icon Loader Engine
                     LazyIconLoader.Start();
 
-                    // 農場圍籬：開機對帳與桌面守護啟動
-                    try
-                    {
-                        Services.FenceInventoryManager.Instance.ReconcileOnStartup();
-                        Services.DesktopReconciler.Instance.Start();
-                    }
-                    catch (Exception fenceEx)
-                    {
-                        LogManager.Log(LogManager.LogLevel.Warn, LogManager.LogCategory.General,
-                            $"Failed to initialize FenceInventory or DesktopReconciler: {fenceEx.Message}");
-                    }
-
                     // Load frames (Now loads from Profile/frames.json)
                     Framemanager.LoadAndCreateFrames(_targetChecker);
-
-                    // 農場圍籬：自動將休眠歸還桌面的動物恢復收納回柵欄
-                    try
-                    {
-                        Services.FenceInventoryManager.Instance.ResumeSuspendedItemsFromDesktop();
-                    }
-                    catch (Exception resumeEx)
-                    {
-                        LogManager.Log(LogManager.LogLevel.Warn, LogManager.LogCategory.General,
-                            $"Failed to resume suspended fence items: {resumeEx.Message}");
-                    }
 
                     // --- PRODUCTION START LOGIC ---
                     if (SettingsManager.EnableProfileAutomation)
@@ -235,7 +212,6 @@ namespace Desktop_Frames
                     }
 
                     // --- NEW: Direct Draw Mode Check ---
-                    FarmFences.FarmFenceHost.Start();
 
                     // If this MAIN instance was started via Context Menu, trigger draw mode now.
                     // Use the same robust check as above.
@@ -259,8 +235,6 @@ namespace Desktop_Frames
 
         protected override void OnExit(ExitEventArgs e)
         {
-            FarmFences.FarmFenceHost.Stop();
-            FarmFences.DesktopInterop.ShutdownWorker();
             try
             {
                 Desktop_Frames.Notes.Services.NoteManager.Instance?.FlushAndCloseAll();
@@ -283,23 +257,6 @@ namespace Desktop_Frames
                 DesktopMouseHook.Stop();
             }
             catch { }
-
-            try
-            {
-                Services.DesktopReconciler.Instance.Stop();
-            }
-            catch { }
-
-            // 農場圍籬：關閉程式時，將柵欄中的動物安全還原回桌面
-            try
-            {
-                Services.FenceInventoryManager.Instance.SuspendAllItemsToDesktop();
-            }
-            catch (Exception ex)
-            {
-                LogManager.Log(LogManager.LogLevel.Error, LogManager.LogCategory.General,
-                    $"Error suspending fence items on exit: {ex.Message}");
-            }
 
             _trayManager?.Dispose();
             base.OnExit(e);
