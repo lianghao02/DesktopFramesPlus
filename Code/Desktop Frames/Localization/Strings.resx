@@ -945,17 +945,23 @@ Desktop Frames + is maintained by Nikos Georgousis (Hand Water Pump), has been e
   <data name="MenuMove" xml:space="preserve">
     <value>Move...</value>
   </data>
+  <data name="MenuConvertToPortal" xml:space="preserve">
+    <value>Convert to Folder Storage Frame...</value>
+  </data>
+  <data name="DefaultPortalFrameTitle" xml:space="preserve">
+    <value>Storage Fence</value>
+  </data>
   <data name="MenuNameAfterPath" xml:space="preserve">
     <value>Name Frame After Target Path</value>
   </data>
   <data name="MenuNewFrame" xml:space="preserve">
-    <value>New Frame</value>
+    <value>New Shortcut-Only Frame</value>
   </data>
   <data name="MenuNewNoteFrame" xml:space="preserve">
     <value>New Note Frame</value>
   </data>
   <data name="MenuNewPortalFrame" xml:space="preserve">
-    <value>New Portal Frame</value>
+    <value>New Folder Storage Frame...</value>
   </data>
   <data name="MenuNoPluginsAvailable" xml:space="preserve">
     <value>(No plugins available at your current level)</value>

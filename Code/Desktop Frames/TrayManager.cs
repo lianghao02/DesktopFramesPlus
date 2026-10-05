@@ -245,8 +245,9 @@ namespace Desktop_Frames
             // Desktop Layouts Submenu (Promoted to top for instant switching)
             _profilesMenuItem = new ToolStripMenuItem(Strings.MenuDesktopLayouts);
             trayMenu.Items.Add(_profilesMenuItem);
-            trayMenu.Items.Add(Strings.MenuDrawFrame, null, (s, e) => Framemanager.StartDrawMode());
+            trayMenu.Items.Add(Strings.MenuNewPortalFrame, null, (s, e) => Framemanager.CreateNewFrame("", "Portal"));
             trayMenu.Items.Add(Strings.MenuNewFrame, null, (s, e) => Framemanager.CreateNewFrame("", "Data"));
+            trayMenu.Items.Add(Strings.MenuDrawFrame, null, (s, e) => Framemanager.StartDrawMode());
 
             // Desktop Sticky Notes Submenu
             var notesMenuItem = new ToolStripMenuItem(Strings.Get("MenuDesktopNotes", "桌面便箋"));

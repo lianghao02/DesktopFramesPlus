@@ -287,8 +287,9 @@ namespace Desktop_Frames
             try
             {
                 // Generate appropriate frame name if title is not specified
+                string defaultPortalTitle = Localization.Strings.DefaultPortalFrameTitle ?? "收納柵欄";
                 string frameName = !string.IsNullOrWhiteSpace(title) ? title :
-                    ((itemsType != "Portal") ? CoreUtilities.GenerateRandomName() : "Portal Frame");
+                    ((itemsType != "Portal") ? CoreUtilities.GenerateRandomName() : defaultPortalTitle);
 
                 // Create new frame object with safe dynamic wrapper
                 dynamic newFrame = new DynamicFrameData();
@@ -309,9 +310,21 @@ namespace Desktop_Frames
                 {
                     if (!newframeDict.ContainsKey("Path") || string.IsNullOrEmpty(newframeDict["Path"]?.ToString()))
                     {
-                        string safeFolderName = string.Join("_", frameName.Split(Path.GetInvalidFileNameChars()));
-                        if (string.IsNullOrWhiteSpace(safeFolderName)) safeFolderName = "收納柵欄";
+                        string baseFolderName = !string.IsNullOrWhiteSpace(title) ? title : defaultPortalTitle;
+                        string safeFolderName = string.Join("_", baseFolderName.Split(Path.GetInvalidFileNameChars()));
+                        if (string.IsNullOrWhiteSpace(safeFolderName)) safeFolderName = defaultPortalTitle;
+
                         string targetDir = Path.Combine(SettingsManager.DefaultPortalStorageRoot, safeFolderName);
+                        int dupCounter = 1;
+                        while (Directory.Exists(targetDir))
+                        {
+                            safeFolderName = $"{baseFolderName} ({dupCounter++})";
+                            targetDir = Path.Combine(SettingsManager.DefaultPortalStorageRoot, safeFolderName);
+                        }
+
+                        frameName = safeFolderName;
+                        newframeDict["Title"] = frameName;
+
                         try
                         {
                             if (!Directory.Exists(targetDir))

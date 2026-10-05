@@ -1342,27 +1342,12 @@ namespace Desktop_Frames
             // Separator
             menu.Items.Add(new Separator());
 
-            // New frame items
-            var drawFrameItem = new MenuItem { Header = Strings.MenuDrawFrame };
-            drawFrameItem.Click += (s, e) => StartDrawMode();
-            menu.Items.Add(drawFrameItem);
-
-            menu.Items.Add(new Separator());
-
-            var newFrameItem = new MenuItem { Header = Strings.MenuNewFrame };
-            newFrameItem.Click += (s, e) =>
-            {
-                var mousePosition = System.Windows.Forms.Cursor.Position;
-                CreateNewFrame("", "Data", mousePosition.X, mousePosition.Y);
-            };
-            menu.Items.Add(newFrameItem);
-
-
+            // New frame items - Portal Frame prioritized as the primary storage fence
             var newPortalFrameItem = new MenuItem { Header = Strings.MenuNewPortalFrame };
             newPortalFrameItem.Click += (s, e) =>
             {
                 var mousePosition = System.Windows.Forms.Cursor.Position;
-                CreateNewFrame("New Portal Frame", "Portal", mousePosition.X, mousePosition.Y);
+                CreateNewFrame("", "Portal", mousePosition.X, mousePosition.Y);
             };
             menu.Items.Add(newPortalFrameItem);
 
@@ -1373,6 +1358,18 @@ namespace Desktop_Frames
                 CreateNewFrame("", "Note", mousePosition.X, mousePosition.Y);
             };
             menu.Items.Add(newNoteFrameItem);
+
+            var newFrameItem = new MenuItem { Header = Strings.MenuNewFrame };
+            newFrameItem.Click += (s, e) =>
+            {
+                var mousePosition = System.Windows.Forms.Cursor.Position;
+                CreateNewFrame("", "Data", mousePosition.X, mousePosition.Y);
+            };
+            menu.Items.Add(newFrameItem);
+
+            var drawFrameItem = new MenuItem { Header = Strings.MenuDrawFrame };
+            drawFrameItem.Click += (s, e) => StartDrawMode();
+            menu.Items.Add(drawFrameItem);
 
             menu.Items.Add(new Separator());
 
@@ -5167,6 +5164,7 @@ namespace Desktop_Frames
             MenuItem miOpenStorageFolder = null; // NEW: Portal 開啟實體收納資料夾
             MenuItem miChangeStoragePath = null; // NEW: Portal 變更收納資料夾位置
             Separator sepPortalStorage = null;   // NEW: Portal 功能分隔線
+            MenuItem miConvertToPortal = null;   // NEW: 將 Data 柵欄轉換為 Portal 收納柵欄
 
             CnMnFramemanager.Opened += (contextSender, contextArgs) =>
             {
@@ -5224,6 +5222,9 @@ namespace Desktop_Frames
 
                 if (sepPortalStorage != null && CnMnFramemanager.Items.Contains(sepPortalStorage))
                     CnMnFramemanager.Items.Remove(sepPortalStorage);
+
+                if (miConvertToPortal != null && CnMnFramemanager.Items.Contains(miConvertToPortal))
+                    CnMnFramemanager.Items.Remove(miConvertToPortal);
 
                 // C. Export All (Data Frame + Ctrl 才顯示)
                 if (isCtrlPressed && isDataFrame)
@@ -5394,6 +5395,99 @@ namespace Desktop_Frames
                         .FirstOrDefault(m => m.Header.ToString() == Strings.MenuCustomize);
                     if (customizeItemFit != null) fitInsertIndex = CnMnFramemanager.Items.IndexOf(customizeItemFit);
                     CnMnFramemanager.Items.Insert(fitInsertIndex, miFitToContent);
+
+                    // C4. 轉換為資料夾收納柵欄（一鍵升級為實體收納）
+                    miConvertToPortal = new MenuItem { Header = Strings.MenuConvertToPortal };
+                    miConvertToPortal.Click += (s, e) =>
+                    {
+                        try
+                        {
+                            string id = frame.Id?.ToString();
+                            var liveFrame = GetFrameData().FirstOrDefault(f => f.Id?.ToString() == id);
+                            if (liveFrame == null) return;
+
+                            string titleText = liveFrame.Title?.ToString();
+                            string baseName = !string.IsNullOrWhiteSpace(titleText) ? titleText : (Strings.DefaultPortalFrameTitle ?? "收納柵欄");
+                            string safeName = string.Join("_", baseName.Split(Path.GetInvalidFileNameChars()));
+                            if (string.IsNullOrWhiteSpace(safeName)) safeName = "收納柵欄";
+
+                            string targetDir = Path.Combine(SettingsManager.DefaultPortalStorageRoot, safeName);
+                            int dupCounter = 1;
+                            while (Directory.Exists(targetDir))
+                            {
+                                safeName = $"{baseName} ({dupCounter++})";
+                                targetDir = Path.Combine(SettingsManager.DefaultPortalStorageRoot, safeName);
+                            }
+
+                            Directory.CreateDirectory(targetDir);
+
+                            // 若目前柵欄內有快捷項目，檢驗其原始檔案是否在桌面，若有則一併安全收納移動進目標資料夾
+                            JArray currentItems = (liveFrame is JObject jf) ? jf["Items"] as JArray : liveFrame.Items as JArray;
+                            int migratedCount = 0;
+                            if (currentItems != null)
+                            {
+                                foreach (var item in currentItems)
+                                {
+                                    try
+                                    {
+                                        string lnkPath = item["Filename"]?.ToString();
+                                        if (!string.IsNullOrEmpty(lnkPath) && System.IO.File.Exists(lnkPath))
+                                        {
+                                            string realTarget = FilePathUtilities.GetShortcutTargetUnicodeSafe(lnkPath);
+                                            if (!string.IsNullOrEmpty(realTarget) && System.IO.File.Exists(realTarget))
+                                            {
+                                                string destFile = Path.Combine(targetDir, Path.GetFileName(realTarget));
+                                                if (!System.IO.File.Exists(destFile))
+                                                {
+                                                    System.IO.File.Move(realTarget, destFile);
+                                                    migratedCount++;
+                                                }
+                                            }
+                                        }
+                                    }
+                                    catch { }
+                                }
+                            }
+
+                            // 轉換型別為 Portal
+                            if (liveFrame is JObject jFrameObj)
+                            {
+                                jFrameObj["ItemsType"] = "Portal";
+                                jFrameObj["Path"] = targetDir;
+                                jFrameObj["Items"] = "";
+                                jFrameObj["Title"] = safeName;
+                            }
+                            else
+                            {
+                                liveFrame.ItemsType = "Portal";
+                                liveFrame.Path = targetDir;
+                                liveFrame.Items = "";
+                                liveFrame.Title = safeName;
+                            }
+                            frame.ItemsType = "Portal";
+                            frame.Path = targetDir;
+                            frame.Title = safeName;
+
+                            FrameDataManager.SaveFrameData();
+                            Services.FenceInventoryManager.RefreshDesktopShell();
+                            RefreshFrameUsingFormApproach(win, liveFrame);
+
+                            string tip = $"已成功將此柵欄轉換為資料夾收納柵欄！\n實體收納資料夾位於：\n{targetDir}";
+                            if (migratedCount > 0) tip += $"\n\n已自動將 {migratedCount} 個桌面實體檔案搬移歸位至該收納資料夾。";
+                            MessageBox.Show(tip, "Desktop Frames +", MessageBoxButton.OK, MessageBoxImage.Information);
+                        }
+                        catch (Exception ex)
+                        {
+                            LogManager.Log(LogManager.LogLevel.Error, LogManager.LogCategory.UI, $"Convert to portal failed: {ex.Message}");
+                            MessageBox.Show($"轉換失敗：{ex.Message}", "Desktop Frames +", MessageBoxButton.OK, MessageBoxImage.Error);
+                        }
+                    };
+
+                    int convertInsertIndex = CnMnFramemanager.Items.Count - 1;
+                    var customizeItemConvert = CnMnFramemanager.Items.OfType<MenuItem>()
+                        .FirstOrDefault(m => m.Header.ToString() == Strings.MenuCustomize);
+                    if (customizeItemConvert != null) convertInsertIndex = CnMnFramemanager.Items.IndexOf(customizeItemConvert);
+                    CnMnFramemanager.Items.Insert(convertInsertIndex, miConvertToPortal);
                 }
 
                 // D1. Portal Frame 操作功能（無需按 Ctrl，一般右鍵直接可用）

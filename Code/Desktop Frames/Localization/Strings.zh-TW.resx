@@ -946,17 +946,23 @@
   <data name="MenuMove" xml:space="preserve">
     <value>移動…</value>
   </data>
+  <data name="MenuConvertToPortal" xml:space="preserve">
+    <value>轉換為資料夾收納柵欄（實體收納至資料夾）…</value>
+  </data>
+  <data name="DefaultPortalFrameTitle" xml:space="preserve">
+    <value>收納柵欄</value>
+  </data>
   <data name="MenuNameAfterPath" xml:space="preserve">
     <value>以目標路徑命名此柵欄</value>
   </data>
   <data name="MenuNewFrame" xml:space="preserve">
-    <value>新增標準捷徑柵欄</value>
+    <value>新增純捷徑柵欄（僅桌面捷徑圖示）</value>
   </data>
   <data name="MenuNewNoteFrame" xml:space="preserve">
     <value>新增桌面便箋柵欄（便利貼備忘）</value>
   </data>
   <data name="MenuNewPortalFrame" xml:space="preserve">
-    <value>新增資料夾收納柵欄（直接對映真實資料夾）…</value>
+    <value>新增資料夾收納柵欄（實體檔案收納至資料夾）…</value>
   </data>
   <data name="MenuNoPluginsAvailable" xml:space="preserve">
     <value>（此級別沒有可用外掛）</value>

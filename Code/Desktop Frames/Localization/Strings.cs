@@ -244,6 +244,7 @@ namespace Desktop_Frames.Localization
         public static string MenuCopyItem => Get("MenuCopyItem");
         public static string MenuCopyItemPath => Get("MenuCopyItemPath");
         public static string MenuCopyPath => Get("MenuCopyPath");
+        public static string MenuConvertToPortal => Get("MenuConvertToPortal");
         public static string MenuCustomize => Get("MenuCustomize");
         public static string MenuCutItem => Get("MenuCutItem");
         public static string MenuDeleteItem => Get("MenuDeleteItem");
@@ -251,6 +252,7 @@ namespace Desktop_Frames.Localization
         public static string MenuDesktopLayouts => Get("MenuDesktopLayouts");
         public static string MenuDrawFrame => Get("MenuDrawFrame");
         public static string DrawFrameHint => Get("DrawFrameHint");
+        public static string DefaultPortalFrameTitle => Get("DefaultPortalFrameTitle");
         public static string DlgCreateFrameTitle => Get("DlgCreateFrameTitle");
         public static string LblFrameName => Get("LblFrameName");
         public static string LblFrameSize => Get("LblFrameSize");
