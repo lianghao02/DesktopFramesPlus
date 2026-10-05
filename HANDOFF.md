@@ -1,5 +1,67 @@
 # HANDOFF
 
+## 核心元資料 (Metadata)
+- **Repository**：lianghao02/DesktopFramesPlus
+- **Branch**：main
+- **Commit SHA**：46b322b4（完整基準見中央 baseline.json，本輪未提交）
+- **Skill Version**：v1.0.0
+- **Task Type**：IMPROVE
+- **Local Path Hint**：DesktopFramesPlus
+
+---
+
+## 目前狀態
+本輪目錄整理完成；以下待驗證事項維持。舊交接原文保留於下方，屬歷史，不代表本輪 Git 或測試狀態。
+
+## 本輪目標
+依已授權目錄配置與舊產物清理要求，保留現有功能。
+
+## 基準與已確認事實 (Baseline & Confirmed Facts)
+中央 docs/project-layout/baseline.json、operations.json 保存本輪基準，HEAD/分支保持，前輪功能成果繼承。
+
+## 已完成 (Completed)
+2026-10-05 README 文件更新：補齊專案概念、開發原因、典型流程、已知 Bug／限制及回報方式，並依實際入口校正必要操作說明。本次沒有修改產品程式、環境或個人資料，未 Commit／Push；前輪成果與既有待辦繼承。文件檢核與逐案索引由控制中心 docs/readme-refresh/RESULTS.md 彙整，不代表本次重新驗收全部功能。
+
+刪除 v2.8.1/v2.9.0 舊 ZIP 及 Debug 產物；維持 upstream Code/Images/tools/docs、v2.9.4、Release 成品與 Zero-Tamper 安全邊界。C# 與使用者配置未改。
+
+## 異動檔案 (Changed Files)
+上述明確項目與本交接；詳細清冊見中央 docs/project-layout/RESULTS.md。
+
+## 刻意未修改 (Do Not Do / Deliberately Omitted)
+業務演算法、現行環境、模型、有效測試素材及使用者原始資料未動；不覆寫未知修改，舊交接內容完整保留。
+
+## 尚未完成 (Remaining Work)
+- **P1 (阻斷/必須)**：無本輪整理阻斷。
+- **P2 (重要/當次)**：無本輪未完成事項；使用者面板/便箋/設定與桌面資料未清理。
+- **P3 (改善建議/暫緩)**：未因整理擴大重構；正式發布另依 release-gate 驗證。
+
+## 驗證結果 (Validation)
+### 已執行測試與結果
+現行 Release 啟動 EXE 保持，Git 邊界核對；未重新建置或重跑原生功能驗收。COM 專案仍須使用 Visual Studio MSBuild，禁止 dotnet build。
+### 尚未驗證項目
+未重新驗收全部原生功能或其他電腦/Windows 10 發布環境。
+### 已知風險 (Known Risks)
+保留上述既有待辦與驗證邊界，不把清理宣稱為其修復。
+
+## Git 狀態
+- Commit：46b322b4；未 Commit。
+- Push：否。
+- Working Tree：Modified；包含繼承的未提交成果。
+- Branch：main。
+
+## 下一步建議動作 (Next Recommended Action)
+本輪停止擴大修改；日後提交前核對工作範圍並另取得授權。
+
+## 發布狀態 (Release Status)
+本輪未發布，保留現行成品。
+
+---
+
+## 承接的前輪交接（原文保留，屬歷史）
+
+
+# HANDOFF
+
 ## 核心元資料
 - Repository：`lianghao02/DesktopFramesPlus`
 - Branch：`main`
