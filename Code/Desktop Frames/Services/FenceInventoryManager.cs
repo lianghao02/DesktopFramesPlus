@@ -179,51 +179,12 @@ namespace Desktop_Frames.Services
         public static bool AddHiddenAttribute(string path, bool isDirectory)
         {
             if (string.IsNullOrWhiteSpace(path)) return false;
-            bool success = false;
-            try
-            {
-                if (isDirectory)
-                {
-                    if (Directory.Exists(path))
-                    {
-                        var attr = File.GetAttributes(path);
-                        File.SetAttributes(path, attr | FileAttributes.Hidden);
-                        success = true;
-                    }
-                }
-                else
-                {
-                    if (File.Exists(path))
-                    {
-                        var attr = File.GetAttributes(path);
-                        File.SetAttributes(path, attr | FileAttributes.Hidden);
-                        success = true;
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                LogManager.Log(LogManager.LogLevel.Warn, LogManager.LogCategory.FrameCreation,
-                    $"AddHiddenAttribute (.NET) for '{path}' encountered: {ex.Message}");
-            }
-
-            // 第二道原生防線：Win32 Kernel32 API 強制加上 Hidden 旗標
-            try
-            {
-                uint nativeAttr = GetFileAttributes(path);
-                if (nativeAttr != INVALID_FILE_ATTRIBUTES && (nativeAttr & FILE_ATTRIBUTE_HIDDEN) == 0)
-                {
-                    uint newNative = nativeAttr | FILE_ATTRIBUTE_HIDDEN;
-                    if (SetFileAttributes(path, newNative))
-                    {
-                        success = true;
-                    }
-                }
-            }
-            catch { }
-
+            // 資安防禦加固：公務與企業環境防毒軟體（Trend Micro Apex One / CrowdStrike）
+            // 監控到未簽章程式嘗試修改 Office 文件（.docx/.xlsx）屬性為 Hidden 時，
+            // 會觸發「未授權檔案加密 (Unauthorized file encryption)」勒索病毒行為攔截並強制隔離。
+            // 為了 100% 杜絕防毒誤判並確保檔案總管隨時可見，全面停用 Hidden 旗標標記。
             RefreshDesktopItem(path);
-            return success;
+            return true;
         }
         #endregion
 

@@ -28,6 +28,9 @@
     - 全面掃除「新建」、「便籤」、「貼上專案」、「快捷方式」等大陸用語，統一為「新增」、「便箋」、「貼上項目」、「捷徑」與直白易懂之「資料夾收納柵欄」。
 
 ### 🧪 驗證與建置加固 (Testing & Packaging Hardening)
+- **🛡️ 公務與企業防毒相容性加固（根除勒索病毒行為誤判）**：
+  - 徹底移除 `AddHiddenAttribute` 針對桌面 Office 文件（.docx/.xlsx）修改 `FileAttributes.Hidden` 的 Win32/Kernel32 底層呼叫，徹底消除觸發企業防毒（Trend Micro Apex One / CrowdStrike）「Unauthorized file encryption」行為攔截之特徵誘因。
+  - 將檔案拖曳收納搬移全面改採 Windows 原生 Shell API（`Microsoft.VisualBasic.FileIO.FileSystem.MoveFile` / `MoveDirectory`），走 Windows 檔案總管合法核心通道，杜絕任何未授權刪除/加密的誤判風險。
 - **自動化測試擴充**：`PanelTests.exe` 擴充資料夾收納柵欄自動綁定、預設目錄建立與實體檔案非隱藏屬性檢驗，全部通過。
 - **純淨發布安全防護**：優化 `tools/package-release.ps1`，透過獨立臨時工作區建置發布包，杜絕本機執行中行程鎖定衝突，並完整保護本機 `Profiles`。
 

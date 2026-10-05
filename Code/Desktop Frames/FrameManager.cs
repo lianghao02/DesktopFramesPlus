@@ -1,5 +1,6 @@
 using Desktop_Frames.Localization;
 using IWshRuntimeLibrary;
+using Microsoft.VisualBasic.FileIO;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System;
@@ -5439,7 +5440,7 @@ namespace Desktop_Frames
                                                 string destFile = Path.Combine(targetDir, Path.GetFileName(realTarget));
                                                 if (!System.IO.File.Exists(destFile))
                                                 {
-                                                    System.IO.File.Move(realTarget, destFile);
+                                                    FileSystem.MoveFile(realTarget, destFile, UIOption.OnlyErrorDialogs, UICancelOption.DoNothing);
                                                     migratedCount++;
                                                 }
                                             }
@@ -7259,19 +7260,19 @@ namespace Desktop_Frames
                                     {
                                         try
                                         {
-                                            System.IO.File.Move(droppedFile, destinationPath);
+                                            FileSystem.MoveFile(droppedFile, destinationPath, UIOption.OnlyErrorDialogs, UICancelOption.DoNothing);
+                                            portalMovedCount++;
                                         }
-                                        catch
+                                        catch (Exception ex)
                                         {
-                                            // 跨磁碟機或檔案鎖定時，降級為安全複製後刪除來源
+                                            LogManager.Log(LogManager.LogLevel.Warn, LogManager.LogCategory.General, $"Shell MoveFile fallback: {ex.Message}");
                                             System.IO.File.Copy(droppedFile, destinationPath, true);
-                                            try { System.IO.File.Delete(droppedFile); } catch { }
+                                            portalCopiedCount++;
                                         }
-                                        portalMovedCount++;
                                     }
                                     else
                                     {
-                                        System.IO.File.Copy(droppedFile, destinationPath, false);
+                                        FileSystem.CopyFile(droppedFile, destinationPath, UIOption.OnlyErrorDialogs, UICancelOption.DoNothing);
                                         portalCopiedCount++;
                                     }
                                 }
@@ -7281,14 +7282,15 @@ namespace Desktop_Frames
                                     {
                                         try
                                         {
-                                            System.IO.Directory.Move(droppedFile, destinationPath);
+                                            FileSystem.MoveDirectory(droppedFile, destinationPath, UIOption.OnlyErrorDialogs, UICancelOption.DoNothing);
+                                            portalMovedCount++;
                                         }
-                                        catch
+                                        catch (Exception ex)
                                         {
+                                            LogManager.Log(LogManager.LogLevel.Warn, LogManager.LogCategory.General, $"Shell MoveDirectory fallback: {ex.Message}");
                                             BackupManager.CopyDirectory(droppedFile, destinationPath);
-                                            try { System.IO.Directory.Delete(droppedFile, true); } catch { }
+                                            portalCopiedCount++;
                                         }
-                                        portalMovedCount++;
                                     }
                                     else
                                     {
