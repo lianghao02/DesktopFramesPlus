@@ -8292,7 +8292,7 @@ namespace Desktop_Frames
                 }
             }
 
-            var newFrame = FrameDataManager.CreateNewFrame(title, itemsType, x, y, customColor, customLaunchEffect);
+            var newFrame = FrameDataManager.CreateNewFrame(title, itemsType, x, y, customColor, customLaunchEffect, portalPath: selectedPath);
             if (newFrame != null)
             {
                 IDictionary<string, object> dict = newFrame;

@@ -282,7 +282,8 @@ namespace Desktop_Frames
         /// Category: Frame Creation
         /// </summary>
         public static dynamic CreateNewFrame(string title, string itemsType, double x = 20, double y = 20,
-            string customColor = null, string customLaunchEffect = null, double width = 230, double height = 130)
+            string customColor = null, string customLaunchEffect = null, double width = 230, double height = 130,
+            string portalPath = null)
         {
             try
             {
@@ -308,8 +309,14 @@ namespace Desktop_Frames
                 newframeDict["Items"] = itemsType == "Portal" ? "" : new JArray();
                 if (itemsType == "Portal")
                 {
-                    if (!newframeDict.ContainsKey("Path") || string.IsNullOrEmpty(newframeDict["Path"]?.ToString()))
+                    if (!string.IsNullOrEmpty(portalPath))
                     {
+                        // 若使用者已指定現成資料夾（連線模式），直接指派，不在本機倉庫誤建空目錄
+                        newframeDict["Path"] = portalPath;
+                    }
+                    else if (!newframeDict.ContainsKey("Path") || string.IsNullOrEmpty(newframeDict["Path"]?.ToString()))
+                    {
+                        // 僅在未指定任何路徑時，才在預設收納倉庫自動建立新資料夾
                         string baseFolderName = !string.IsNullOrWhiteSpace(title) ? title : defaultPortalTitle;
                         string safeFolderName = string.Join("_", baseFolderName.Split(Path.GetInvalidFileNameChars()));
                         if (string.IsNullOrWhiteSpace(safeFolderName)) safeFolderName = defaultPortalTitle;
