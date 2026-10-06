@@ -2,6 +2,7 @@
 param(
     [string]$Version,
     [string]$BinaryDir,
+    [string]$OutputRoot,
     [switch]$CheckOnly
 )
 
@@ -31,8 +32,9 @@ if ($CheckOnly) {
     Write-Output "發布版本檢查通過：$Version；Assembly／FileVersion：$assemblyVersion"
     return
 }
-$distDir = Join-Path $projectRoot "dist\DesktopFramesPlus"
-$zipPath = Join-Path $projectRoot "dist\DesktopFramesPlus-$Version.zip"
+$distRoot = if ($OutputRoot) { [IO.Path]::GetFullPath($OutputRoot) } else { Join-Path $projectRoot 'dist' }
+$distDir = Join-Path $distRoot "DesktopFramesPlus"
+$zipPath = Join-Path $distRoot "DesktopFramesPlus-$Version.zip"
 
 if (-not (Test-Path $releaseDir)) {
     throw "找不到 Release 建置輸出目錄: $releaseDir"
@@ -49,7 +51,7 @@ New-Item -ItemType Directory -Path $tempPackDir -Force | Out-Null
 
 try {
     # 複製所有檔案（排除 .pdb）
-    Get-ChildItem -Path $releaseDir -File | Where-Object { $_.Extension -ne ".pdb" } | ForEach-Object {
+    Get-ChildItem -Path $releaseDir -File | Where-Object { $_.Extension -notin @('.pdb', '.log') } | ForEach-Object {
         Copy-Item -Path $_.FullName -Destination $tempPackDir
     }
 

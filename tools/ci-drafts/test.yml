@@ -1,0 +1,17 @@
+# 草稿：不在 .github/workflows，不會啟用 CI。
+name: 隔離回歸測試
+on: workflow_dispatch
+jobs:
+  test:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: microsoft/setup-msbuild@v2
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - shell: pwsh
+        run: |
+          msbuild 'Code/Desktop Frames/Desktop Frames.csproj' /restore /p:Configuration=Release
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          ./tools/run-all-tests.ps1 -BinaryDir './Code/Desktop Frames/bin/Release/net8.0-windows7.0'

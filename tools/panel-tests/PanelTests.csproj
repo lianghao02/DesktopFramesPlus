@@ -5,9 +5,10 @@
     <UseWPF>true</UseWPF>
     <UseWindowsForms>true</UseWindowsForms>
     <Nullable>enable</Nullable>
+    <BinaryDir Condition="'$(BinaryDir)' == ''">../../Code/Desktop Frames/bin/Release/net8.0-windows7.0</BinaryDir>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="Desktop Frames"><HintPath>..\..\Code\Desktop Frames\bin\Release\net8.0-windows7.0\Desktop Frames.dll</HintPath></Reference>
-    <Reference Include="Newtonsoft.Json"><HintPath>..\..\Code\Desktop Frames\bin\Release\net8.0-windows7.0\Newtonsoft.Json.dll</HintPath></Reference>
+    <Reference Include="Desktop Frames"><HintPath>$(BinaryDir)/Desktop Frames.dll</HintPath></Reference>
+    <Reference Include="Newtonsoft.Json"><HintPath>$(BinaryDir)/Newtonsoft.Json.dll</HintPath></Reference>
   </ItemGroup>
 </Project>

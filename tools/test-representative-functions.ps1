@@ -15,6 +15,7 @@ Get-ChildItem -LiteralPath $build -File | Copy-Item -Destination $session
 Get-ChildItem -LiteralPath $binary -File -Filter '*.dll' | Copy-Item -Destination $session -Force
 Get-ChildItem -LiteralPath $binary -Directory | Where-Object { $_.Name -match '^[a-z]{2}(?:-[A-Za-z]+)?$' } | Copy-Item -Destination $session -Recurse
 [IO.File]::WriteAllText((Join-Path $session '.acceptance-session'), '純合成驗收', [Text.UTF8Encoding]::new($false))
+[IO.File]::WriteAllText((Join-Path $session '.tested-dll-sha256'), (Get-FileHash -LiteralPath (Join-Path $binary 'Desktop Frames.dll') -Algorithm SHA256).Hash, [Text.UTF8Encoding]::new($false))
 $run = Start-Process -FilePath (Join-Path $session 'AcceptanceTests.exe') -ArgumentList $projectVersion -WorkingDirectory $session -WindowStyle Hidden -PassThru -RedirectStandardOutput (Join-Path $session 'result.txt') -RedirectStandardError (Join-Path $session 'error.txt')
 $null = $run.Handle
 if (-not $run.WaitForExit(60000)) {

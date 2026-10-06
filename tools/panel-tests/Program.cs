@@ -30,6 +30,28 @@ internal static class Program
 
     private static async Task Run()
     {
+        string root = AppContext.BaseDirectory;
+        if (!File.Exists(Path.Combine(root, ".acceptance-session"))) throw new InvalidOperationException("缺少隔離驗收標記。");
+        string profilesRoot = (string)typeof(ProfileManager).GetField("_profilesRootDir", BindingFlags.Static | BindingFlags.NonPublic)!.GetValue(null)!;
+        Require(Path.GetFullPath(profilesRoot).Equals(Path.Combine(Path.GetFullPath(root), "Profiles"), StringComparison.OrdinalIgnoreCase), "初始化前確認隔離 Profiles");
+        // 本輪正式產品為 Data；保留下方原生沙盒歷史斷言，但不得由總驗收啟動 Explorer 接管。
+        if (!Environment.GetCommandLineArgs().Contains("--legacy-native"))
+        {
+            typeof(Application).GetField("_resourceAssembly", BindingFlags.Static | BindingFlags.NonPublic)!.SetValue(null, typeof(ProfileManager).Assembly);
+            ProfileManager.Initialize();
+            Directory.SetCurrentDirectory(ProfileManager.CurrentProfileDir);
+            FrameDataManager.Initialize();
+            File.WriteAllText(FrameDataManager.JsonFilePath, "[]");
+            FrameDataManager.LoadFrameData(new TargetChecker(1000));
+            var data = FrameDataManager.CreateNewFrame("合成 Data 框選", "Data", 120, 150, width: 400, height: 300);
+            Require(data.Width == 400 && data.Height == 300 && data.IsLocked == "false" && data.NonExistentProperty == null, "Data 框選尺寸與安全動態屬性");
+            Framemanager.CreateFrame(data, new TargetChecker(1000));
+            var created = Application.Current.Windows.Cast<Window>().Single(w => w.Title == "合成 Data 框選");
+            Require(created.IsVisible, "Data 視窗建立成功");
+            created.Close();
+            Console.WriteLine("PASS：正式 Data 面板回歸；原生沙盒測試保留但不屬本輪產品驗收。");
+            return;
+        }
         var host = typeof(FenceManager).Assembly.GetType("Desktop_Frames.FarmFences.FarmFenceHost", true)!;
         FenceManager? manager = null;
         host.GetProperty("ManagerFactory", BindingFlags.Static | BindingFlags.NonPublic)!.SetValue(null,
