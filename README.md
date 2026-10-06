@@ -89,16 +89,29 @@ Farm Fences、Portal 與嵌入式 Note 曾出現在先前版本；現行新建�
 
 原始碼開發可使用 [Run-Latest.bat](Run-Latest.bat)，其呼叫 [tools/run-app.ps1](tools/run-app.ps1)。專案含 Windows COM 參照，建置需使用 Visual Studio 的 MSBuild；單靠 dotnet build 可能出現 MSB4803。既有成品與重新編譯的版本需分別驗證。
 
+入口依真正來源與 DLL 時間判斷是否需要建置，排除 bin／obj 生成檔案；建置失敗不會啟動舊成品。若已有程式在執行且需要建置，請先正常結束程式，再使用入口；入口不會強制關閉現有程序。
+
+版本由 csproj 的 `Version` 統一維護；打包預設採 `v<Version>-zh-TW`，並檢查組件／檔案版號，拒絕把舊成品標為新版。只檢查而不啟動、建置或打包：
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File tools/run-app.ps1 -ValidateOnly
+powershell -NoProfile -ExecutionPolicy Bypass -File tools/package-release.ps1 -CheckOnly
+```
+
+獨立建置可為打包檢查指定 `-BinaryDir <目錄>`；入口／版本回歸可執行 `tools/test-release-entry.ps1 -BinaryDir <目錄> -PowerShellHost powershell.exe`。測試只在暫存副本檢查假 EXE 與實際 DLL，不操作個人 Profiles。
+
 ## 已知 Bug、限制與疑難排解
 
 | 狀態 | 情境 | 處理方式 |
 |---|---|---|
-| 已確認待整理（版本） | 交接維護紀錄為 v2.9.4-zh-TW，csproj 的 AssemblyVersion／FileVersion／Version 仍為 2.8.1。 | 以實際使用的成品和來源識別回報；本輪不變更程式版號，也不宣稱已發布新版本。 |
+| 已修復並套用本機成品（2026-10-06） | 原先維護紀錄為 v2.9.4，但來源及成品仍顯示 2.8.1，打包名稱另寫死 v2.9.0。 | 來源與本機 dist 成品均為 2.9.4／2.9.4.0；新版已啟動，13 項代表性檢查通過，124 個 Profiles 檔案於啟動前後雜湊一致。完整回復副本保留；正式 ZIP 尚未重新發布。 |
 | 參照限制 | 原始文件移動或捷徑目標失效。 | 更新捷徑指向；面板參照不是文件副本或備份。 |
 | 資料限制 | 個人 Profiles 損毀、被其他版本覆蓋或放在不可寫位置。 | 先保留現場及備份；不要用清除全部資料作為第一個除錯步驟。 |
 | 環境限制 | Windows COM 建置或不同電腦啟動尚未驗證。 | 依建置工具與該版成品需求檢查，不以本機文件更新代替乾淨環境驗證。 |
 
-歷史修正包含 DLR 動態資料包裝、便箋讀取防覆寫與選項版面整理。既有修正不等於所有舊發布包已更新；本輪僅校正 README，未改動桌面行為或個人配置。
+歷史修正包含 DLR 動態資料包裝、便箋讀取防覆寫與選項版面整理。既有修正不等於所有舊發布包已更新；本輪校準版本與入口／打包防護，未改動桌面行為或個人配置。詳見 [修復報告](../00_Dev-Control-Center/docs/remaining-fixes/RESULTS.md)。
+
+本機新版套用與代表性功能驗收見 [成品驗收報告](../00_Dev-Control-Center/docs/new-build-acceptance/RESULTS.md)。日常使用執行 `dist/DesktopFramesPlus/Desktop Frames.exe`；`Run-Latest.bat` 是原始碼開發入口，使用 Code 下的獨立 Profiles，勿把它當作既有 dist 配置的更新入口。重跑隔離功能檢查可使用 `tools/test-representative-functions.ps1 -BinaryDir <成品目錄>`，僅建立合成測試面板與便箋。
 
 ### 問題回報
 

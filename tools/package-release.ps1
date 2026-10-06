@@ -1,13 +1,36 @@
-[CmdletBinding()]
+﻿[CmdletBinding()]
 param(
-    [string]$Version = "v2.9.0-zh-TW"
+    [string]$Version,
+    [string]$BinaryDir,
+    [switch]$CheckOnly
 )
 
 $ErrorActionPreference = "Stop"
+[Console]::OutputEncoding = [Text.UTF8Encoding]::new($false)
+$OutputEncoding = [Console]::OutputEncoding
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $projectRoot = Split-Path -Parent $scriptDir
 
 $releaseDir = Join-Path $projectRoot "Code\Desktop Frames\bin\Release\net8.0-windows7.0"
+if ($BinaryDir) { $releaseDir = (Resolve-Path -LiteralPath $BinaryDir).Path }
+$projectFile = Join-Path $projectRoot 'Code\Desktop Frames\Desktop Frames.csproj'
+$projectXml = [xml][IO.File]::ReadAllText($projectFile)
+$projectVersion = [string]$projectXml.Project.PropertyGroup.Version
+if (-not $Version) { $Version = "v$projectVersion-zh-TW" }
+if ($Version -notmatch '^v?(\d+\.\d+\.\d+)(?:-zh-TW)?$' -or $Matches[1] -ne $projectVersion) {
+    throw "發布包名稱版本必須與專案版本 $projectVersion 相同。"
+}
+$assemblyFile = Join-Path $releaseDir 'Desktop Frames.dll'
+if (-not (Test-Path -LiteralPath $assemblyFile -PathType Leaf)) { throw '請先使用 Visual Studio MSBuild 建置 Release。' }
+$assemblyVersion = [Reflection.AssemblyName]::GetAssemblyName($assemblyFile).Version.ToString()
+$fileVersion = [Diagnostics.FileVersionInfo]::GetVersionInfo($assemblyFile).FileVersion
+if ($assemblyVersion -ne "$projectVersion.0" -or $fileVersion -ne "$projectVersion.0") {
+    throw "成品版本 $assemblyVersion／$fileVersion 與專案 $projectVersion 不符；請先重新建置，未打包或變更 Profiles。"
+}
+if ($CheckOnly) {
+    Write-Output "發布版本檢查通過：$Version；Assembly／FileVersion：$assemblyVersion"
+    return
+}
 $distDir = Join-Path $projectRoot "dist\DesktopFramesPlus"
 $zipPath = Join-Path $projectRoot "dist\DesktopFramesPlus-$Version.zip"
 
@@ -68,4 +91,3 @@ finally {
 }
 
 Get-Item $zipPath | Select-Object Name, Length, LastWriteTime | Format-Table -AutoSize
-
