@@ -6315,7 +6315,7 @@ namespace Desktop_Frames
             };
 
             // --- PERFORMANCE TWEAK: Hardware Acceleration & Safe UI Culling ---
-            IconManager.OptimizeFramePanel(wpcont, wpcontscr);
+            IconManager.OptimizeFramePanel(wpcont, wpcontscr, frame.ItemsType?.ToString() != "Data");
 
             // Προσθήκη watermark για Portal frames
             if (frame.ItemsType?.ToString() == "Portal")
@@ -8450,6 +8450,9 @@ namespace Desktop_Frames
                     LogManager.Log(LogManager.LogLevel.Info, LogManager.LogCategory.UI,
                         $"Successfully refreshed {sortedItems.Count} icons for frame '{frame.Title}' using form approach");
                 }
+
+                // 刷新後完成版面更新；整區位圖快取的取捨由建立面板時處理。
+                win.UpdateLayout();
             }
             catch (Exception ex)
             {

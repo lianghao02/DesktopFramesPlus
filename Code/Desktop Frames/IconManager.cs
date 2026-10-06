@@ -838,11 +838,14 @@ namespace Desktop_Frames
         /// Applies safe hardware acceleration to existing panels without breaking drag/drop logic.
         /// Category: UI Optimization
         /// </summary>
-        public static void OptimizeFramePanel(WrapPanel panel, ScrollViewer scrollViewer)
+        public static void OptimizeFramePanel(WrapPanel panel, ScrollViewer scrollViewer, bool cacheIcons = true)
         {
             if (panel == null) return;
 
-            panel.CacheMode = new BitmapCache { EnableClearType = false, RenderAtScale = 1.0, SnapsToDevicePixels = true };
+            // Data 面板的圖示會頻繁移入／移出；不用整區位圖快取，避免透明視窗保留舊畫面。
+            panel.CacheMode = cacheIcons
+                ? new BitmapCache { EnableClearType = false, RenderAtScale = 1.0, SnapsToDevicePixels = true }
+                : null;
             panel.UseLayoutRounding = true;
 
             if (scrollViewer != null)
