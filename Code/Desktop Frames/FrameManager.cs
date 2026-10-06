@@ -1179,13 +1179,16 @@ namespace Desktop_Frames
             bool result = MessageBoxesManager.ShowCustomMessageBoxForm();
             if (result != true) return;
 
+            DeleteFrameConfiguration(frame, parentWindow);
+        }
+
+        internal static void DeleteFrameConfiguration(dynamic frame, Window? parentWindow = null)
+        {
+
             string frameIdStr = frame.Id?.ToString();
             string frameTitle = frame.Title?.ToString();
 
-            if (SettingsManager.ExportShortcutsOnFrameDeletion && frame.ItemsType?.ToString() == "Data")
-            {
-                ExportAllIconsToDesktop(frame, false);
-            }
+            // 刪除配置不匯出至桌面；使用者明確選取的匯出操作仍獨立保留。
 
 
 
@@ -1621,23 +1624,7 @@ namespace Desktop_Frames
 
                             if (targetArray != null)
                             {
-                                try
-                                {
-                                    string itemFilePath = liveItem["Filename"]?.ToString();
-                                    if (!string.IsNullOrEmpty(itemFilePath))
-                                    {
-                                        string fullItemPath = System.IO.Path.GetFullPath(itemFilePath);
-                                        string shortcutsDir = System.IO.Path.GetFullPath("Shortcuts");
-                                        if (fullItemPath.StartsWith(shortcutsDir, StringComparison.OrdinalIgnoreCase) && System.IO.File.Exists(fullItemPath))
-                                        {
-                                            System.IO.File.Delete(fullItemPath);
-                                        }
-                                    }
-                                }
-                                catch { }
-
-                                targetArray.Remove(liveItem);
-                                FrameDataManager.SaveFrameData();
+                                RemoveDataItem(targetArray, liveItem);
                                 var wp = VisualTreeHelper.GetParent(sp) as WrapPanel;
                                 if (wp != null) wp.Children.Remove(sp);
                             }
@@ -2216,8 +2203,7 @@ namespace Desktop_Frames
                                 var itemToRemove = items?.FirstOrDefault(i => i["Filename"]?.ToString() == filePath);
                                 if (itemToRemove != null)
                                 {
-                                    items.Remove(itemToRemove);
-                                    FrameDataManager.SaveFrameData();
+                                    RemoveDataItem(items, itemToRemove);
 
                                     WrapPanel wrapPanel = FindVisualParent<WrapPanel>(sp);
                                     wrapPanel?.Children.Remove(sp);
@@ -8960,8 +8946,7 @@ namespace Desktop_Frames
 
                 if (liveItem != null)
                 {
-                    targetArray.Remove(liveItem);
-                    FrameDataManager.SaveFrameData();
+                    RemoveDataItem(targetArray, liveItem);
                     var wp = VisualTreeHelper.GetParent(selectedSp) as WrapPanel;
                     if (wp != null) wp.Children.Remove(selectedSp);
                     DeselectIcon();
@@ -8970,6 +8955,38 @@ namespace Desktop_Frames
             catch (Exception ex)
             {
                 LogManager.Log(LogManager.LogLevel.Error, LogManager.LogCategory.UI, $"Delete key remove error: {ex.Message}");
+            }
+        }
+
+        internal static void RemoveDataItem(JArray items, JToken item)
+        {
+            if (items == null || item == null || !ReferenceEquals(item.Parent, items)) return;
+            string path = item["Filename"]?.ToString() ?? string.Empty;
+            items.Remove(item);
+            FrameDataManager.SaveFrameData();
+            CleanupUnreferencedShortcut(path);
+        }
+
+        internal static void CleanupUnreferencedShortcut(string path)
+        {
+            try
+            {
+                string fullPath = System.IO.Path.GetFullPath(path);
+                string root = System.IO.Path.GetFullPath(System.IO.Path.Combine(ProfileManager.CurrentProfileDir, "Shortcuts"))
+                    .TrimEnd(System.IO.Path.DirectorySeparatorChar) + System.IO.Path.DirectorySeparatorChar;
+                string extension = System.IO.Path.GetExtension(fullPath);
+                if (!fullPath.StartsWith(root, StringComparison.OrdinalIgnoreCase) ||
+                    !(extension.Equals(".lnk", StringComparison.OrdinalIgnoreCase) || extension.Equals(".url", StringComparison.OrdinalIgnoreCase))) return;
+                if ((System.IO.File.GetAttributes(root) & System.IO.FileAttributes.ReparsePoint) != 0) return;
+                // 讀取已保存配置，包含所有主區與分頁；保存失敗或仍有引用時不刪副本。
+                var saved = JArray.Parse(System.IO.File.ReadAllText(FrameDataManager.JsonFilePath));
+                if (saved.Descendants().OfType<JProperty>().Any(p => p.Name == "Filename" &&
+                    string.Equals(System.IO.Path.GetFullPath(p.Value.ToString()), fullPath, StringComparison.OrdinalIgnoreCase))) return;
+                if (System.IO.File.Exists(fullPath)) System.IO.File.Delete(fullPath);
+            }
+            catch (Exception ex)
+            {
+                LogManager.Log(LogManager.LogLevel.Warn, LogManager.LogCategory.UI, $"捷徑副本未清理：{ex.Message}");
             }
         }
 
