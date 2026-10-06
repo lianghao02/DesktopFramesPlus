@@ -3,170 +3,93 @@
 ## 核心元資料 (Metadata)
 - **Repository**：lianghao02/DesktopFramesPlus
 - **Branch**：main
-- **Commit SHA**：fb5c48a32e0f5626e29deafc089d3c35e5940870（本輪提交前基準；最新提交以 Git 記錄為準）
+- **Commit SHA**：aac1e86（文件提交前程式／測試基準；文件提交自身 SHA 以 git log 為準）
 - **Skill Version**：v1.0.0
-- **Task Type**：HANDOFF
+- **Task Type**：FIX / HANDOFF
 - **Local Path Hint**：DesktopFramesPlus
-
----
+- **Version**：2.9.4／2.9.4.0，未升版
 
 ## 目前狀態
-本機 dist 已受控更新為 2.9.4.0 並啟動，代表性功能及資料保護驗證通過；完整舊版回復副本保留。前輪版本修復、目錄整理及文件成果繼承，下方舊交接屬歷史；正式 ZIP 未重新發布。
+收尾修正與獨立打包自動驗收完成，待使用者實機驗收。不得將自動化通過當成實體滑鼠、焦點或跨電腦驗收完成。
 
 ## 本輪目標
-安全套用來源校準後的新版成品，完成代表性 Data 面板／便箋驗收，保留個人配置與回復副本。
+維持 Data 分類面板＋獨立便箋；舊 Portal 採 B 退場，保留配置與瀏覽，補強合成資料驗收，不擴大重構。
 
 ## 基準與已確認事實 (Baseline & Confirmed Facts)
-原始碼與現有 DLL 均為 2.8.1，但維護交接為 2.9.4，打包預設名稱仍為 2.9.0。本輪基準見中央 artifacts/remaining-fixes-20261006/baseline.json；期間 HEAD 從 46b322b4 前進至 fb5c48a，已確認外部提交只包含 README／HANDOFF，無程式碼，保留其內容繼續修復。
+- 舊 Portal 無法存取路徑時，載入、建立及初始化例外三處原本會刪配置／存檔，現均保留。
+- Filename 保存的是項目的捷徑路徑，通常為相對工作區的 Shortcuts/名稱.lnk 或 .url；部分舊記錄可能是絕對路徑。不是顯示名稱，也不是捷徑目標。
+- 新加入同檔名來源會產生編號副本。不同副本路徑不會因同顯示名稱合併。
+- FrameItemTransfer 仍以 Filename 字串忽略大小寫比較；未新增身分欄位或路徑正規化。相同路徑時保留目標第一筆的 DisplayName／圖示／參數，清除來源同路徑記錄與目標多餘記錄。這是現行規則，未改變。
+- RemoveSelectedIconFromFrame 的鍵盤確認框及 Windows 焦點無法由直接呼叫資料移除函式取代驗收。
 
 ## 已完成 (Completed)
-2026-10-06 GitHub 同步交接：使用者已授權提交與推送前輪成果；本輪只提交已核對範圍。最新 Commit SHA、遠端同步與 CI 結果統一見控制中心 `docs/github-sync/RESULTS.md`，不將提交本身的 SHA 寫入同一份提交。
-
-2026-10-06 成品套用：使用者從常駐圖示正常結束舊版後，預覽／備份／套用 22 個程式檔，128 個其他檔案雜湊一致；新版啟動，124 個 Profiles 檔案於啟動前後不變。新增隔離 Data 面板／便箋驗收，13 個斷言通過；新程式保持執行。證據及回復邊界見中央 docs/new-build-acceptance/RESULTS.md。
-
-2026-10-06：Version 校準為 2.9.4，Assembly／FileVersion 為 2.9.4.0；XML 編碼宣告與實體 UTF-8 一致。打包版本由 csproj 取得，CheckOnly 核對標籤與 DLL 版本；入口排除 bin／obj、依 DLL 判斷新舊，動態探索 Visual Studio MSBuild、檢查建置失敗並保護正在執行的程序。獨立建置與回歸結果見中央 docs/remaining-fixes/RESULTS.md。
-
-2026-10-05 README 文件更新：補齊專案概念、開發原因、典型流程、已知 Bug／限制及回報方式，並依實際入口校正必要操作說明。本次沒有修改產品程式、環境或個人資料，未 Commit／Push；前輪成果與既有待辦繼承。文件檢核與逐案索引由控制中心 docs/readme-refresh/RESULTS.md 彙整，不代表本次重新驗收全部功能。
-
-刪除 v2.8.1/v2.9.0 舊 ZIP 及 Debug 產物；維持 upstream Code/Images/tools/docs、v2.9.4、Release 成品與 Zero-Tamper 安全邊界。C# 與使用者配置未改。
+- 缺少 Portal 路徑：略過建立視窗，保留名稱、位置與設定，不因此 SaveFrameData；啟動彙整一次托盤通知。自訂樣式重建前也先檢查路徑並通知，不清空目前畫面。
+- 舊 Portal：保留瀏覽、開啟、排序及面板移動／縮放／改名。剪下、實體改名、刪除選單停用，修改方法另有入口防護；拖入拒絕並提示。沒有遷移原檔，沒有大段刪除歷史程式。
+- 單張圖示：右鍵移除與 Delete 共用記錄移除流程。先保存，再檢查已保存配置所有主區／分頁引用，僅清理工作區 Shortcuts 內無引用的 .lnk／.url。
+- 刪除面板：保留 BackupDeletedFrame，只移除配置、關閉視窗；舊 ExportShortcutsOnFrameDeletion 不再觸發桌面匯出。Shortcuts 副本仍保留，並非本輪要掃描清除的垃圾。
+- 補強初始化前隔離根目錄確認、合成資料測試、成品 DLL 雜湊比對、tools/run-all-tests.ps1。
+- package-release 支援 OutputRoot，讓打包驗收只寫獨立 dist，不更新正式 dist 或讀取其 Profiles。
+- tools/ci-drafts/test.yml 僅為草稿，不在 .github/workflows，未啟用 CI。
 
 ## 異動檔案 (Changed Files)
-此次新增 tools/acceptance-tests、tools/test-representative-functions.ps1，更新 README／HANDOFF，套用 Git 忽略的 dist 成品。承接的版本修復：Code/Desktop Frames/Desktop Frames.csproj（僅版本／編碼宣告）、tools/run-app.ps1、package-release.ps1、test-release-entry.ps1。前輪整理清冊見中央 docs/project-layout/RESULTS.md。
+- FrameManager.cs、PortalFrameManager.cs、CustomizeFrameFormManager.cs、兩份語系資源。
+- tools/acceptance-tests、panel-tests 與測試啟動器、run-all-tests.ps1、package-release.ps1、ci-drafts/test.yml。
+- README、CHANGELOG、HANDOFF。
 
 ## 刻意未修改 (Do Not Do / Deliberately Omitted)
-業務演算法、現行環境、模型、有效測試素材及使用者原始資料未動；不覆寫未知修改，舊交接內容完整保留。
+- 不改 frames.json、options.json、MasterOptions.json 結構；新通知狀態只在記憶體。
+- 不使用隱藏屬性、不新增啟閉桌面掃描、搬移或還原。
+- 不操作真實 Profiles，不套用正式 dist，不 push、不升版、不啟用 CI。
+- 「已收納捷徑可安全移出回桌面」不再是現行驗收要求：ReleaseItemByPath 已移除，屬有意取捨，不是跨面板轉移失敗。
+- 使用者提出的刪除前匯出選擇／單一捷徑移到桌面另案討論。沒有來源紀錄時只能稱匯出，不能保證精確還原。
+- 舊原生農場測試原碼保留；總測試預設只走正式 Data 路徑，不啟動 Explorer 接管。歷史沙盒不算本輪 PASS。
 
 ## 尚未完成 (Remaining Work)
-- **P1 (阻斷/必須)**：無本輪整理阻斷。
-- **P2 (重要/當次)**：版本來源／入口／打包防護及本機新版套用完成；沒有重新發布現有 ZIP。
-- **P3 (改善建議/暫緩)**：未因整理擴大重構；正式發布另依 release-gate 驗證。
+- **P1**：目前無已確認的本輪產品阻斷；最新成品回歸須通過才提交。
+- 最新獨立打包總回歸已通過，程式與測試分目的提交完成。
+- **P2**：下列手動驗收尚待使用者操作；不能宣布完整實機驗收完成。
+- **P3**：日後可清理 Portal 停用的剪下／RenameItem／DeleteItem 實作與 FrameManager Portal Move/Copy 分支；本輪不刪除。
+- CI 草稿要不要啟用，另由使用者決定。
 
 ## 驗證結果 (Validation)
 ### 已執行測試與結果
-2026-10-06 本機成品套用、13 項隔離功能斷言、真實新版啟動與資料雜湊核對通過；正式發布包及跨電腦仍未驗證。完整結果見中央 docs/new-build-acceptance/RESULTS.md。
-
-此次 Visual Studio MSBuild 獨立 Release 建置通過，Assembly／FileVersion 均為 2.9.4.0；圖示轉移回歸通過、繁中 674 個基準鍵全部涵蓋。入口／版本回歸與資料保護結果見中央修復報告。既有 nullable／未使用欄位警告保留，未因此重構核心模組。
+- MSBuild 主專案獨立 Release 建置通過；保留既有警告，未做無關整理。
+- 最終 Visual Studio MSBuild 使用 GenerateSatelliteAssembliesForCore=true；原 al.exe 語系編譯停滯四分鐘，僅回收已核對的本輪程序後重試成功。這是執行參數，未寫入 csproj。沒有宣稱零警告或完整警告基線比對。
+- 第一輪總測試通過：正式 Data 視窗建立、三輪主區與分頁 A→B→A 每步存讀、隱藏找回、離線 Portal、去重現行規則、捷徑清理、配置刪除、便箋保存／損毀防覆寫。
+- Portal 私有改名／刪除入口與合成 RaiseEvent 拖入拒絕已通過，包含 UseRecycleBin=false。
+- 在地化：英文基準 676 鍵，繁中 681 鍵，覆蓋率 100%；額外 5 個舊鍵保留。
+- 中間測試有 WPF DragEventArgs 建構方式錯誤，修正後重跑通過；沙箱 SDK 讀取拒絕改以核准執行，不列成功測試。
+- 測試入口失敗傳回非零已由上述失敗實際驗證。
+- 隔離資料／記錄位於 tools/*/bin 下的驗收 session，Git 忽略，不提交。
+- 最終獨立 dist 驗收 44 個功能斷言全部通過，panel-tests、圖示轉移回歸及在地化均 PASS，總測試退出碼 0；兩個測試專案建置均 0 errors／0 warnings。
+- 獨立打包成品：Code/Desktop Frames/bin/ClosurePackage/dist/DesktopFramesPlus；驗收記錄：tools/acceptance-tests/bin/Release/net8.0-windows7.0/中文 驗收-47230473ca5c4e688dfc08a45d38883b/result.txt。
+- PowerShell 語法解析、git diff --check 與本輪差異敏感資訊檢查通過。
 ### 尚未驗證項目
-未重新驗收全部原生功能或其他電腦/Windows 10 發布環境。
+- Windows 10、其他電腦、多螢幕／DPI，以及正式入口全部互動。
+- 原生鍵盤 Delete 焦點、啟動時托盤通知實際顯示及滑鼠等待延遲。
+### 手動驗收清單
+僅使用獨立成品及合成檔案，不載入個人 Profiles。
+1. **Delete**：加入合成文件的參照，單擊選取後按 Delete；取消確認應完全不變；同意後圖示消失、無引用副本清理，合成來源內容不變。主區／分頁各測一次。確認後可選取其他圖示，不殘留焦點或選取。
+2. **點擊開啟等待**：加入合成 .lnk／.url，點擊啟動時立即移動滑鼠經過鄰近圖示並放開；連測五次。等待期間不能抓住其他圖示、出現延遲拖曳或非預期排序；之後正常拖曳仍可用。記錄目標、耗時及是否可重現，不預先宣稱毫秒改善。
+3. **實際拖曳與右鍵移動**：主區與分頁 A→B→A 各三輪，每輪重啟；只出現一份，來源無殘留，名稱、參數及順序正確。
+4. **離線 Portal 通知**：在隔離配置放兩個不存在路徑的 Portal，啟動應只通知一次、列出名稱與路徑，Data／便箋仍能操作；略過面板配置仍在。建立合成資料夾後重啟，面板恢復。Windows 可能抑制托盤通知，日誌應保留逐筆路徑。
+5. **Portal 唯讀**：圖示與詳細資料兩種視圖檢查剪下／改名／刪除均停用；拖入合成檔案被拒絕。可開啟原檔，檔案總管仍可正常管理；不宣稱外部應用程式也唯讀。
+6. **刪除面板**：取消不變；確認只刪配置，原檔不變，不新增桌面圖示；刪除備份保留。
+7. **面板找回／重啟**：隱藏全部後顯示；關閉重啟後確認位置、尺寸、項目與順序一致。
+
 ### 已知風險 (Known Risks)
-目前本機 dist 已更新並啟動 2.9.4.0；Code 下的舊 Release 與舊 ZIP 保留。13 個合成功能斷言與既有配置啟動不代表完整手動互動或跨電腦驗收。
+Filename 字串比對不會把相對／絕對路徑的同一檔案自動合併；無來源身分紀錄，未宣稱可辨識原桌面捷徑。
 
 ## Git 狀態
-- Commit：上述 SHA 為提交前基準；最新 SHA 見 `git log -1` 與中央同步報告。
-- Push：實際推送及遠端核對結果見中央 `docs/github-sync/RESULTS.md`。
-- Working Tree：最終狀態見中央同步報告；不含被忽略的環境、成品與使用者資料。
+- Commit：a968625（Portal）、c74b030（圖示清理／配置刪除）、aac1e86（測試）；本文件提交另見 git log。
+- Push：否。
+- Working Tree：提交前及最終狀態另核對。
 - Branch：main。
 
 ## 下一步建議動作 (Next Recommended Action)
-日常使用 dist/DesktopFramesPlus/Desktop Frames.exe；Run-Latest.bat 是原始碼開發入口，Code 下的 Profiles 與個人 dist 配置分開。正式 ZIP 更新／發布另依發布門檻，不覆蓋個人 Profiles。
+使用者依手動清單驗收；確認後再決定正式 dist 套用／推送，不得誤將現有正式 dist 當成本輪新版。
+主專案只用 Visual Studio MSBuild；沒有 COM 的測試專案可用 dotnet build，僅 HintPath 引用已建置 DLL。
+執行 tools/run-all-tests.ps1 -BinaryDir <隔離成品目錄>；任何一組失敗非零退出。
 
 ## 發布狀態 (Release Status)
-本輪僅套用本機成品；未建立正式 Release 或更新 ZIP。
-
----
-
-## 承接的前輪交接（原文保留，屬歷史）
-
-
-# HANDOFF
-
-## 核心元資料
-- Repository：`lianghao02/DesktopFramesPlus`
-- Branch：`main`
-- Task Type：CONVERGENCE / ARCHITECTURE_SIMPLIFICATION / ZERO-TAMPER / HANDOFF
-- Version：`v2.9.4-zh-TW`
-- Commit SHA 基線：`69fd7c1`
-- Local Path Hint：`D:\Development\GitHub\DesktopFramesPlus`
-
----
-
-## 1. 專案修改了什麼（架構演進歷程）
-
-1. **產品邊界收斂為「桌面分類面板＋獨立桌面便箋」**：
-   - **停用非核心新建入口**：面板右鍵選單與工作列托盤選單移除「新增實體資料夾柵欄 (Portal)」與「新增嵌入式文字面板 (Note)」，專注於「新增分類面板」、「框選新增分類面板」與「新增桌面便箋」。
-   - **框選建立直通 Data 面板**：框選建立對話框確認後，直接呼叫標準 `CreateFrame` 建立純 Data 分類面板，徹底拔除 `FarmFenceHost.Adopt` 呼叫。
-
-2. **徹底拔除背景桌面對帳與啟閉還原（生命週期解耦）**：
-   - 於 `App.xaml.cs` 徹底註銷：
-     - 開機啟動：`FenceInventoryManager.ReconcileOnStartup()`、`DesktopReconciler.Start()`、`FenceInventoryManager.ResumeSuspendedItemsFromDesktop()`、`FarmFenceHost.Start()`。
-     - 程式退出：`DesktopReconciler.Stop()`、`FenceInventoryManager.SuspendAllItemsToDesktop()`、`FarmFenceHost.Stop()`。
-   - 主程式開關機成為純粹的「綠色看板」，**完全不碰觸、不掃描、不搬移、不還原桌面檔案**，徹底根除任何背景檔案操作與防毒攔截隱患。
-
-3. **統一桌面分類面板行為（兩階段事務收納＋Zero-Tamper）**：
-   - **個人桌面捷徑（`.lnk` / `.url`）**：
-     採「兩階段事務收納」：先完整複製原捷徑至 `Shortcuts\`（保留工作目錄、啟動參數與自訂圖示），寫入 `frames.json` 驗證成功後，才清理桌面原捷徑；若過程有任一失敗絕不清理桌面原檔。
-   - **桌面實體公文（`.docx` / `.xlsx` / 真資料夾）及非桌面檔案**：
-     一律純建立指向原檔之快捷捷徑，**來源原檔 100% 留在原處不動**，絕不搬移、絕不刪除、絕不修改檔案屬性。
-   - **公用桌面捷徑**：
-     純建立快捷分身，不要求 Windows UAC 系統管理員提權，不跳擾人彈窗。
-   - **圖示移除（`Remove`）**：
-     僅從面板移除圖示並清理本地快捷複本，**徹底拔除 `ReleaseItemByPath`**，原檔毫髮無傷。
-   - **刪除面板（`DeleteFrame`）**：
-     僅刪除面板配置，**徹底拔除 `ReleaseFrameItemsToDesktop`**，不執行任何倒回桌面動作，原檔毫髮無傷。
-   - **跨面板移動（`Drag & Drop`）**：
-     僅轉移項目資料指標，**徹底拔除 `TransferItemOwnership`**。
-   - **資料夾點擊**：
-     交由 Windows 原生檔案總管（`explorer.exe`）開啟。
-
-4. **托盤右鍵選單大瘦身（依操作頻率重整）**：
-   - 僅保留常用核心操作：
-     1. 核心建立：新增分類面板、框選新增分類面板…、桌面便箋（新增/顯示/隱藏）
-     2. 桌面版面（Profile 切換）
-     3. 視窗檢視：顯示隱藏面板、重新載入所有面板
-     4. 系統：選項…、關於…、結束
-   - 移除托盤次要開關（工作區自動切換、智慧桌面規則、立即整理、定位面板），開關與規則全面收回「選項」視窗。
-
-5. **選項視窗（Options）重整與舊設定退場**：
-   - **側邊欄命名標準化**：
-     - Tab 1 更名為「外觀與操作」
-     - Tab 2 更名為「備份與維護」
-     - Tab 6 更名為「診斷」
-     - Tab 5（智慧桌面）隱藏側邊欄導航按鈕，避免誤入且防範背景搬檔
-   - **一般頁面**：
-     - 徹底移除 Portal 鏡像面板設定卡片（D 槽收納路徑等）與公用桌面提權卡片
-     - 捲軸開關移至「外觀與操作」
-     - 「面板操作與吸附」與「提示聲音」拆為獨立卡片
-   - **外觀與操作頁面**：
-     - 置頂前置「新便箋預設樣式」卡片，明確加註「僅套用於之後新增的便箋，不變更既有便箋」
-     - 自動隱藏與閒置淡出未勾選時，連動停用相關調整拉桿
-     - 納入「隱藏面板捲軸」開關
-   - **備份與維護頁面**：
-     - 標註按鈕為即刻生效（免按下方儲存按鈕）
-     - 清除所有資料時詳細列出清除範圍（面板配置、便箋內容、設定等，明確告知不刪除桌面實體檔案）
-   - **快捷鍵頁面**：
-     - 補充桌面便箋快捷鍵（`Ctrl+Alt+N`）說明
-   - **版面優化**：
-     - 設定卡片統一設定 `MaxWidth = 780` 與靠左對齊，徹底修復視窗最大化時控制項擠在左側、卡片橫向拉長失衡的問題。
-
----
-
-## 2. 目前功能狀態（能力矩陣）
-
-| 功能項目 | 桌面分類面板（Data 面板） | 獨立桌面便箋 |
-| :--- | :--- | :--- |
-| **本質與角色** | 桌面快捷圖示看板，**原檔 100% 安全** | 輕量桌面記事貼 |
-| **個人桌面捷徑拖入** | ✅ 兩階段事務收納（桌面乾淨，參數全保） | 不適用 |
-| **實體公文/資料夾拖入**| ✅ 建立快捷分身，**原檔 100% 留在桌面** | 不適用 |
-| **外部檔案拖入** | ✅ 建立快捷分身，**來源原檔不動** | 不適用 |
-| **拖曳重排順序** | ✅ 支援（藍色指示條，自由自訂順序） | 不適用 |
-| **跨面板移動** | ✅ 支援（直接拖曳轉移，不留重複） | 不適用 |
-| **刪除項目** | ✅ **100% 安全**（只刪除看板圖示，原檔不動） | ✅ 單張便箋刪除 |
-| **刪除整個面板** | ✅ **100% 安全**（只關閉看板，原檔毫髮無傷） | ✅ 關閉或刪除 |
-| **程式啟閉** | ✅ **零桌面接觸**（不隱藏、不對帳、不倒回） | ✅ 自動保存文字內容 |
-
----
-
-## 3. 防毒合規與公務機關限制（Zero-Tamper 鐵律）
-
-1. **集中控管防毒（Apex One / CrowdStrike）零誤判規範**：
-   - 嚴禁背景批次操作檔案或使用 Win32 隱藏屬性（`FILE_ATTRIBUTE_HIDDEN`）。
-   - 程式啟動與退出絕不掃描桌面檔案。
-2. **編譯建置環境注意事項**：
-   - 專案含 COM Reference（`IWshRuntimeLibrary`），**嚴禁使用 `dotnet build`**（會報 `MSB4803` 錯誤）。
-   - **必須使用 Visual Studio 2022 的 MSBuild**：
-     ```powershell
-     & "C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\MSBuild\Current\Bin\amd64\MSBuild.exe" "Code\Desktop Frames\Desktop Frames.csproj" /p:Configuration=Release
-     ```
-   - 編譯完成後，需將 `Code\Desktop Frames\bin\Release\net8.0-windows7.0\` 中的 `Desktop Frames.dll` 與 `Desktop Frames.exe` 覆蓋至 `dist\DesktopFramesPlus\`。
-3. **在地化規範**：
-   - 維持 100% 台灣標準繁體中文（公文、捷徑、資料夾、便箋、檔案總管、重新整理、設定、預設、登入、記憶體、硬碟）。
+未發布，正式 dist／ZIP 未更新。自動驗收不等於完整實機驗收；待使用者確認。
