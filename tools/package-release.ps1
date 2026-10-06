@@ -3,6 +3,7 @@ param(
     [string]$Version,
     [string]$BinaryDir,
     [string]$OutputRoot,
+    [switch]$RequireSelfContained,
     [switch]$CheckOnly
 )
 
@@ -27,6 +28,18 @@ $assemblyVersion = [Reflection.AssemblyName]::GetAssemblyName($assemblyFile).Ver
 $fileVersion = [Diagnostics.FileVersionInfo]::GetVersionInfo($assemblyFile).FileVersion
 if ($assemblyVersion -ne "$projectVersion.0" -or $fileVersion -ne "$projectVersion.0") {
     throw "成品版本 $assemblyVersion／$fileVersion 與專案 $projectVersion 不符；請先重新建置，未打包或變更 Profiles。"
+}
+if ($RequireSelfContained) {
+    $runtimeConfig = Get-Content -LiteralPath (Join-Path $releaseDir 'Desktop Frames.runtimeconfig.json') -Raw -Encoding UTF8 | ConvertFrom-Json
+    if ($runtimeConfig.runtimeOptions.framework -or $runtimeConfig.runtimeOptions.frameworks -or
+        -not $runtimeConfig.runtimeOptions.includedFrameworks) {
+        throw '此成品仍依賴系統 Runtime，不能當成內含 Runtime 的免安裝包。'
+    }
+    foreach ($runtimeFile in @('Desktop Frames.exe', 'hostfxr.dll', 'hostpolicy.dll', 'coreclr.dll', 'System.Private.CoreLib.dll', 'PresentationFramework.dll', 'PresentationCore.dll', 'WindowsBase.dll', 'wpfgfx_cor3.dll')) {
+        if (-not (Test-Path -LiteralPath (Join-Path $releaseDir $runtimeFile) -PathType Leaf)) {
+            throw "免安裝成品缺少必要元件：$runtimeFile"
+        }
+    }
 }
 if ($CheckOnly) {
     Write-Output "發布版本檢查通過：$Version；Assembly／FileVersion：$assemblyVersion"
