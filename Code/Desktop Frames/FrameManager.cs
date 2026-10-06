@@ -3458,11 +3458,19 @@ namespace Desktop_Frames
             }
 
             // 每次啟動至多一次非阻塞提示，不因離線而寫入配置。
-            if (invalidFrames.Any() && !_portalUnavailableNotified && TrayManager.Instance != null)
+            if (invalidFrames.Any() && !_portalUnavailableNotified)
             {
                 _portalUnavailableNotified = true;
                 var missing = string.Join("\n", invalidFrames.Select(frame => $"{frame.Title} — {frame.Path}"));
-                TrayManager.Instance?.ShowFarmFenceWarning(Strings.Get("MsgPortalUnavailable", missing));
+                // 使用程式內非阻塞視窗，避免托盤通知未顯示；仍每次啟動至多一次。
+                System.Windows.Application.Current.Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    var notice = new PortalUnavailableWindow(Strings.Get("MsgPortalUnavailable", missing));
+                    notice.Show();
+                    LogManager.Log(LogManager.LogLevel.Info, LogManager.LogCategory.General,
+                        "[PortalNotice] 已開啟非阻塞提示視窗。");
+                }),
+                    System.Windows.Threading.DispatcherPriority.ApplicationIdle);
             }
 
             // Clear any stuck transition states from previous session

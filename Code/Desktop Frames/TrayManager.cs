@@ -231,6 +231,10 @@ namespace Desktop_Frames
 
             _trayIcon.DoubleClick += OnTrayIconDoubleClick;
             _trayIcon.MouseClick += OnTrayIconClick;
+            _trayIcon.BalloonTipShown += (s, e) => LogManager.Log(LogManager.LogLevel.Info,
+                LogManager.LogCategory.General, "[TrayNotification] Windows 回報通知顯示事件。");
+            _trayIcon.BalloonTipClosed += (s, e) => LogManager.Log(LogManager.LogLevel.Debug,
+                LogManager.LogCategory.General, "[TrayNotification] Windows 回報通知關閉事件。");
 
             // Explicitly detach and clear any existing context menu to prevent duplication
             if (_trayIcon.ContextMenuStrip != null)
@@ -530,10 +534,17 @@ namespace Desktop_Frames
 
         public void ShowFarmFenceWarning(string message)
         {
-            if (_trayIcon == null) return;
+            if (_trayIcon == null || !_trayIcon.Visible)
+            {
+                LogManager.Log(LogManager.LogLevel.Warn, LogManager.LogCategory.General,
+                    "[TrayNotification] 未送出通知：系統匣圖示尚未建立或未顯示。");
+                return;
+            }
             _trayIcon.BalloonTipTitle = "Desktop Frames +";
             _trayIcon.BalloonTipText = message;
             _trayIcon.BalloonTipIcon = ToolTipIcon.Warning;
+            LogManager.Log(LogManager.LogLevel.Info, LogManager.LogCategory.General,
+                $"[TrayNotification] 呼叫 ShowBalloonTip，訊息長度 {message?.Length ?? 0}。");
             _trayIcon.ShowBalloonTip(4000);
         }
 
