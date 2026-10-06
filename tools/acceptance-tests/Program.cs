@@ -159,6 +159,22 @@ internal static class Program
             Check(!window.IsVisible, "隱藏全部 Data 面板");
             Framemanager.WakeUpFrames(); await Task.Delay(400);
             Check(window.IsVisible && before == File.ReadAllText(FrameDataManager.JsonFilePath), "顯示全部後配置不變");
+            // 移出最後一筆時，驗證來源的視覺樹與版面同步，不以存檔正確代替畫面驗收。
+            var panelBorder = (System.Windows.Controls.Border)window.Content;
+            var panelDock = (System.Windows.Controls.DockPanel)panelBorder.Child;
+            var panelScroll = panelDock.Children.OfType<System.Windows.Controls.ScrollViewer>().First();
+            var iconPanel = (System.Windows.Controls.WrapPanel)panelScroll.Content;
+            Check(iconPanel.CacheMode == null, "Data 主區／分頁不保留整區位圖快取，單張圖示快取不受影響");
+            Check(iconPanel.Children.OfType<System.Windows.Controls.StackPanel>().Count() == 1, "移出前來源畫面確有一個圖示");
+            JArray sourceItems = tabs ? (JArray)a.Tabs[0]["Items"] : (JArray)a.Items;
+            JArray targetItems = tabs ? (JArray)b.Tabs[0]["Items"] : (JArray)b.Items;
+            move.Invoke(null, new object[] { sourceItems, targetItems, sourceItems[0], sourceItems[0]["Filename"]!.ToString(), 0 });
+            Framemanager.RefreshFrameUsingFormApproach((NonActivatingWindow)window, a);
+            Check(iconPanel.Children.Count == 0 && iconPanel.IsMeasureValid && iconPanel.IsArrangeValid,
+                $"{(tabs ? "分頁" : "主區")}最後一筆移出後立即清空並完成版面更新");
+            await Task.Delay(100);
+            Check(iconPanel.Children.Count == 0 && sourceItems.Count == 0 && targetItems.Count == 1,
+                "圖示延遲載入後來源仍空白且單一歸屬");
             window.Close();
         }
         dynamic portal = FrameDataManager.CreateNewFrame("離線合成 Portal", "Portal", portalPath: Path.Combine(AppContext.BaseDirectory, "不存在的資料夾"));
@@ -168,6 +184,22 @@ internal static class Program
         Framemanager.CreateFrame(FrameDataManager.FindFrameById(portalId), checker);
         Check(FrameDataManager.FindFrameById(portalId) != null && savedPortal == File.ReadAllText(FrameDataManager.JsonFilePath) &&
             !Application.Current.Windows.Cast<Window>().Any(w => w.Tag?.ToString() == portalId), "離線 Portal 保留配置、略過視窗且不存檔");
+        string noticeMessage = "離線合成 Portal\n" + (string)portal.Path + "\n面板資料已保留";
+        var notice = new PortalUnavailableWindow(noticeMessage);
+        notice.Show();
+        Check(notice.IsVisible && !notice.ShowActivated && notice.ShowInTaskbar,
+            "離線提示 Show 立即返回且不搶焦點，工作列有入口");
+        var noticeLayout = (System.Windows.Controls.Grid)notice.Content;
+        var noticeText = noticeLayout.Children.OfType<System.Windows.Controls.TextBox>().Single();
+        Check(noticeText.Text == noticeMessage && noticeText.IsReadOnly &&
+            noticeText.VerticalScrollBarVisibility == System.Windows.Controls.ScrollBarVisibility.Auto,
+            "離線提示完整保留名稱與路徑，可選取且可捲動");
+        await Task.Delay(150);
+        Check(notice.IsVisible && savedPortal == File.ReadAllText(FrameDataManager.JsonFilePath),
+            "離線提示不自行關閉，也不修改面板配置");
+        var noticeClose = noticeLayout.Children.OfType<System.Windows.Controls.Button>().Single();
+        noticeClose.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Button.ClickEvent));
+        Check(!notice.IsVisible, "離線提示關閉按鈕正常");
         var incoming = JArray.Parse("[{ 'Filename':'Shortcuts/same.lnk','DisplayName':'來源','Arguments':'來源參數','Icon':'來源圖示' },{ 'Filename':'Shortcuts/same.lnk' }]");
         var target = JArray.Parse("[{ 'Filename':'Shortcuts/same.lnk','DisplayName':'目標','Arguments':'目標參數','Icon':'目標圖示' }]");
         move.Invoke(null, new object[] { incoming, target, incoming[0], "Shortcuts/same.lnk", 0 });

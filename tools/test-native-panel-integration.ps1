@@ -9,7 +9,10 @@ $OutputEncoding = $utf8
 if (-not (Get-Command dotnet -ErrorAction SilentlyContinue)) { throw '缺少 .NET SDK，無法建置面板回歸。' }
 if (-not (Test-Path (Join-Path $BinaryDir 'Desktop Frames.dll'))) { throw '請先完成正式 MSBuild Release 建置。' }
 $BinaryDir = (Resolve-Path -LiteralPath $BinaryDir).Path
-& dotnet build (Join-Path $PSScriptRoot 'panel-tests\PanelTests.csproj') -c Release --nologo -v quiet "-p:BinaryDir=$BinaryDir"
+$runtimeConfig = Get-Content -LiteralPath (Join-Path $BinaryDir 'Desktop Frames.runtimeconfig.json') -Raw -Encoding UTF8 | ConvertFrom-Json
+$selfContained = [bool]($runtimeConfig.runtimeOptions.PSObject.Properties.Name -contains 'includedFrameworks')
+$runtimeArgs = if ($selfContained) { @('-p:SelfContained=true', '-p:RuntimeIdentifier=win-x64', '-p:AppendRuntimeIdentifierToOutputPath=false') } else { @('-p:SelfContained=false', '-p:RuntimeIdentifier=', '-p:AppendRuntimeIdentifierToOutputPath=false') }
+& dotnet build (Join-Path $PSScriptRoot 'panel-tests\PanelTests.csproj') -c Release --nologo -v quiet "-p:BinaryDir=$BinaryDir" @runtimeArgs
 if ($LASTEXITCODE -ne 0) { throw '面板回歸測試建置失敗。' }
 $testBin = Join-Path $PSScriptRoot 'panel-tests\bin\Release\net8.0-windows7.0'
 $sessionDir = Join-Path $testBin ('run-' + [guid]::NewGuid().ToString('N'))

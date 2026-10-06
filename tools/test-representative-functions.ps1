@@ -6,7 +6,10 @@ $OutputEncoding = [Console]::OutputEncoding
 $binary = (Resolve-Path -LiteralPath $BinaryDir).Path
 $projectVersion = [string]([xml][IO.File]::ReadAllText((Join-Path $PSScriptRoot '../Code/Desktop Frames/Desktop Frames.csproj'))).Project.PropertyGroup.AssemblyVersion
 $project = Join-Path $PSScriptRoot 'acceptance-tests/AcceptanceTests.csproj'
-& dotnet build $project -c Release --nologo -v quiet "-p:BinaryDir=$binary"
+$runtimeConfig = Get-Content -LiteralPath (Join-Path $binary 'Desktop Frames.runtimeconfig.json') -Raw -Encoding UTF8 | ConvertFrom-Json
+$selfContained = [bool]($runtimeConfig.runtimeOptions.PSObject.Properties.Name -contains 'includedFrameworks')
+$runtimeArgs = if ($selfContained) { @('-p:SelfContained=true', '-p:RuntimeIdentifier=win-x64', '-p:AppendRuntimeIdentifierToOutputPath=false') } else { @('-p:SelfContained=false', '-p:RuntimeIdentifier=', '-p:AppendRuntimeIdentifierToOutputPath=false') }
+& dotnet build $project -c Release --nologo -v quiet "-p:BinaryDir=$binary" @runtimeArgs
 if ($LASTEXITCODE -ne 0) { throw '代表性功能測試建置失敗。' }
 $build = Join-Path $PSScriptRoot 'acceptance-tests/bin/Release/net8.0-windows7.0'
 $session = Join-Path $build ('中文 驗收-' + [guid]::NewGuid().ToString('N'))
