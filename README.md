@@ -46,7 +46,7 @@
 
 ### 拖入與刪除的實際邊界
 
-舊 Portal 採 **B 退場**：保留瀏覽、開啟、排序及面板調整；禁止拖入收納、剪下、實體檔案重新命名與刪除（包含永久刪除舊設定）。資料夾暫時無法存取時，本次略過視窗、保留配置，啟動時以一次非阻塞通知列出名稱與路徑；恢復資料夾後重新啟動即可。沒有自動遷移為 Data。
+舊 Portal 採 **B 退場**：保留瀏覽、開啟、排序及面板調整；禁止拖入收納、剪下、實體檔案重新命名與刪除（包含永久刪除舊設定）。資料夾暫時無法存取時，本次略過視窗、保留配置，啟動時以一次程式內非阻塞提示窗列出名稱與路徑；提示保留到使用者關閉，路徑可選取複製，長清單可捲動。不依賴 Windows 托盤通知；恢復資料夾後重新啟動即可。沒有自動遷移為 Data。
 
 「一般」選項不再設定收納根目錄。仍可使用舊面板的「變更收納資料夾位置」重新指定既有資料夾；離線面板未顯示時，先恢復原路徑後重啟。實體檔案管理請使用檔案總管。刪除舊面板只移除配置，不刪資料夾。
 
@@ -83,6 +83,7 @@
 1. 前往 **[Releases 發行頁面](https://github.com/lianghao02/DesktopFramesPlus/releases)**，依該版說明選擇完整免安裝成品；原始碼維護狀態與已發布成品可能不同。
 2. 解壓縮至任何具備使用者寫入權限的資料夾（如 `D:\Tools\DesktopFramesPlus` 或桌面，請勿放於唯讀的 `Program Files`）。
 3. 執行 `Desktop Frames.exe` 即可直接使用，首次啟動自動建立繁體中文設定環境。
+   - v2.9.4-zh-TW Windows x64 免安裝成品內含 .NET 8 Desktop Runtime，不需另外安裝 .NET、Visual Studio 或 .NET SDK。請解壓縮整個資料夾，不要只複製 EXE；不適用於 32 位元 Windows，ARM64 尚未驗證。跨電腦與 Windows 10 等限制詳見 [發布驗收報告](docs/releases/v2.9.4-zh-TW.md)。
 4. **升級方式**：關閉程式、備份 `Profiles/` 後依該版說明替換程式檔；不要覆蓋或清除自己的個人設定。更新後確認面板、便箋與捷徑內容。
 
 ---
@@ -104,6 +105,8 @@ powershell -NoProfile -ExecutionPolicy Bypass -File tools/package-release.ps1 -C
 
 獨立建置可為打包檢查指定 `-BinaryDir <目錄>`；入口／版本回歸可執行 `tools/test-release-entry.ps1 -BinaryDir <目錄> -PowerShellHost powershell.exe`。測試只在暫存副本檢查假 EXE 與實際 DLL，不操作個人 Profiles。
 
+內含 Runtime 的 Windows x64 成品使用 `Properties/PublishProfiles/Portable-win-x64.pubxml`：以 Visual Studio MSBuild 執行 `/restore /t:Publish /p:PublishProfile=Portable-win-x64 /p:RuntimeIdentifier=win-x64 /p:SelfContained=true`。輸出為 `Code/Desktop Frames/bin/PortablePublish/win-x64`；打包指定此目錄並加上 `-RequireSelfContained`，會檢查 Runtime 設定及 WPF 必要元件。一般開發建置方式不變。
+
 ## 已知 Bug、限制與疑難排解
 
 | 狀態 | 情境 | 處理方式 |
@@ -113,7 +116,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File tools/package-release.ps1 -C
 | 資料限制 | 個人 Profiles 損毀、被其他版本覆蓋或放在不可寫位置。 | 先保留現場及備份；不要用清除全部資料作為第一個除錯步驟。 |
 | 環境限制 | Windows COM 建置或不同電腦啟動尚未驗證。 | 依建置工具與該版成品需求檢查，不以本機文件更新代替乾淨環境驗證。 |
 
-歷史修正包含 DLR 動態資料包裝、便箋讀取防覆寫與選項版面整理。既有修正不等於所有舊發布包已更新；本輪校準版本與入口／打包防護，未改動桌面行為或個人配置。詳見 [修復報告](../00_Dev-Control-Center/docs/remaining-fixes/RESULTS.md)。
+歷史修正包含 DLR 動態資料包裝、便箋讀取防覆寫與選項版面整理。既有修正不等於所有舊發布包已更新；v2.9.4-zh-TW 已整合本輪拖曳殘影修正、舊 Portal 唯讀退場與內含 Runtime 打包，沒有更動個人配置。詳見 [發布驗收報告](docs/releases/v2.9.4-zh-TW.md)。
 
 本機新版套用與代表性功能驗收見 [成品驗收報告](../00_Dev-Control-Center/docs/new-build-acceptance/RESULTS.md)。日常使用執行 `dist/DesktopFramesPlus/Desktop Frames.exe`；`Run-Latest.bat` 是原始碼開發入口，使用 Code 下的獨立 Profiles，勿把它當作既有 dist 配置的更新入口。重跑隔離功能檢查可使用 `tools/test-representative-functions.ps1 -BinaryDir <成品目錄>`，僅建立合成測試面板與便箋。
 
