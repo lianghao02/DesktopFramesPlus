@@ -2048,4 +2048,6 @@
   <data name="SecSmartDesktopRules" xml:space="preserve">
     <value>分類規則與執行</value>
   </data>
+  <data name="MsgPortalUnavailable" xml:space="preserve"><value>下列 Portal 資料夾無法存取：&#10;{0}&#10;面板資料已保留，資料夾恢復後下次啟動會自動出現。</value></data>
+  <data name="MsgPortalReadOnly" xml:space="preserve"><value>舊 Portal 已停止新增收納，僅供瀏覽。請改用分類面板加入項目，或使用檔案總管管理實體檔案。</value></data>
 </root>

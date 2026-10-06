@@ -87,6 +87,7 @@ namespace Desktop_Frames
 
         private static dynamic _options;
         private static Dictionary<dynamic, PortalFramemanager> _portalFrames = new Dictionary<dynamic, PortalFramemanager>();
+        private static bool _portalUnavailableNotified;
 
         // --- NEW: Active Plugins Registry ---
         public static Dictionary<string, IFramePlugin> _activePlugins = new Dictionary<string, IFramePlugin>();
@@ -3110,17 +3111,8 @@ namespace Desktop_Frames
                         }
                     }
 
-                    // --- 2. PORTAL frame MIGRATION ---
-                    if (frame.ItemsType?.ToString() == "Portal")
-                    {
-                        string portalPath = frame.Items?.ToString();
-                        if (!string.IsNullOrEmpty(portalPath) && !System.IO.Directory.Exists(portalPath))
-                        {
-                            frameDict["IsFolder"] = true;
-                            jsonModified = true;
-                        }
-                    }
-                    else
+                    // 舊 Portal 路徑離線不構成修改配置的理由。
+                    if (frame.ItemsType?.ToString() != "Portal")
                     {
                         var items = frame.Items as JArray ?? new JArray();
                         bool itemsModified = false;
@@ -3464,7 +3456,7 @@ namespace Desktop_Frames
                 MigrateLegacyJson();
             }
 
-            // Sanitize Portal Frames with missing target folders
+            // 離線 Portal 只略過視窗，保留所有配置；提示狀態僅存在記憶體。
             var invalidFrames = new List<dynamic>();
             foreach (dynamic frame in FrameDataManager.FrameData.ToList()) // Use ToList to avoid collection modification issues
             {
@@ -3474,21 +3466,17 @@ namespace Desktop_Frames
                     if (string.IsNullOrEmpty(targetPath) || !System.IO.Directory.Exists(targetPath))
                     {
                         invalidFrames.Add(frame);
-                        LogManager.Log(LogManager.LogLevel.Warn, LogManager.LogCategory.FrameCreation, $"Marked Portal Frame '{frame.Title}' for removal due to missing target folder: {targetPath ?? "null"}");
+                        LogManager.Log(LogManager.LogLevel.Warn, LogManager.LogCategory.FrameCreation, $"Portal 路徑無法存取，配置已保留：{frame.Title} / {targetPath ?? "null"}");
                     }
                 }
             }
 
-            // Remove invalid frames and save
-            if (invalidFrames.Any())
+            // 每次啟動至多一次非阻塞提示，不因離線而寫入配置。
+            if (invalidFrames.Any() && !_portalUnavailableNotified && TrayManager.Instance != null)
             {
-                foreach (var frame in invalidFrames)
-                {
-                    FrameDataManager.FrameData.Remove(frame);
-                    LogManager.Log(LogManager.LogLevel.Debug, LogManager.LogCategory.FrameCreation, $"Removed Portal Frame '{frame.Title}' from FrameDataManager.FrameData");
-                }
-                FrameDataManager.SaveFrameData();
-                LogManager.Log(LogManager.LogLevel.Debug, LogManager.LogCategory.FrameCreation, $"Saved updated frames.json after removing {invalidFrames.Count} invalid Portal Frames");
+                _portalUnavailableNotified = true;
+                var missing = string.Join("\n", invalidFrames.Select(frame => $"{frame.Title} — {frame.Path}"));
+                TrayManager.Instance?.ShowFarmFenceWarning(Strings.Get("MsgPortalUnavailable", missing));
             }
 
             // Clear any stuck transition states from previous session
@@ -3893,8 +3881,6 @@ namespace Desktop_Frames
                 if (string.IsNullOrEmpty(targetPath) || !System.IO.Directory.Exists(targetPath))
                 {
                     LogManager.Log(LogManager.LogLevel.Info, LogManager.LogCategory.FrameCreation, $"Skipping creation of Portal Frame '{frame.Title}' due to missing target folder: {targetPath ?? "null"}");
-                    FrameDataManager.FrameData.Remove(frame);
-                    FrameDataManager.SaveFrameData();
                     return;
                 }
             }
@@ -6682,9 +6668,9 @@ namespace Desktop_Frames
                     }
                     catch (Exception ex)
                     {
-                        MessageBoxesManager.ShowOKOnlyMessageBoxForm(Strings.Get("MsgPortalInitFailed", ex.Message), Strings.DlgError);
-                        FrameDataManager.FrameData.Remove(frame);
-                        FrameDataManager.SaveFrameData();
+                        TrayManager.Instance?.ShowFarmFenceWarning(Strings.Get("MsgPortalInitFailed", ex.Message));
+                        LogManager.Log(LogManager.LogLevel.Warn, LogManager.LogCategory.FrameCreation,
+                            $"Portal 建立失敗，配置已保留：{frame.Title} / {frame.Path}: {ex.Message}");
                         win.Close();
                     }
                 }
@@ -6710,6 +6696,13 @@ namespace Desktop_Frames
                         return;
                     }
                     if (droppedFiles == null) return;
+                    if (frame.ItemsType?.ToString() == "Portal")
+                    {
+                        e.Effects = DragDropEffects.None;
+                        e.Handled = true;
+                        TrayManager.Instance?.ShowFarmFenceWarning(Strings.Get("MsgPortalReadOnly"));
+                        return;
+                    }
 
                     int portalMovedCount = 0;  // 追蹤成功移動的項目數量（收納）
                     int portalCopiedCount = 0; // 追蹤成功複製的項目數量

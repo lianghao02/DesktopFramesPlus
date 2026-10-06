@@ -2035,4 +2035,6 @@ This cannot be undone.</value>
   <data name="SecSmartDesktopRules" xml:space="preserve">
     <value>Rules &amp; Execution</value>
   </data>
+  <data name="MsgPortalUnavailable" xml:space="preserve"><value>Unavailable Portal folders:&#10;{0}&#10;Panel settings are preserved. They will reappear on the next startup after the folders become available.</value></data>
+  <data name="MsgPortalReadOnly" xml:space="preserve"><value>Legacy Portal panels are browse-only. Use a classification panel to add items, or File Explorer to manage files.</value></data>
 </root>

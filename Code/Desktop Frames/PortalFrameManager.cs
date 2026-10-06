@@ -17,6 +17,7 @@ namespace Desktop_Frames
 {
     public class PortalFramemanager
     {
+        private bool IsLegacyReadOnly => true;
         // New field for the active filter
         private string _currentFilter = null;
         private int _sortMode = 0; // 0=Name, 1=Date Modified, 2=Type, 3=Size
@@ -837,6 +838,7 @@ namespace Desktop_Frames
                 MenuItem cutFileItem = new MenuItem { Header = Strings.MenuCutItem };
                 cutFileItem.Click += (s, e) =>
                 {
+                    if (IsLegacyReadOnly) return;
                     try
                     {
                         var paths = new System.Collections.Specialized.StringCollection { path };
@@ -849,10 +851,14 @@ namespace Desktop_Frames
                     }
                     catch (Exception ex) { LogManager.Log(LogManager.LogLevel.Error, LogManager.LogCategory.UI, $"Error cutting item: {ex.Message}"); }
                 };
+                cutFileItem.IsEnabled = false;
+                cutFileItem.ToolTip = Strings.Get("MsgPortalReadOnly");
                 contextMenu.Items.Add(cutFileItem);
 
                 MenuItem renameItem = new MenuItem { Header = Strings.MenuRenameItem };
                 renameItem.Click += (s, e) => RenameItem(path, null);
+                renameItem.IsEnabled = false;
+                renameItem.ToolTip = Strings.Get("MsgPortalReadOnly");
                 contextMenu.Items.Add(renameItem);
 
                 MenuItem deleteItem = new MenuItem { Header = Strings.MenuDeleteItem };
@@ -861,6 +867,8 @@ namespace Desktop_Frames
                     DeleteItem(path, null);
                     if (_detailsListView.Items.Contains(itemModel)) _detailsListView.Items.Remove(itemModel);
                 };
+                deleteItem.IsEnabled = false;
+                deleteItem.ToolTip = Strings.Get("MsgPortalReadOnly");
                 contextMenu.Items.Add(deleteItem);
 
                 if (!isFolder)
@@ -1006,6 +1014,7 @@ namespace Desktop_Frames
                 MenuItem cutFileItem = new MenuItem { Header = Strings.MenuCutItem };
                 cutFileItem.Click += (s, e) =>
                 {
+                    if (IsLegacyReadOnly) return;
                     try
                     {
                         var paths = new System.Collections.Specialized.StringCollection();
@@ -1029,16 +1038,22 @@ namespace Desktop_Frames
                         LogManager.Log(LogManager.LogLevel.Error, LogManager.LogCategory.UI, $"Error cutting item: {ex.Message}");
                     }
                 };
+                cutFileItem.IsEnabled = false;
+                cutFileItem.ToolTip = Strings.Get("MsgPortalReadOnly");
                 contextMenu.Items.Add(cutFileItem);
 
                 // 3. Rename item (Existing)
                 MenuItem renameItem = new MenuItem { Header = Strings.MenuRenameItem };
                 renameItem.Click += (s, e) => RenameItem(path, sp);
+                renameItem.IsEnabled = false;
+                renameItem.ToolTip = Strings.Get("MsgPortalReadOnly");
                 contextMenu.Items.Add(renameItem);
 
                 // 4. Delete item (Existing)
                 MenuItem deleteItem = new MenuItem { Header = Strings.MenuDeleteItem };
                 deleteItem.Click += (s, e) => DeleteItem(path, sp);
+                deleteItem.IsEnabled = false;
+                deleteItem.ToolTip = Strings.Get("MsgPortalReadOnly");
                 contextMenu.Items.Add(deleteItem);
 
                 // 4.5 Open with (Files only)
@@ -1112,6 +1127,7 @@ namespace Desktop_Frames
 
         private void RenameItem(string currentPath, StackPanel sp)
         {
+            if (IsLegacyReadOnly) return;
             try
             {
                 bool isFolder = Directory.Exists(currentPath);
@@ -1218,6 +1234,7 @@ namespace Desktop_Frames
 
         private void DeleteItem(string path, StackPanel sp)
         {
+            if (IsLegacyReadOnly) return;
             bool UseRecycleBin = SettingsManager.UseRecycleBin;
             if (UseRecycleBin == true)
             {

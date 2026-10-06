@@ -1522,6 +1522,14 @@ namespace Desktop_Frames
             {
                 LogManager.Log(LogManager.LogLevel.Debug, LogManager.LogCategory.UI, $"Refreshing Portal Frame icons for '{portalFrame.Title}'");
 
+                string? portalPath = portalFrame.Path?.ToString();
+                if (string.IsNullOrEmpty(portalPath) || !System.IO.Directory.Exists(portalPath))
+                {
+                    LogManager.Log(LogManager.LogLevel.Warn, LogManager.LogCategory.UI, $"Portal 路徑無法存取，配置及目前畫面已保留：{portalFrame.Title} / {portalPath}");
+                    TrayManager.Instance?.ShowFarmFenceWarning(Strings.Get("MsgPortalUnavailable", $"{portalFrame.Title} — {portalPath}"));
+                    return;
+                }
+
                 wrapPanel.Children.Clear();
 
                 var portalManagers = Framemanager.GetPortalFrames();
