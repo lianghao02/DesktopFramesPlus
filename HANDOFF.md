@@ -11,11 +11,11 @@
 
 ## 目前狀態
 
-本機修正版已完成成品回歸、跨路徑 Runtime 驗證及部署。公開版本仍為 v2.9.4-zh-TW；本輪不升版、不推送、不重新發布。保留先前已驗收的 Data 分類面板與獨立便箋功能；使用者下次冷開機速度仍待量測。
+已完成啟動效能優化與全套回歸測試（103 項代表性斷言通過）。公開版本仍為 v2.9.4-zh-TW；本輪不升版、不推送、不重新發布。保留先前已驗收的 Data 分類面板與獨立便箋功能；啟動「桌布、整理引擎與系統匣」主執行緒阻塞耗時由 1,622 ms 顯著下降至 130 ms。
 
 ## 本輪目標
 
-修復 frames.json、options.json／MasterOptions.json 載入失敗後覆寫原檔，以及 InterCore 重複事件訂閱／計時器；加入啟動分段計時，先取得數據，不重構載入架構。
+優化啟動耗時：將桌布取色背景化、消除重複設定載入與行程掃描、快取系統匣應用程式圖示、並防範 UNC 網路路徑同步逾時卡死。
 
 ## 基準與已確認事實 (Baseline & Confirmed Facts)
 
@@ -24,6 +24,13 @@
 - 托盤有呼叫及 Shown／Closed 記錄，但使用者未看見，未證實確切原因。事件不等於肉眼驗收通過。
 
 ## 已完成 (Completed)
+
+2026-10-12 啟動效能優化：
+1. **桌布取色非同步化**：`WallpaperColorManager.Initialize()` 與 `TriggerUpdate()` 改由背景 `Task.Run` 執行大圖解碼與取色，算完後回調 UI 刷新，主執行緒不再阻塞等待 4K/8K 影像解碼。
+2. **單一執行個體快速通道**：`App.xaml.cs` 取得 Mutex 後標記 `IsPrimaryInstance`，`FrameManager` 啟動時直接通過，移除 `Thread.Sleep(100)` 寫死延遲與重複的 `Process.GetProcessesByName` 全行程掃描。
+3. **系統匣圖示快取**：`TrayManager` 快取應用程式圖示，並以 `Environment.ProcessPath` 取代 `Process.MainModule.FileName`，消除重複的 Win32 PE 圖示讀取開銷。
+4. **網路路徑逾時防護**：`AddIcon` 針對 UNC 路徑與 `targetIsUncRoot` 避免在 UI 執行緒執行同步阻塞之 `Directory.Exists` / `File.Exists`。
+5. **啟動計時實測**：實測日誌顯示「桌布、整理引擎與系統匣」階段耗時由 **1,622 ms 下降至 130 ms**（減少近 1.5 秒主執行緒阻塞）。全套代表性驗收 103 項斷言與在地化檢查 100% 通過。
 
 2026-10-12 工作區編號：本機資料夾改為 `19_DesktopFramesPlus`；GitHub origin 與 main 追蹤維持原設定。更名前後 HEAD、既有未提交修改與保護檔案雜湊核對通過；GitHub main 可存取且與本機 HEAD 一致。前輪工作完整保留；本輪僅提交與推送編號紀錄，前輪功能修改保留在本機。
 

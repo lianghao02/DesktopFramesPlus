@@ -15,6 +15,7 @@ namespace Desktop_Frames
         private TargetChecker _targetChecker;
         private static bool _desktopIsShown = false;
         private static Mutex _mutex;
+        public static bool IsPrimaryInstance { get; private set; } = false;
         private const string UNIQUE_APP_NAME = "Global\\DesktopFramesPlus_Mutex_UniqueId_v2";
 
         public App()
@@ -90,6 +91,7 @@ namespace Desktop_Frames
             // --- 2. SINGLE INSTANCE PROTECTION START ---
             bool isNewInstance;
             _mutex = new Mutex(true, UNIQUE_APP_NAME, out isNewInstance);
+            IsPrimaryInstance = isNewInstance;
 
             // Only exit if it's not a new instance AND the user hasn't explicitly disabled the check
             if (!isNewInstance && !SettingsManager.DisableSingleInstance)
@@ -131,9 +133,6 @@ namespace Desktop_Frames
 
                 // 3. Continue Normal Startup
                 {
-                    // Initialize settings (Now loads from Profile/options.json)
-                    SettingsManager.LoadSettings();
-
                     // --- NEW: Self-Heal Context Menu Path ---
                     // Ensures the registry key points to the current EXE location
                     RegistryHelper.RefreshContextMenuPath();

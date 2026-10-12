@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
@@ -22,7 +22,15 @@ namespace Desktop_Frames
 
         public static void Initialize()
         {
-            UpdateWallpaperColor();
+            // 在背景執行緒非同步提取桌布主色調，避免啟動時主執行緒同步解碼 4K/8K 大圖造成 1 秒以上的 UI 凍結
+            System.Threading.Tasks.Task.Run(() =>
+            {
+                UpdateWallpaperColor();
+                System.Windows.Application.Current?.Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    WallpaperColorChanged?.Invoke(null, EventArgs.Empty);
+                }));
+            });
 
             // Hook 1: Listen for Global Windows Theme changes
             SystemEvents.UserPreferenceChanged += SystemEvents_UserPreferenceChanged;
@@ -68,13 +76,16 @@ namespace Desktop_Frames
             if ((DateTime.Now - _lastUpdate).TotalMilliseconds < 500) return;
             _lastUpdate = DateTime.Now;
 
-            System.Windows.Application.Current?.Dispatcher.BeginInvoke(new Action(async () =>
+            System.Threading.Tasks.Task.Run(async () =>
             {
                 // Wait exactly 250ms for Windows to finish saving the file to the hard drive
                 await System.Threading.Tasks.Task.Delay(250);
                 UpdateWallpaperColor();
-                WallpaperColorChanged?.Invoke(null, EventArgs.Empty);
-            }));
+                System.Windows.Application.Current?.Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    WallpaperColorChanged?.Invoke(null, EventArgs.Empty);
+                }));
+            });
         }
 
         public static void UpdateWallpaperColor()

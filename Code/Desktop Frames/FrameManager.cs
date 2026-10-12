@@ -3332,11 +3332,14 @@ namespace Desktop_Frames
                     LogManager.Log(LogManager.LogLevel.Info, LogManager.LogCategory.General,
                         "SingleInstance: Single instance enforcement disabled. Multiple instances allowed.");
                 }
+                else if (App.IsPrimaryInstance)
+                {
+                    // App.xaml.cs 啟動時已藉由系統 Mutex 原子性確認為首個執行個體，略過耗時的全行程掃描與寫死休眠
+                    LogManager.Log(LogManager.LogLevel.Info, LogManager.LogCategory.General,
+                        "SingleInstance: Primary instance verified via Mutex. Continuing with normal startup.");
+                }
                 else
                 {
-                    // Small delay to ensure process visibility
-                    System.Threading.Thread.Sleep(100);
-
                     Process currentProcess = Process.GetCurrentProcess();
                     string processName = Path.GetFileNameWithoutExtension(currentProcess.ProcessName);
                     Process[] allInstances = Process.GetProcessesByName(processName);
@@ -7599,8 +7602,16 @@ namespace Desktop_Frames
                         bool targetExists = false;
                         if (!string.IsNullOrEmpty(targetPath))
                         {
-                            targetIsFolder = System.IO.Directory.Exists(targetPath) || targetIsUncRoot;
-                            targetExists = targetIsFolder || System.IO.File.Exists(targetPath);
+                            if (targetIsUncRoot || targetPath.StartsWith(@"\\"))
+                            {
+                                targetIsFolder = true;
+                                targetExists = true;
+                            }
+                            else
+                            {
+                                targetIsFolder = System.IO.Directory.Exists(targetPath);
+                                targetExists = targetIsFolder || System.IO.File.Exists(targetPath);
+                            }
                         }
 
                         if (!targetExists && ScrapeLnkForNetworkRoot(filePath))

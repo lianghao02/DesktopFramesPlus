@@ -215,16 +215,32 @@ namespace Desktop_Frames
             }
         }
 
+        private static Icon _cachedAppIcon;
+        private static Icon GetDefaultAppIcon()
+        {
+            if (_cachedAppIcon == null)
+            {
+                try
+                {
+                    string exePath = Environment.ProcessPath ?? Process.GetCurrentProcess().MainModule?.FileName;
+                    if (!string.IsNullOrEmpty(exePath) && File.Exists(exePath))
+                    {
+                        _cachedAppIcon = Icon.ExtractAssociatedIcon(exePath);
+                    }
+                }
+                catch { }
+            }
+            return _cachedAppIcon;
+        }
+
         public void InitializeTray()
         {
-            string exePath = Process.GetCurrentProcess().MainModule.FileName;
-
             // Dispose old icon if re-initializing to prevent ghosting
             if (_trayIcon != null) { _trayIcon.Visible = false; _trayIcon.Dispose(); }
 
             _trayIcon = new NotifyIcon
             {
-                Icon = Icon.ExtractAssociatedIcon(exePath),
+                Icon = GetDefaultAppIcon(),
                 Visible = true,
                 Text = $"Desktop Frames ({ProfileManager.CurrentProfileName})"
             };
@@ -770,8 +786,7 @@ namespace Desktop_Frames
                 }
                 else
                 {
-                    string exePath = Process.GetCurrentProcess().MainModule.FileName;
-                    _trayIcon.Icon = Icon.ExtractAssociatedIcon(exePath);
+                    _trayIcon.Icon = GetDefaultAppIcon();
                 }
                 _trayIcon.Visible = true;
             }
