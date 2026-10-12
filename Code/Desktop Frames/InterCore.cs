@@ -32,7 +32,8 @@ namespace Desktop_Frames
         private static readonly Dictionary<string, Effect> _originalEffects = new Dictionary<string, Effect>();
 
         // --- NEW: Registry Listener Fields ---
-        private static DispatcherTimer _registryMonitor;
+        private static DispatcherTimer? _registryMonitor;
+        private static bool _isInitialized;
         private static string _lastTriggerValue;
         // ------------------------------------
 
@@ -43,21 +44,24 @@ namespace Desktop_Frames
         // Initializes the InterCore system - call this during application startup
         public static void Initialize()
         {
+            if (_isInitialized) return;
             try
             {
                 // REGISTER HOTKEYS from GlobalHotkeyManager
-                GlobalHotkeyManager.DancePartyTriggered += (s, e) => ActivateDanceParty();
-                GlobalHotkeyManager.GravityDropTriggered += (s, e) => ActivateGravityDrop();
+                GlobalHotkeyManager.DancePartyTriggered += OnDancePartyTriggered;
+                GlobalHotkeyManager.GravityDropTriggered += OnGravityDropTriggered;
 
                 // --- NEW: Start Registry Listener ---
                 _registryMonitor = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(1000) };
                 _registryMonitor.Tick += CheckRegistryTrigger;
                 _registryMonitor.Start();
+                _isInitialized = true;
 
                 LogManager.Log(LogManager.LogLevel.Info, LogManager.LogCategory.UI, "InterCore system initialized and subscribed to global hotkeys");
             }
             catch (Exception ex)
             {
+                Cleanup();
                 LogManager.Log(LogManager.LogLevel.Error, LogManager.LogCategory.UI, $"InterCore: Error during initialization: {ex.Message}");
             }
         }
@@ -65,15 +69,20 @@ namespace Desktop_Frames
         // Cleans up any active effects - call this during application shutdown
         public static void Cleanup()
         {
+            GlobalHotkeyManager.DancePartyTriggered -= OnDancePartyTriggered;
+            GlobalHotkeyManager.GravityDropTriggered -= OnGravityDropTriggered;
+            if (_registryMonitor != null)
+            {
+                _registryMonitor.Stop();
+                _registryMonitor.Tick -= CheckRegistryTrigger;
+                _registryMonitor = null;
+            }
+            _isInitialized = false;
+            _lastTriggerValue = null;
             try
             {
-                _registryMonitor?.Stop(); // Stop listener
                 _sparkleOverlay?.Close();
                 _originalIconPositions.Clear();
-
-                // Unsubscribe to prevent leaks
-                GlobalHotkeyManager.DancePartyTriggered -= (s, e) => ActivateDanceParty();
-                GlobalHotkeyManager.GravityDropTriggered -= (s, e) => ActivateGravityDrop();
 
                 LogManager.Log(LogManager.LogLevel.Info, LogManager.LogCategory.UI, "InterCore system cleaned up");
             }
@@ -82,6 +91,9 @@ namespace Desktop_Frames
                 LogManager.Log(LogManager.LogLevel.Error, LogManager.LogCategory.UI, $"InterCore: Error during cleanup: {ex.Message}");
             }
         }
+
+        private static void OnDancePartyTriggered(object? sender, EventArgs e) => ActivateDanceParty();
+        private static void OnGravityDropTriggered(object? sender, EventArgs e) => ActivateGravityDrop();
 
         private static void CheckRegistryTrigger(object sender, EventArgs e)
         {

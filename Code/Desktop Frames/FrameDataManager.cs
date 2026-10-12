@@ -21,6 +21,29 @@ namespace Desktop_Frames
 
         // JSON file path - moved from Framemanager  
         private static string _jsonFilePath;
+        private static readonly HashSet<string> _protectedPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        public static bool IsWriteProtected => !string.IsNullOrEmpty(_jsonFilePath) &&
+            _protectedPaths.Contains(Path.GetFullPath(_jsonFilePath));
+
+        internal static void SetLoadProtection(bool failed)
+        {
+            string path = Path.GetFullPath(_jsonFilePath);
+            if (failed) _protectedPaths.Add(path);
+            else _protectedPaths.Remove(path);
+        }
+
+        internal static void EnsureCanSave()
+        {
+            if (IsWriteProtected)
+                throw new InvalidOperationException(Desktop_Frames.Localization.Strings.Get("MsgConfigurationProtected"));
+        }
+
+        internal static void ValidateFrameJson(string json)
+        {
+            JToken data = JToken.Parse(json);
+            if (!(data is JObject) && !(data is JArray array && array.All(item => item is JObject)))
+                throw new JsonSerializationException("面板設定必須為物件或物件陣列。");
+        }
 
         // Key: ChildId, Value: List of ParentIds (Runtime 1-to-Many Accordion Snap Graph)
         public static Dictionary<string, List<string>> DockingMap = new Dictionary<string, List<string>>();
@@ -152,6 +175,7 @@ namespace Desktop_Frames
             {
                 LogManager.Log(LogManager.LogLevel.Error, LogManager.LogCategory.FrameCreation,
                     $"Critical error in LoadFrameData: {ex.Message}");
+                SetLoadProtection(true);
                 _frameData = new List<dynamic>(); // Fallback to empty list
             }
         }
@@ -163,9 +187,11 @@ namespace Desktop_Frames
         /// </summary>
         private static bool LoadFrameDataFromJson()
         {
+            bool loaded = false;
             try
             {
                 string jsonContent = File.ReadAllText(_jsonFilePath);
+                ValidateFrameJson(jsonContent);
 
                 // Check if the file is empty or contains only whitespace
                 if (string.IsNullOrWhiteSpace(jsonContent))
@@ -181,7 +207,7 @@ namespace Desktop_Frames
                     _frameData = JsonConvert.DeserializeObject<List<dynamic>>(jsonContent);
                     LogManager.Log(LogManager.LogLevel.Debug, LogManager.LogCategory.FrameCreation,
                         $"Successfully loaded {_frameData?.Count ?? 0} frames from JSON array.");
-                    return _frameData != null;
+                    return loaded = _frameData != null;
                 }
                 catch (JsonException)
                 {
@@ -193,7 +219,7 @@ namespace Desktop_Frames
                     _frameData = new List<dynamic> { singleFrame };
                     LogManager.Log(LogManager.LogLevel.Debug, LogManager.LogCategory.FrameCreation,
                         "Successfully loaded single frame from JSON object.");
-                    return true;
+                    return loaded = true;
                 }
             }
             catch (Exception ex)
@@ -201,6 +227,11 @@ namespace Desktop_Frames
                 LogManager.Log(LogManager.LogLevel.Error, LogManager.LogCategory.FrameCreation,
                     $"Error loading frame data from JSON: {ex.Message}");
                 return false;
+            }
+            finally
+            {
+                SetLoadProtection(!loaded);
+                if (!loaded) _frameData = new List<dynamic>();
             }
         }
 
@@ -211,6 +242,7 @@ namespace Desktop_Frames
         /// </summary>
         public static void SaveFrameData()
         {
+            EnsureCanSave();
             try
             {
                 var serializedData = new List<JObject>();

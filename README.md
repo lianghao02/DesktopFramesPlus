@@ -86,6 +86,8 @@
    - v2.9.4-zh-TW Windows x64 免安裝成品內含 .NET 8 Desktop Runtime，不需另外安裝 .NET、Visual Studio 或 .NET SDK。請解壓縮整個資料夾，不要只複製 EXE；不適用於 32 位元 Windows，ARM64 尚未驗證。跨電腦與 Windows 10 等限制詳見 [發布驗收報告](docs/releases/v2.9.4-zh-TW.md)。
 4. **升級方式**：關閉程式、備份 `Profiles/` 後依該版說明替換程式檔；不要覆蓋或清除自己的個人設定。更新後確認面板、便箋與捷徑內容。
 
+本機 Repository 的正式使用位置固定為 `dist/DesktopFramesPlus/Desktop Frames.exe`。`Code/Desktop Frames/bin/Release` 是開發輸出，`bin/PortablePublish` 與 `bin/PortablePackage` 是發布中間產物，不作為日常啟動入口。更新正式目錄時保留既有 Profiles、Shortcuts 與設定；只更新成品程式檔。
+
 ---
 
 ## 版本沿革與開發入口

@@ -160,6 +160,9 @@ namespace Desktop_Frames
         };
 
         private static string _activeOptionsPath;
+        private static readonly HashSet<string> _protectedOptionsPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        public static bool IsWriteProtected => !string.IsNullOrEmpty(_activeOptionsPath) &&
+            _protectedOptionsPaths.Contains(Path.GetFullPath(_activeOptionsPath));
 
         public static void LoadSettings()
         {
@@ -184,29 +187,20 @@ namespace Desktop_Frames
                 if (File.Exists(_activeOptionsPath))
                 {
                     string jsonContent = File.ReadAllText(_activeOptionsPath);
-                    if (!string.IsNullOrWhiteSpace(jsonContent))
-                    {
-                        try
-                        {
-                            var optionsData = JsonConvert.DeserializeObject<dynamic>(jsonContent);
-                            if (optionsData != null) ApplyJsonToProperties(optionsData);
-                        }
-                        catch { /* Corrupt file, defaults will apply */ }
-                    }
+                    // 空檔、null 與非物件格式皆不視為成功載入，避免覆寫原始設定。
+                    var optionsData = JObject.Parse(jsonContent);
+                    ApplyJsonToProperties(optionsData);
+                    _protectedOptionsPaths.Remove(Path.GetFullPath(_activeOptionsPath));
                 }
 
-                // --- FIX: Universal File Hydration ---
-                // By unconditionally saving after loading the properties into memory, we guarantee:
-                // 1. 0-byte profile files are instantly populated with default JSON.
-                // 2. MasterOptions.json / options.json files from older app versions 
-                //    automatically get newly added settings injected into them.
+                // 僅新設定或成功讀取的舊設定可補齊預設值。
                 SaveSettings();
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error loading settings: {ex.Message}");
-                if (string.IsNullOrEmpty(_activeOptionsPath)) _activeOptionsPath = localPath;
-                SaveSettings();
+                _protectedOptionsPaths.Add(Path.GetFullPath(_activeOptionsPath));
+                LogManager.Log(LogManager.LogLevel.Error, LogManager.LogCategory.Settings,
+                    $"設定讀取失敗，已禁止覆寫 {_activeOptionsPath}：{ex.Message}");
             }
         }
 
@@ -215,6 +209,13 @@ namespace Desktop_Frames
             if (string.IsNullOrEmpty(_activeOptionsPath))
             {
                 _activeOptionsPath = ProfileManager.GetProfileFilePath("options.json");
+            }
+
+            if (IsWriteProtected)
+            {
+                LogManager.Log(LogManager.LogLevel.Error, LogManager.LogCategory.Settings,
+                    $"設定尚未成功重新載入，已略過保存：{_activeOptionsPath}");
+                return;
             }
 
             try
@@ -555,6 +556,7 @@ namespace Desktop_Frames
                 foreach (string dir in Directory.GetDirectories(profilesDir))
                 {
                     string optionsFile = Path.Combine(dir, "options.json");
+                    if (_protectedOptionsPaths.Contains(Path.GetFullPath(optionsFile))) continue;
                     if (File.Exists(optionsFile))
                     {
                         try

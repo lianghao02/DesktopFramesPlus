@@ -114,6 +114,93 @@ internal static class Program
         storage.SaveImmediate(new List<Desktop_Frames.Notes.Models.NoteItem>());
         Check(corrupt.SequenceEqual(File.ReadAllBytes(notesPath)) && Directory.GetFiles(Path.GetDirectoryName(notesPath)!, "notes.json.corrupt.*").Length > 0, "損毀便箋備份且不被空清單覆寫");
         Check(hash.SequenceEqual(SHA256.HashData(File.ReadAllBytes(source))), "驗收完成後來源雜湊不變");
+        StartupSafetyChecks(checker);
+    }
+
+    private static void StartupSafetyChecks(TargetChecker checker)
+    {
+        var flags = System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic;
+        string framePath = FrameDataManager.JsonFilePath;
+        string savedFrames = File.ReadAllText(framePath);
+        var startupLoad = typeof(Framemanager).GetMethod("LoadFrameDataFromJson", flags)!;
+        foreach (bool startup in new[] { false, true })
+        {
+            foreach (string invalid in new[] { "{故意損毀", "", "null", "42", "[null]" })
+            {
+                File.WriteAllText(framePath, invalid, new System.Text.UTF8Encoding(false));
+                byte[] before = File.ReadAllBytes(framePath);
+                if (startup) startupLoad.Invoke(null, null);
+                else FrameDataManager.LoadFrameData(checker);
+                if (startup) typeof(Framemanager).GetMethod("InitializeDefaultFrame", flags)!.Invoke(null, null);
+                try { FrameDataManager.SaveFrameData(); } catch (InvalidOperationException) { }
+                Check(before.SequenceEqual(File.ReadAllBytes(framePath)), $"{(startup ? "啟動" : "資料管理")}讀取異常不覆寫 frames.json：{invalid}");
+                File.WriteAllText(framePath, savedFrames, new System.Text.UTF8Encoding(false));
+                FrameDataManager.LoadFrameData(checker);
+                FrameDataManager.SaveFrameData();
+                Check(JArray.Parse(File.ReadAllText(framePath)).Count > 0, "有效面板重新載入後可恢復保存");
+            }
+        }
+        using (var locked = new FileStream(framePath, FileMode.Open, FileAccess.ReadWrite, FileShare.None))
+            startupLoad.Invoke(null, null);
+        byte[] lockedFrames = File.ReadAllBytes(framePath);
+        try { FrameDataManager.SaveFrameData(); } catch (InvalidOperationException) { }
+        Check(lockedFrames.SequenceEqual(File.ReadAllBytes(framePath)), "frames.json 讀取鎖定解除後仍禁止空資料覆寫");
+
+        // 保護狀態只屬於讀取失敗的檔案，不污染其他工作區。
+        string otherFrames = Path.Combine(AppContext.BaseDirectory, "其他合成 frames.json");
+        FrameDataManager.JsonFilePath = otherFrames;
+        FrameDataManager.SaveFrameData();
+        Check(File.Exists(otherFrames), "其他工作區面板仍可正常保存");
+        FrameDataManager.JsonFilePath = framePath;
+        try { FrameDataManager.SaveFrameData(); } catch (InvalidOperationException) { }
+        Check(lockedFrames.SequenceEqual(File.ReadAllBytes(framePath)), "切換工作區後原檔保護仍有效");
+        FrameDataManager.LoadFrameData(checker);
+
+        foreach (string optionsPath in new[] { ProfileManager.GetProfileFilePath("options.json"), Path.Combine(AppContext.BaseDirectory, "MasterOptions.json") })
+        {
+            foreach (string invalid in new[] { "{故意損毀", "", "null", "[]" })
+            {
+                File.WriteAllText(optionsPath, invalid, new System.Text.UTF8Encoding(false));
+                byte[] before = File.ReadAllBytes(optionsPath);
+                SettingsManager.LoadSettings();
+                SettingsManager.SaveSettings();
+                Check(before.SequenceEqual(File.ReadAllBytes(optionsPath)), $"設定讀取異常保留原檔：{Path.GetFileName(optionsPath)} / {invalid}");
+                File.WriteAllText(optionsPath, "{\"Language\":\"zh-TW\"}", new System.Text.UTF8Encoding(false));
+                SettingsManager.LoadSettings();
+                Check(JObject.Parse(File.ReadAllText(optionsPath))["Language"]?.ToString() == "zh-TW", "有效設定重新載入後恢復保存");
+            }
+            using (var locked = new FileStream(optionsPath, FileMode.Open, FileAccess.ReadWrite, FileShare.None))
+                SettingsManager.LoadSettings();
+            byte[] beforeUnlock = File.ReadAllBytes(optionsPath);
+            SettingsManager.SaveSettings();
+            Check(beforeUnlock.SequenceEqual(File.ReadAllBytes(optionsPath)), "設定讀取鎖定解除後仍保護原檔");
+            File.WriteAllText(optionsPath, "{\"Language\":\"zh-TW\",\"Preserve\":123}", new System.Text.UTF8Encoding(false));
+            byte[] externallyRepaired = File.ReadAllBytes(optionsPath);
+            SettingsManager.BroadcastHotkeysToAllProfiles();
+            SettingsManager.SaveSettings();
+            Check(externallyRepaired.SequenceEqual(File.ReadAllBytes(optionsPath)), "成功重新載入前，快捷鍵同步亦不得覆寫受保護設定");
+            SettingsManager.LoadSettings();
+        }
+        File.Delete(Path.Combine(AppContext.BaseDirectory, "MasterOptions.json"));
+        SettingsManager.LoadSettings();
+        Check(SettingsManager.Language == "zh-TW", "移除合成 MasterOptions 後可載入本機設定");
+
+        var timerField = typeof(InterCore).GetField("_registryMonitor", flags)!;
+        var danceField = typeof(GlobalHotkeyManager).GetField("DancePartyTriggered", flags)!;
+        int beforeHandlers = (danceField.GetValue(null) as Delegate)?.GetInvocationList().Length ?? 0;
+        InterCore.Initialize();
+        var timer = (System.Windows.Threading.DispatcherTimer)timerField.GetValue(null)!;
+        InterCore.Initialize();
+        Check(ReferenceEquals(timer, timerField.GetValue(null)) &&
+            ((Delegate)danceField.GetValue(null)!).GetInvocationList().Length == beforeHandlers + 1,
+            "InterCore 重複初始化共用同一計時器且只訂閱一次");
+        InterCore.Cleanup();
+        Check(!timer.IsEnabled && timerField.GetValue(null) == null &&
+            ((danceField.GetValue(null) as Delegate)?.GetInvocationList().Length ?? 0) == beforeHandlers,
+            "InterCore 結束確實停止計時器並解除訂閱");
+        InterCore.Initialize();
+        Check(!ReferenceEquals(timer, timerField.GetValue(null)), "InterCore 清理後可重新初始化");
+        InterCore.Cleanup();
     }
 
     private static async Task ExtendedChecks(TargetChecker checker, string source, byte[] hash)

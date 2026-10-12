@@ -56,6 +56,15 @@ namespace Desktop_Frames
 
         private void Application_Startup(object sender, StartupEventArgs e)
         {
+            var startupTimer = System.Diagnostics.Stopwatch.StartNew();
+            long previousCheckpoint = 0;
+            void MarkStartup(string stage)
+            {
+                long elapsed = startupTimer.ElapsedMilliseconds;
+                LogManager.Log(LogManager.LogLevel.Info, LogManager.LogCategory.General,
+                    $"[啟動計時] {stage}：本段 {elapsed - previousCheckpoint} ms，累計 {elapsed} ms");
+                previousCheckpoint = elapsed;
+            }
             // 確保視窗關閉時絕不自動觸發應用程式結束（由使用者顯式關閉或托盤選單控制）
             this.ShutdownMode = ShutdownMode.OnExplicitShutdown;
 
@@ -69,6 +78,7 @@ namespace Desktop_Frames
                 // Before any window is built, or half the interface would be
                 // laid out in the language the setting is replacing.
                 Desktop_Frames.Localization.Strings.SetLanguage(SettingsManager.Language);
+                MarkStartup("工作區與首次設定載入");
             }
             catch (Exception ex)
             {
@@ -130,6 +140,7 @@ namespace Desktop_Frames
 
                     // Initialize InterCore system
                     InterCore.Initialize();
+                    MarkStartup("單一執行個體、設定與互動核心");
 
                     // --- CHAMELEON ENGINE ---
                     WallpaperColorManager.Initialize();
@@ -147,6 +158,7 @@ namespace Desktop_Frames
                     // Initialize TrayManager BEFORE frames
                     _trayManager = new TrayManager();
                     _trayManager.InitializeTray();
+                    MarkStartup("桌布、整理引擎與系統匣");
 
          
 
@@ -159,6 +171,7 @@ namespace Desktop_Frames
 
                     // Load frames (Now loads from Profile/frames.json)
                     Framemanager.LoadAndCreateFrames(_targetChecker);
+                    MarkStartup("面板資料與視窗建立");
 
                     // --- PRODUCTION START LOGIC ---
                     if (SettingsManager.EnableProfileAutomation)
@@ -202,6 +215,7 @@ namespace Desktop_Frames
 
 
                     // --- NEW: Start Desktop Sticky Notes ---
+                    MarkStartup("系統匣更新與全域監聽");
                     try
                     {
                         Desktop_Frames.Notes.Services.NoteManager.Initialize();
@@ -212,6 +226,15 @@ namespace Desktop_Frames
                     }
 
                     // --- NEW: Direct Draw Mode Check ---
+                    MarkStartup("便箋初始化");
+                    Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.ApplicationIdle,
+                        new Action(() =>
+                        {
+                            MarkStartup("首次 UI 閒置（非冷開機量測）");
+                            if (SettingsManager.IsWriteProtected || FrameDataManager.IsWriteProtected)
+                                MessageBox.Show(Strings.Get("MsgConfigurationProtected"), Strings.DlgError,
+                                    MessageBoxButton.OK, MessageBoxImage.Warning);
+                        }));
 
                     // If this MAIN instance was started via Context Menu, trigger draw mode now.
                     // Use the same robust check as above.

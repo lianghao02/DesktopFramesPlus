@@ -2051,4 +2051,7 @@
   <data name="DlgPortalUnavailable" xml:space="preserve"><value>Portal 資料夾無法使用</value></data>
   <data name="MsgPortalUnavailable" xml:space="preserve"><value>下列 Portal 資料夾無法存取：&#10;{0}&#10;面板資料已保留，資料夾恢復後下次啟動會自動出現。</value></data>
   <data name="MsgPortalReadOnly" xml:space="preserve"><value>舊 Portal 已停止新增收納，僅供瀏覽。請改用分類面板加入項目，或使用檔案總管管理實體檔案。</value></data>
+  <data name="MsgConfigurationProtected" xml:space="preserve">
+    <value>面板或選項設定讀取失敗，已保護原始檔案，禁止覆寫。部分面板可能不會顯示，變更也可能無法保存。請還原有效設定或排除存取問題，再重新啟動程式。</value>
+  </data>
 </root>

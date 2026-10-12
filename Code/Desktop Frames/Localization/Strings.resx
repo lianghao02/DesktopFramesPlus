@@ -2038,4 +2038,7 @@ This cannot be undone.</value>
   <data name="DlgPortalUnavailable" xml:space="preserve"><value>Portal folders unavailable</value></data>
   <data name="MsgPortalUnavailable" xml:space="preserve"><value>Unavailable Portal folders:&#10;{0}&#10;Panel settings are preserved. They will reappear on the next startup after the folders become available.</value></data>
   <data name="MsgPortalReadOnly" xml:space="preserve"><value>Legacy Portal panels are browse-only. Use a classification panel to add items, or File Explorer to manage files.</value></data>
+  <data name="MsgConfigurationProtected" xml:space="preserve">
+    <value>A panel or options configuration could not be read. The original file has been protected from overwriting. Some panels may not appear and changes may not be saved. Restore a valid configuration or resolve the access problem, then restart the application.</value>
+  </data>
 </root>

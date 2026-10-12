@@ -3431,6 +3431,14 @@ namespace Desktop_Frames
                 jsonLoadSuccessful = LoadFrameDataFromJson();
             }
 
+            // 既有檔案讀取失敗不得走預設配置寫入路徑。
+            if (FrameDataManager.IsWriteProtected)
+            {
+                LogManager.Log(LogManager.LogLevel.Error, LogManager.LogCategory.FrameCreation,
+                    "面板設定讀取失敗，已保留原檔並略過建立面板視窗。");
+                return;
+            }
+
             // If JSON loading failed or file doesn't exist, initialize with defaults
             if (!jsonLoadSuccessful || FrameDataManager.FrameData == null || FrameDataManager.FrameData.Count == 0)
             {
@@ -3662,9 +3670,11 @@ namespace Desktop_Frames
 
         private static bool LoadFrameDataFromJson()
         {
+            bool loaded = false;
             try
             {
                 string jsonContent = System.IO.File.ReadAllText(FrameDataManager.JsonFilePath);
+                FrameDataManager.ValidateFrameJson(jsonContent);
 
                 // Check if the file is empty or contains only whitespace
                 if (string.IsNullOrWhiteSpace(jsonContent))
@@ -3680,7 +3690,7 @@ namespace Desktop_Frames
                     FrameDataManager.FrameData = JsonConvert.DeserializeObject<List<dynamic>>(jsonContent);
                     LogManager.Log(LogManager.LogLevel.Debug, LogManager.LogCategory.FrameCreation,
                         $"Successfully loaded {FrameDataManager.FrameData?.Count ?? 0} frame from JSON array.");
-                    return FrameDataManager.FrameData != null;
+                    return loaded = FrameDataManager.FrameData != null;
                 }
                 catch (JsonSerializationException)
                 {
@@ -3693,7 +3703,7 @@ namespace Desktop_Frames
                             FrameDataManager.FrameData = new List<dynamic> { singleFrame };
                             LogManager.Log(LogManager.LogLevel.Debug, LogManager.LogCategory.FrameCreation,
                                 "Successfully loaded single frame from JSON object.");
-                            return true;
+                            return loaded = true;
                         }
                     }
                     catch (JsonSerializationException innerEx)
@@ -3727,6 +3737,11 @@ namespace Desktop_Frames
                 LogManager.Log(LogManager.LogLevel.Error, LogManager.LogCategory.FrameCreation,
                     $"Unexpected error loading frames.json: {ex.Message}");
             }
+            finally
+            {
+                FrameDataManager.SetLoadProtection(!loaded);
+                if (!loaded) FrameDataManager.FrameData = new List<dynamic>();
+            }
 
             return false;
         }
@@ -3754,6 +3769,7 @@ namespace Desktop_Frames
         {
             try
             {
+                FrameDataManager.EnsureCanSave();
                 // 1. Create the Standard Data Frames (For user icons)
                 var dataFrame = new
                 {
