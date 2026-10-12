@@ -7,7 +7,7 @@
 - **Commit SHA**：53e2f16（程式／測試基準；文件提交與發布目標以 Git log、v2.9.4-zh-TW tag 為準）
 - **Skill Version**：v1.0.0
 - **Task Type**：RELEASE / HANDOFF
-- **Local Path Hint**：DesktopFramesPlus
+- **Local Path Hint**：19_DesktopFramesPlus
 
 ## 目前狀態
 
@@ -24,6 +24,8 @@
 - 托盤有呼叫及 Shown／Closed 記錄，但使用者未看見，未證實確切原因。事件不等於肉眼驗收通過。
 
 ## 已完成 (Completed)
+
+2026-10-12 工作區編號：本機資料夾改為 `19_DesktopFramesPlus`；GitHub origin 與 main 追蹤維持原設定。更名前後 HEAD、既有未提交修改與保護檔案雜湊核對通過；GitHub main 可存取且與本機 HEAD 一致。前輪工作完整保留；本輪僅提交與推送編號紀錄，前輪功能修改保留在本機。
 
 - Portal 離線時略過視窗、保留配置，不因此存檔刪除；啟動彙整一次非阻塞提示窗，完整路徑可捲動／複製，不自動消失。
 - 舊 Portal 保留瀏覽／開啟／排序及面板操作；拖入、剪下、實體改名、刪除停用，方法入口亦防護。沒有遷移或搬動原檔。
