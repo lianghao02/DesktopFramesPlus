@@ -2,6 +2,7 @@ using DesktopFrames;
 using Newtonsoft.Json.Linq;
 using System;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
@@ -20,6 +21,9 @@ namespace Desktop_Frames
 
         public App()
         {
+            // 常駐系統匣與桌面工具：必須以明確關閉為準，防止視窗所有權交由桌面 Progman 後被 WPF 自動關閉
+            this.ShutdownMode = ShutdownMode.OnExplicitShutdown;
+
             this.DispatcherUnhandledException += (s, e) =>
             {
                 try
@@ -284,24 +288,36 @@ namespace Desktop_Frames
             base.OnExit(e);
         }
 
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int X, int Y, int cx, int cy, uint uFlags);
+        private const uint SWP_NOSIZE = 0x0001;
+        private const uint SWP_NOMOVE = 0x0002;
+        private const uint SWP_NOACTIVATE = 0x0010;
+        private const uint SWP_SHOWWINDOW = 0x0040;
+
         private static void OnWindowsPlusDDetected(object sender, System.EventArgs e)
         {
             try
             {
-                // 只要偵測到 Win+D 或點擊工作列顯示桌面按鈕，使用者的意圖皆為回到桌面
-                // 立即設定極短延遲（80ms）等待 Windows DWM 最小化動作完成後，無條件喚醒所有桌面框架視窗
-                var restoreTimer = new System.Windows.Threading.DispatcherTimer
-                {
-                    Interval = TimeSpan.FromMilliseconds(80)
-                };
-                restoreTimer.Tick += (timerSender, timerArgs) =>
-                {
-                    restoreTimer.Stop();
-                    RestoreAllframeWindows();
-                };
-                restoreTimer.Start();
+                // 分段確認：涵蓋 Windows DWM 最小化與顯示桌面動畫週期（100ms 與 300ms），確保平滑浮現不閃爍
+                ScheduleRestoreCheck(100);
+                ScheduleRestoreCheck(300);
             }
             catch { }
+        }
+
+        private static void ScheduleRestoreCheck(int delayMs)
+        {
+            var timer = new System.Windows.Threading.DispatcherTimer
+            {
+                Interval = TimeSpan.FromMilliseconds(delayMs)
+            };
+            timer.Tick += (s, args) =>
+            {
+                timer.Stop();
+                RestoreAllframeWindows();
+            };
+            timer.Start();
         }
 
         private static void RestoreAllframeWindows()
@@ -329,11 +345,18 @@ namespace Desktop_Frames
                         if (!win.IsVisible)
                             win.Show();
 
-                        // 針對 NonActivatingWindow 重新刷過 Z-Order 確保顯示
+                        // 針對分類面板（NonActivatingWindow）使用平滑 Win32 喚醒，徹底取代舊版 Topmost 閃爍刷屏
                         if (win is NonActivatingWindow frameWindow)
                         {
-                            frameWindow.Topmost = true;
-                            frameWindow.Topmost = false;
+                            if (!frameWindow.Topmost)
+                            {
+                                var hwnd = new System.Windows.Interop.WindowInteropHelper(frameWindow).Handle;
+                                if (hwnd != IntPtr.Zero)
+                                {
+                                    SetWindowPos(hwnd, IntPtr.Zero, 0, 0, 0, 0,
+                                        SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE | SWP_SHOWWINDOW);
+                                }
+                            }
                         }
                     }
                     catch { }

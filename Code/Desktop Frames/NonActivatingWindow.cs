@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Interop;
@@ -14,6 +14,7 @@ public class NonActivatingWindow : Window
     private const int MA_NOACTIVATE = 3;
     private const int GWL_EXSTYLE = -20;
     private const int WS_EX_NOACTIVATE = 0x08000000;
+    private const int WS_EX_TOOLWINDOW = 0x00000080;
     private bool _focusPreventionEnabled = true;
 
     // --- Idle Fade-Out Fields ---
@@ -24,9 +25,12 @@ public class NonActivatingWindow : Window
     protected override void OnSourceInitialized(EventArgs e)
     {
         base.OnSourceInitialized(e);
+        var hwnd = new WindowInteropHelper(this).Handle;
         var hwndSource = (HwndSource)PresentationSource.FromVisual(this);
         hwndSource.AddHook(WndProc);
-        SetWindowLong(new WindowInteropHelper(this).Handle, GWL_EXSTYLE, GetWindowLong(new WindowInteropHelper(this).Handle, GWL_EXSTYLE) | WS_EX_NOACTIVATE);
+        // WS_EX_NOACTIVATE: 點擊不奪取焦點
+        // WS_EX_TOOLWINDOW: 工具視窗屬性，Win+D (顯示桌面) 時不被 Windows 視為一般程式最小化
+        SetWindowLong(hwnd, GWL_EXSTYLE, GetWindowLong(hwnd, GWL_EXSTYLE) | WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW);
         SetupIdleTimer();
     }
 
@@ -70,13 +74,15 @@ public class NonActivatingWindow : Window
     public void EnableFocusPrevention(bool enable)
     {
         _focusPreventionEnabled = enable;
+        var hwnd = new WindowInteropHelper(this).Handle;
+        int currentStyle = GetWindowLong(hwnd, GWL_EXSTYLE);
         if (enable)
         {
-            SetWindowLong(new WindowInteropHelper(this).Handle, GWL_EXSTYLE, GetWindowLong(new WindowInteropHelper(this).Handle, GWL_EXSTYLE) | WS_EX_NOACTIVATE);
+            SetWindowLong(hwnd, GWL_EXSTYLE, currentStyle | WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW);
         }
         else
         {
-            SetWindowLong(new WindowInteropHelper(this).Handle, GWL_EXSTYLE, GetWindowLong(new WindowInteropHelper(this).Handle, GWL_EXSTYLE) & ~WS_EX_NOACTIVATE);
+            SetWindowLong(hwnd, GWL_EXSTYLE, (currentStyle & ~WS_EX_NOACTIVATE) | WS_EX_TOOLWINDOW);
         }
     }
 

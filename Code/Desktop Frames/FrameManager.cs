@@ -3929,10 +3929,10 @@ namespace Desktop_Frames
             Border cborder = new Border
             {
                 Background = new SolidColorBrush(System.Windows.Media.Color.FromArgb(100, 0, 0, 0)),
-                // --- APPLY HIDDEN SETTING: Sharp corners if enabled, otherwise default 6px round ---
-                CornerRadius = SettingsManager.FramesWithNoRoundCorners ? new CornerRadius(0) : new CornerRadius(6),
-                BorderBrush = borderBrush, // Apply border color
-                BorderThickness = new Thickness(borderThickness), // Apply border thickness
+                // --- 現代磨砂 Dock 風格：預設 14px 柔和圓角；直角模式維持 0px ---
+                CornerRadius = SettingsManager.FramesWithNoRoundCorners ? new CornerRadius(0) : new CornerRadius(14),
+                BorderBrush = borderBrush ?? new SolidColorBrush(System.Windows.Media.Color.FromArgb(40, 255, 255, 255)), // 晶透微高光透光邊框
+                BorderThickness = new Thickness(borderThickness > 0 ? borderThickness : 1), // 預設 1px 細膩邊界
                 Child = dp
             };
             // Add Double Click Handler
@@ -7497,17 +7497,36 @@ namespace Desktop_Frames
             {
                 Text = displayName,
                 TextWrapping = TextWrapping.Wrap,
+                TextTrimming = TextTrimming.CharacterEllipsis,
                 TextAlignment = TextAlignment.Center,
                 HorizontalAlignment = HorizontalAlignment.Center,
                 Foreground = textBrush,
-                MaxWidth = 70,
+                MaxWidth = 74,
+                MaxHeight = 34, // 精確限制最多 2 行（行高 16px * 2 + 2px 容差），超過自動在第 2 行末端顯示省略號（...）
+                LineHeight = 16,
+                LineStackingStrategy = LineStackingStrategy.BlockLineHeight,
+                Padding = new Thickness(2, 0, 2, 0),
                 Opacity = targetIconOpacity
             };
 
+            // 拔除 DropShadowEffect 點陣渲染負擔（大幅瘦身記憶體）；未停用陰影時提供純向量微黑半透明底色確保各色桌布易讀性
             if (!disableShadow)
-                lbl.Effect = new DropShadowEffect { Color = Colors.Black, Direction = 315, ShadowDepth = 2, BlurRadius = 3, Opacity = 0.8 };
+            {
+                lbl.Background = new SolidColorBrush(System.Windows.Media.Color.FromArgb(40, 0, 0, 0));
+            }
 
             sp.Children.Add(lbl);
+            sp.Background = System.Windows.Media.Brushes.Transparent;
+            sp.MouseEnter += (s, e) =>
+            {
+                if (_currentlySelectedIconPanel != sp)
+                    sp.Background = new SolidColorBrush(System.Windows.Media.Color.FromArgb(32, 255, 255, 255));
+            };
+            sp.MouseLeave += (s, e) =>
+            {
+                if (_currentlySelectedIconPanel != sp)
+                    sp.Background = System.Windows.Media.Brushes.Transparent;
+            };
             sp.Tag = new { FilePath = filePath, IsFolder = isFolder, Arguments = (string)(iconDict.ContainsKey("Arguments") ? iconDict["Arguments"] : null) };
             sp.ToolTip = new ToolTip { Content = originalDisplayName + "\nLoading target..." };
 
