@@ -4,9 +4,9 @@
 
 - **Repository**：lianghao02/DesktopFramesPlus
 - **Branch**：main
-- **Commit SHA**：4a5d3c7
+- **Commit SHA**：922a3e1
 - **Skill Version**：v1.0.0
-- **Task Type**：FEAT / PERF / HANDOFF
+- **Task Type**：FEAT / PERF / FIX / HANDOFF
 - **Local Path Hint**：19_DesktopFramesPlus
 
 ## 目前狀態
@@ -27,6 +27,7 @@
 - **避免跨進程 Owner 地雷**：嚴禁在 `NonActivatingWindow` 呼叫 `helper.Owner = FindWindow("Progman", null)`。因 Progman 屬於 `explorer.exe` 行程，Win32 跨進程設置 Owner 會導致 Windows USER32 核心強制銷毀視窗（WM_DESTROY），造成無聲閃退。穩健做法為 `WS_EX_TOOLWINDOW` 搭配雙階段 `SetWindowPos` 平滑喚醒。
 - **免安裝可攜標準**：本專案為 Self-Contained 可攜架構（內嵌 .NET 8 Runtime），必須透過 MSBuild `Portable-win-x64` 發布，產出包含 `includedFrameworks` 之 `Desktop Frames.runtimeconfig.json`。
 - **使用者資料零更動**：`dist\DesktopFramesPlus\Profiles\` 下所有使用者設定與便箋內容必須 100% 原樣保留。
+- **單一真理來源**：所有日常執行、開機啟動與腳本一律鎖定 `dist\DesktopFramesPlus\`，`Code\bin` 僅作暫存編譯目錄，嚴禁讀寫正式個人資料。
 
 ## 已完成 (Completed)
 
@@ -47,14 +48,22 @@
    - 在 `App.xaml.cs` 加入 `this.ShutdownMode = ShutdownMode.OnExplicitShutdown;`，防止視窗重組時被 WPF 誤判關閉退出。
 5. **自動化發布與二進位同步腳本**：
    - 建立 `scripts\build_and_sync.ps1`，一鍵執行 MSBuild Portable-win-x64 發布，並安全同步至 `dist\DesktopFramesPlus\`（嚴格排除 `Profiles/`）。
-6. **全套回歸測試通過**：
+6. **統一 dist 單一真理來源與啟動防呆自癒守護**：
+   - 清除 `Code\Desktop Frames\bin` 底下殘留的舊 `Profiles\` 資料夾，徹底杜絕平行時空。
+   - 在 `App.xaml.cs` 啟動階段加入開發目錄防呆檢查（若由 `Code\bin` 直接雙擊啟動，彈出指引警告並安全退出）。
+   - 在 `RegistryHelper.cs` 實作 `RefreshStartupPath()`，每次啟動自動校正 Windows 開機登錄表（`HKCU\Software\Microsoft\Windows\CurrentVersion\Run`）指回現行 `dist\DesktopFramesPlus\Desktop Frames.exe`。
+   - 更新 `tools\run-app.ps1`，統一行為呼叫 `build_and_sync.ps1` 並啟動 `dist` 成品。
+   - 校正目前開機註冊表路徑為 `"D:\Development\GitHub\19_DesktopFramesPlus\dist\DesktopFramesPlus\Desktop Frames.exe"`。
+7. **全套回歸測試通過**：
    - 執行 `tools\run-all-tests.ps1`，面板測試、103 個代表性功能斷言、圖示轉移回歸與在地化檢查（繁中 683 鍵 100% 覆蓋）全數通過，退出碼 0。
 
 ## 異動檔案 (Changed Files)
 
-- `Code/Desktop Frames/App.xaml.cs`：加入 ExplicitShutdown、Win+D 雙階段平滑 SetWindowPos 喚醒。
+- `Code/Desktop Frames/App.xaml.cs`：加入 ExplicitShutdown、Win+D 雙階段平滑 SetWindowPos 喚醒、啟動目錄防呆守護、開機路徑自癒。
 - `Code/Desktop Frames/FrameManager.cs`：圖示文字 2 行截斷與省略號、拔除 DropShadowEffect、向量微底色、14px 圓角與透光邊界、Hover 反饋。
 - `Code/Desktop Frames/NonActivatingWindow.cs`：加入 `WS_EX_TOOLWINDOW` 擴展樣式。
+- `Code/Desktop Frames/RegistryHelper.cs`：新增 `RefreshStartupPath()` 自動校正開機註冊表。
+- `tools/run-app.ps1`：更新為統一啟動 `dist` 發布版本。
 - `scripts/build_and_sync.ps1`：新建之標準化可攜發布與安全同步腳本。
 - `HANDOFF.md`：更新本輪交接文件。
 
@@ -75,10 +84,11 @@
 - **編譯建置**：Visual Studio MSBuild Portable-win-x64 發布成功（0 錯誤、0 警告）。
 - **回歸測試**：`tools\run-all-tests.ps1` 退出碼 0，通過 103 項代表性功能驗收與在地化 100% 檢查。
 - **記憶體量測**：進程啟動後 WorkingSet 降至約 197.96 ~ 200.32 MB，私有記憶體 101.84 MB，運作穩定健康。
+- **單一真理驗證**：註冊表已驗證指回 `19_DesktopFramesPlus\dist\...`，`Code\bin` 舊資料已清理且有防呆阻擋。
 
 ## Git 狀態
 
-- Commit：待提交（`feat: 現代化面板排版收斂、Win+D 桌面層級穩定與記憶體瘦身優化`）
+- Commit：待提交（`fix: 統一 dist 單一真理來源，清理舊 Profiles 殘留並加入開機自癒與防呆守護`）
 - Branch：main
 - Working Tree：受控修改待提交
 

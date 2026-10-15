@@ -1,4 +1,4 @@
-﻿using Microsoft.Win32;
+using Microsoft.Win32;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -516,6 +516,36 @@ namespace Desktop_Frames
             }
             catch { }
         }
+
+        public static void RefreshStartupPath()
+        {
+            try
+            {
+                using (var runKey = Registry.CurrentUser.OpenSubKey(@"SOFTWARE\Microsoft\Windows\CurrentVersion\Run", true))
+                {
+                    if (runKey != null && runKey.GetValue("Desktop Frames +") != null)
+                    {
+                        string currentExePath = Process.GetCurrentProcess().MainModule.FileName;
+                        // 僅當從 dist 發布目錄運行時自動校正開機啟動路徑，避免指向開發目錄
+                        if (currentExePath.IndexOf(@"\dist\", StringComparison.OrdinalIgnoreCase) >= 0)
+                        {
+                            string expectedValue = $"\"{currentExePath}\"";
+                            object existingValue = runKey.GetValue("Desktop Frames +");
+                            if (existingValue == null || !string.Equals(existingValue.ToString(), expectedValue, StringComparison.OrdinalIgnoreCase))
+                            {
+                                runKey.SetValue("Desktop Frames +", expectedValue);
+                                LogManager.Log(LogManager.LogLevel.Info, LogManager.LogCategory.General, $"Windows Startup path auto-healed to: {expectedValue}");
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                LogManager.Log(LogManager.LogLevel.Error, LogManager.LogCategory.General, $"RefreshStartupPath Failed: {ex.Message}");
+            }
+        }
+
 
         private static void UpdateRegistryPaths()
         {

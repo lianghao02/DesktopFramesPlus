@@ -70,8 +70,22 @@ namespace Desktop_Frames
                     $"[啟動計時] {stage}：本段 {elapsed - previousCheckpoint} ms，累計 {elapsed} ms");
                 previousCheckpoint = elapsed;
             }
-            // 確保視窗關閉時絕不自動觸發應用程式結束（由使用者顯式關閉或托盤選單控制）
-            this.ShutdownMode = ShutdownMode.OnExplicitShutdown;
+            // --- 0. DIRECTORY GUARDRAIL: PREVENT PARALLEL UNIVERSES ---
+            string appBaseDir = AppDomain.CurrentDomain.BaseDirectory;
+            if (appBaseDir.IndexOf(@"\Code\Desktop Frames\bin", StringComparison.OrdinalIgnoreCase) >= 0 && !System.Diagnostics.Debugger.IsAttached)
+            {
+                MessageBox.Show(
+                    "【桌面整理工具防呆提示】\n\n" +
+                    "偵測到您正嘗試從開發編譯目錄（Code\\bin）啟動。\n" +
+                    "為防止設定與便箋產生平行時空，正式運行請一律使用：\n" +
+                    "dist\\DesktopFramesPlus\\Desktop Frames.exe\n\n" +
+                    "此開發執行個體將立即退出。",
+                    "Desktop Frames 啟動防呆",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+                Shutdown();
+                return;
+            }
 
             // --- 1. INITIALIZE PROFILES & SETTINGS FIRST ---
             // This ensures we know the user's true DisableSingleInstance preference immediately
@@ -140,6 +154,7 @@ namespace Desktop_Frames
                     // --- NEW: Self-Heal Context Menu Path ---
                     // Ensures the registry key points to the current EXE location
                     RegistryHelper.RefreshContextMenuPath();
+                    RegistryHelper.RefreshStartupPath();
 
                     // Initialize InterCore system
                     InterCore.Initialize();
