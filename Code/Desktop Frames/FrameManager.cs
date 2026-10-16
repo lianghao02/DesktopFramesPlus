@@ -6690,8 +6690,52 @@ namespace Desktop_Frames
             }
 
 
+            System.Windows.Media.Brush defaultFrameBorderBrush = cborder.BorderBrush;
+            win.DragOver += (sender, e) =>
+            {
+                if (!e.Data.GetDataPresent(DataFormats.FileDrop))
+                {
+                    e.Effects = DragDropEffects.None;
+                    e.Handled = true;
+                    return;
+                }
+
+                if (frame.ItemsType?.ToString() == "Portal")
+                {
+                    e.Effects = DragDropEffects.None;
+                    cborder.BorderBrush = new SolidColorBrush(System.Windows.Media.Color.FromArgb(180, 220, 80, 80));
+                    e.Handled = true;
+                    return;
+                }
+
+                string[] dragFiles = e.Data.GetData(DataFormats.FileDrop) as string[];
+                bool isDesktopShortcutMove = false;
+                if (dragFiles != null && dragFiles.Length > 0)
+                {
+                    string userDesk = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
+                    isDesktopShortcutMove = dragFiles.All(f =>
+                    {
+                        string ext = System.IO.Path.GetExtension(f);
+                        string parent = System.IO.Path.GetDirectoryName(f);
+                        return (string.Equals(ext, ".lnk", StringComparison.OrdinalIgnoreCase) ||
+                                string.Equals(ext, ".url", StringComparison.OrdinalIgnoreCase)) &&
+                               string.Equals(parent, userDesk, StringComparison.OrdinalIgnoreCase);
+                    });
+                }
+
+                e.Effects = isDesktopShortcutMove ? DragDropEffects.Move : DragDropEffects.Link;
+                cborder.BorderBrush = new SolidColorBrush(System.Windows.Media.Color.FromArgb(210, 110, 185, 255));
+                e.Handled = true;
+            };
+
+            win.DragLeave += (sender, e) =>
+            {
+                cborder.BorderBrush = defaultFrameBorderBrush;
+            };
+
             win.Drop += (sender, e) =>
             {
+                cborder.BorderBrush = defaultFrameBorderBrush;
                 e.Handled = true;
                 if (e.Data.GetDataPresent(DataFormats.FileDrop))
                 {

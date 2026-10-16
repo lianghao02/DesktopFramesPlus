@@ -521,22 +521,32 @@ namespace Desktop_Frames
         {
             try
             {
+                string currentExePath = Process.GetCurrentProcess().MainModule?.FileName;
+                if (string.IsNullOrWhiteSpace(currentExePath)) return;
+
+                // 排除開發編譯與測試中繼目錄（bin / obj），僅在正式執行檔或可攜目錄運行時自動校正已啟用的開機啟動路徑
+                if (currentExePath.IndexOf(@"\bin\", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                    currentExePath.IndexOf(@"\obj\", StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    return;
+                }
+
+                string expectedValue = $"\"{currentExePath}\"";
+                using (var readKey = Registry.CurrentUser.OpenSubKey(@"SOFTWARE\Microsoft\Windows\CurrentVersion\Run", false))
+                {
+                    object existingValue = readKey?.GetValue("Desktop Frames +");
+                    if (existingValue == null || string.Equals(existingValue.ToString(), expectedValue, StringComparison.OrdinalIgnoreCase))
+                    {
+                        return;
+                    }
+                }
+
                 using (var runKey = Registry.CurrentUser.OpenSubKey(@"SOFTWARE\Microsoft\Windows\CurrentVersion\Run", true))
                 {
                     if (runKey != null && runKey.GetValue("Desktop Frames +") != null)
                     {
-                        string currentExePath = Process.GetCurrentProcess().MainModule.FileName;
-                        // 僅當從 dist 發布目錄運行時自動校正開機啟動路徑，避免指向開發目錄
-                        if (currentExePath.IndexOf(@"\dist\", StringComparison.OrdinalIgnoreCase) >= 0)
-                        {
-                            string expectedValue = $"\"{currentExePath}\"";
-                            object existingValue = runKey.GetValue("Desktop Frames +");
-                            if (existingValue == null || !string.Equals(existingValue.ToString(), expectedValue, StringComparison.OrdinalIgnoreCase))
-                            {
-                                runKey.SetValue("Desktop Frames +", expectedValue);
-                                LogManager.Log(LogManager.LogLevel.Info, LogManager.LogCategory.General, $"Windows Startup path auto-healed to: {expectedValue}");
-                            }
-                        }
+                        runKey.SetValue("Desktop Frames +", expectedValue);
+                        LogManager.Log(LogManager.LogLevel.Info, LogManager.LogCategory.General, $"Windows Startup path auto-healed to: {expectedValue}");
                     }
                 }
             }

@@ -23,14 +23,14 @@ namespace Desktop_Frames
         private static Rect _normalBounds;
         private static Button _maxButton;
 
-        // Colors for tabs
-        private static readonly Color ColorStyle = Color.FromRgb(128, 0, 128); // Purple
-        private static readonly Color ColorTools = Color.FromRgb(34, 139, 34); // Green
-        private static readonly Color LookDeeper = Color.FromRgb(220, 53, 69); // Red
-        private static readonly Color ColorLookDeeper = Color.FromRgb(220, 53, 69); // Red
-        private static readonly Color ColorProfiles = Color.FromRgb(255, 20, 147); // Deep Pink
-        private static readonly Color ColorHotkeys = Color.FromRgb(139, 69, 19); // SaddleBrown
-        private static readonly Color ColorSmartDesktop = Color.FromRgb(41, 74, 122); // Semi Dark Blue
+        // Colors for tabs (Modern Slate & Teal Palette)
+        private static readonly Color ColorStyle = Color.FromRgb(63, 81, 133); // Slate Indigo
+        private static readonly Color ColorTools = Color.FromRgb(42, 111, 102); // Deep Teal
+        private static readonly Color LookDeeper = Color.FromRgb(122, 68, 90); // Muted Plum
+        private static readonly Color ColorLookDeeper = Color.FromRgb(122, 68, 90); // Muted Plum
+        private static readonly Color ColorProfiles = Color.FromRgb(58, 96, 115); // Steel Blue
+        private static readonly Color ColorHotkeys = Color.FromRgb(92, 84, 112); // Slate Violet
+        private static readonly Color ColorSmartDesktop = Color.FromRgb(41, 74, 122); // Deep Navy
 
         private static double GetScreenDpiScale(IntPtr hwnd)
         {
@@ -58,7 +58,7 @@ namespace Desktop_Frames
                 _optionsWindow.Width = screenWidthDiu;
                 _optionsWindow.Height = screenHeightDiu;
                 _isMaximized = true;
-                if (_maxButton != null) _maxButton.Content = "🗗";
+                if (_maxButton != null) _maxButton.Content = "❐";
             }
             else
             {
@@ -67,7 +67,7 @@ namespace Desktop_Frames
                 _optionsWindow.Width = _normalBounds.Width;
                 _optionsWindow.Height = _normalBounds.Height;
                 _isMaximized = false;
-                if (_maxButton != null) _maxButton.Content = "🗖";
+                if (_maxButton != null) _maxButton.Content = "□";
             }
         }
 
@@ -176,15 +176,15 @@ namespace Desktop_Frames
 
                 Button maxButton = new Button
                 {
-                    Content = "🗖",
+                    Content = "□",
                     Width = 32,
                     Height = 32,
                     Foreground = Brushes.White,
                     Background = Brushes.Transparent,
                     BorderThickness = new Thickness(0),
                     Cursor = Cursors.Hand,
-                    FontFamily = new FontFamily("Segoe UI Symbol"),
-                    FontSize = 13,
+                    FontFamily = new FontFamily("Segoe UI"),
+                    FontSize = 14,
                     ToolTip = "最大化 / 還原"
                 };
                 _maxButton = maxButton;
@@ -322,8 +322,8 @@ namespace Desktop_Frames
             // now, and a switch needs compile-time constants anyway.
             Color activeColor = tabIndex switch { 1 => ColorStyle, 2 => ColorTools, 3 => ColorProfiles, 4 => ColorHotkeys, 5 => ColorSmartDesktop, 6 => ColorLookDeeper, _ => _userAccentColor };
             if (isSelected) { button.Background = new SolidColorBrush(activeColor); button.Foreground = Brushes.White; }
-            else if (isHover) { button.Background = new SolidColorBrush(Color.FromRgb((byte)(activeColor.R + 40), (byte)(activeColor.G + 40), (byte)(activeColor.B + 40))); button.Foreground = Brushes.White; }
-            else { button.Background = new SolidColorBrush(Color.FromRgb(200, 200, 200)); button.Foreground = new SolidColorBrush(Color.FromRgb(60, 60, 60)); }
+            else if (isHover) { button.Background = new SolidColorBrush(Color.FromRgb((byte)Math.Min(255, activeColor.R + 28), (byte)Math.Min(255, activeColor.G + 28), (byte)Math.Min(255, activeColor.B + 28))); button.Foreground = Brushes.White; }
+            else { button.Background = new SolidColorBrush(Color.FromRgb(234, 236, 239)); button.Foreground = new SolidColorBrush(Color.FromRgb(44, 62, 80)); }
         }
 
         private static void SelectTab(int tabIndex, Button selectedButton)
