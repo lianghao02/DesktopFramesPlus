@@ -65,6 +65,8 @@ namespace Desktop_Frames
 
             win.PreviewMouseLeftButtonUp += (sender, e) =>
             {
+                if (ActiveDragWindow != win) return;
+
                 if (myId != null && FrameDataManager.DockingMap.TryGetValue(myId, out List<string> parentIds))
                 {
                     AnimateSnapConfirmation(win);

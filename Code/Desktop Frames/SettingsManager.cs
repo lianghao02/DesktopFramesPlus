@@ -44,7 +44,7 @@ namespace Desktop_Frames
         public static int MenuIcon { get; set; } = 0;
         public static int LockIcon { get; set; } = 0;
         public static string SelectedColor { get; set; } = "Gray";
-        public static bool IsLogEnabled { get; set; } = false;
+        public static bool IsLogEnabled { get; set; } = true;
         public static int MaxDisplayNameLength { get; set; } = 20;
         public static int PortalBackgroundOpacity { get; set; } = 30;
         public static bool EnableIconGlowEffect { get; set; } = true;
@@ -130,16 +130,9 @@ namespace Desktop_Frames
             {
                 if (string.IsNullOrWhiteSpace(_defaultPortalStorageRoot))
                 {
-                    // 智慧偵測：若有 D 槽優先設為 D:\DesktopFrames_Storage，否則放在「我的文件」
-                    if (Directory.Exists(@"D:\"))
-                    {
-                        _defaultPortalStorageRoot = @"D:\DesktopFrames_Storage";
-                    }
-                    else
-                    {
-                        string docs = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
-                        _defaultPortalStorageRoot = Path.Combine(docs, "DesktopFrames_Storage");
-                    }
+                    // 預設於實際個人桌面目錄下之收納總夾，維持同磁碟 MFT 移動之高效與安全性
+                    string desktop = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
+                    _defaultPortalStorageRoot = Path.Combine(desktop, "DesktopFrames_收納區");
                 }
                 return _defaultPortalStorageRoot;
             }
@@ -154,6 +147,10 @@ namespace Desktop_Frames
         public static List<LogManager.LogCategory> EnabledLogCategories { get; set; } = new List<LogManager.LogCategory>
         {
             LogManager.LogCategory.General,
+            LogManager.LogCategory.FrameCreation,
+            LogManager.LogCategory.FrameUpdate,
+            LogManager.LogCategory.UI,
+            LogManager.LogCategory.IconHandling,
             LogManager.LogCategory.Error,
             LogManager.LogCategory.ImportExport,
             LogManager.LogCategory.Settings
@@ -360,7 +357,7 @@ namespace Desktop_Frames
             try { MenuIcon = data.MenuIcon ?? 0; } catch { MenuIcon = 0; }
             try { LockIcon = data.LockIcon ?? 0; } catch { LockIcon = 0; }
             try { SelectedColor = data.SelectedColor ?? "Gray"; } catch { SelectedColor = "Gray"; }
-            try { IsLogEnabled = data.IsLogEnabled ?? false; } catch { IsLogEnabled = false; }
+            try { IsLogEnabled = data.IsLogEnabled ?? true; } catch { IsLogEnabled = true; }
             try { SingleClickToLaunch = data.SingleClickToLaunch ?? true; } catch { SingleClickToLaunch = true; }
             try { EnableDimensionSnap = data.EnableDimensionSnap ?? false; } catch { EnableDimensionSnap = false; }
             try { PortalBackgroundOpacity = data.PortalBackgroundOpacity ?? 30; } catch { PortalBackgroundOpacity = 30; }
@@ -461,11 +458,11 @@ namespace Desktop_Frames
                         .Select(c => Enum.Parse(typeof(LogManager.LogCategory), c.ToString()))
                         .Cast<LogManager.LogCategory>()
                         .ToList()
-                    : new List<LogManager.LogCategory> { LogManager.LogCategory.General, LogManager.LogCategory.Error, LogManager.LogCategory.ImportExport, LogManager.LogCategory.Settings };
+                    : new List<LogManager.LogCategory> { LogManager.LogCategory.General, LogManager.LogCategory.FrameCreation, LogManager.LogCategory.FrameUpdate, LogManager.LogCategory.UI, LogManager.LogCategory.IconHandling, LogManager.LogCategory.Error, LogManager.LogCategory.ImportExport, LogManager.LogCategory.Settings };
             }
             catch
             {
-                EnabledLogCategories = new List<LogManager.LogCategory> { LogManager.LogCategory.General, LogManager.LogCategory.Error, LogManager.LogCategory.ImportExport, LogManager.LogCategory.Settings };
+                EnabledLogCategories = new List<LogManager.LogCategory> { LogManager.LogCategory.General, LogManager.LogCategory.FrameCreation, LogManager.LogCategory.FrameUpdate, LogManager.LogCategory.UI, LogManager.LogCategory.IconHandling, LogManager.LogCategory.Error, LogManager.LogCategory.ImportExport, LogManager.LogCategory.Settings };
             }
 
 

@@ -1,8 +1,11 @@
-﻿using IWshRuntimeLibrary;
+using IWshRuntimeLibrary;
 using Newtonsoft.Json.Linq;
 using System;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
+using System.Runtime.InteropServices.ComTypes;
+using System.Text;
 using System.Text.RegularExpressions;
 
 namespace Desktop_Frames
@@ -14,6 +17,103 @@ namespace Desktop_Frames
     /// </summary>
     public static class FilePathUtilities
     {
+        #region Win32 IShellLinkW Unicode Interop
+        [ComImport, Guid("00021401-0000-0000-C000-000000000046")]
+        private class ShellLinkCoClass { }
+
+        [ComImport, InterfaceType(ComInterfaceType.InterfaceIsIUnknown), Guid("000214F9-0000-0000-C000-000000000046")]
+        private interface IShellLinkW
+        {
+            void GetPath([Out, MarshalAs(UnmanagedType.LPWStr)] StringBuilder pszFile, int cchMaxPath, IntPtr pfd, uint fFlags);
+            void GetIDList(out IntPtr ppidl);
+            void SetIDList(IntPtr pidl);
+            void GetDescription([Out, MarshalAs(UnmanagedType.LPWStr)] StringBuilder pszName, int cchMaxName);
+            void SetDescription([MarshalAs(UnmanagedType.LPWStr)] string pszName);
+            void GetWorkingDirectory([Out, MarshalAs(UnmanagedType.LPWStr)] StringBuilder pszDir, int cchMaxPath);
+            void SetWorkingDirectory([MarshalAs(UnmanagedType.LPWStr)] string pszDir);
+            void GetArguments([Out, MarshalAs(UnmanagedType.LPWStr)] StringBuilder pszArgs, int cchMaxPath);
+            void SetArguments([MarshalAs(UnmanagedType.LPWStr)] string pszArgs);
+            void GetHotkey(out short pwHotkey);
+            void SetHotkey(short wHotkey);
+            void GetShowCmd(out int piShowCmd);
+            void SetShowCmd(int iShowCmd);
+            void GetIconLocation([Out, MarshalAs(UnmanagedType.LPWStr)] StringBuilder pszIconPath, int cchIconPath, out int piIcon);
+            void SetIconLocation([MarshalAs(UnmanagedType.LPWStr)] string pszIconPath, int iIcon);
+            void SetRelativePath([MarshalAs(UnmanagedType.LPWStr)] string pszPathRel, uint dwReserved);
+            void Resolve(IntPtr hwnd, uint fFlags);
+            void SetPath([MarshalAs(UnmanagedType.LPWStr)] string pszFile);
+        }
+
+        /// <summary>
+        /// Uses native Unicode IShellLinkW COM interface to resolve .lnk properties without WshShell ANSI '?' corruption.
+        /// </summary>
+        public static bool TryResolveShortcutWithShellLinkW(
+            string shortcutPath,
+            out string targetPath,
+            out string arguments,
+            out string workingDirectory,
+            out string iconLocation,
+            out int iconIndex)
+        {
+            targetPath = string.Empty;
+            arguments = string.Empty;
+            workingDirectory = string.Empty;
+            iconLocation = string.Empty;
+            iconIndex = 0;
+
+            if (string.IsNullOrWhiteSpace(shortcutPath) || !System.IO.File.Exists(shortcutPath))
+                return false;
+
+            object linkObj = null;
+            try
+            {
+                linkObj = new ShellLinkCoClass();
+                var shellLink = (IShellLinkW)linkObj;
+                ((IPersistFile)shellLink).Load(Path.GetFullPath(shortcutPath), 0);
+
+                var sbPath = new StringBuilder(1024);
+                shellLink.GetPath(sbPath, sbPath.Capacity, IntPtr.Zero, 0);
+                targetPath = sbPath.ToString().Trim();
+
+                var sbArgs = new StringBuilder(1024);
+                shellLink.GetArguments(sbArgs, sbArgs.Capacity);
+                arguments = sbArgs.ToString().Trim();
+
+                var sbWorkDir = new StringBuilder(1024);
+                shellLink.GetWorkingDirectory(sbWorkDir, sbWorkDir.Capacity);
+                workingDirectory = sbWorkDir.ToString().Trim();
+
+                var sbIcon = new StringBuilder(1024);
+                shellLink.GetIconLocation(sbIcon, sbIcon.Capacity, out iconIndex);
+                iconLocation = sbIcon.ToString().Trim();
+
+                if (!string.IsNullOrEmpty(targetPath) &&
+                    targetPath.EndsWith("explorer.exe", StringComparison.OrdinalIgnoreCase) &&
+                    !string.IsNullOrEmpty(arguments))
+                {
+                    string candidateFolder = arguments.Trim('"', ' ', '\t');
+                    if (!string.IsNullOrEmpty(candidateFolder) && Directory.Exists(candidateFolder))
+                    {
+                        targetPath = candidateFolder;
+                        arguments = string.Empty;
+                    }
+                }
+
+                return !string.IsNullOrEmpty(targetPath);
+            }
+            catch
+            {
+                return false;
+            }
+            finally
+            {
+                if (linkObj != null && Marshal.IsComObject(linkObj))
+                {
+                    try { Marshal.ReleaseComObject(linkObj); } catch { }
+                }
+            }
+        }
+        #endregion
 
         #region Unicode Shortcut Resolution - Used by: Framemanager (UpdateIcon, ClickEventAdder, LaunchItem)
         /// <summary>
@@ -38,6 +138,17 @@ namespace Desktop_Frames
                     LogManager.Log(LogManager.LogLevel.Warn, LogManager.LogCategory.IconHandling,
                         $"Shortcut file not found: {shortcutPath}");
                     return string.Empty;
+                }
+
+                // Method 0: Native Unicode IShellLinkW (handles Unicode symbols like ● that WshShell corrupts to '?')
+                if (TryResolveShortcutWithShellLinkW(shortcutPath, out string unicodeTarget, out _, out _, out _, out _))
+                {
+                    if (!string.IsNullOrEmpty(unicodeTarget) &&
+                        !unicodeTarget.Contains("?") &&
+                        (System.IO.File.Exists(unicodeTarget) || Directory.Exists(unicodeTarget) || unicodeTarget.StartsWith(@"\\")))
+                    {
+                        return unicodeTarget;
+                    }
                 }
 
                 // Method 1: Try WshShell with enhanced Unicode folder detection
@@ -147,6 +258,14 @@ namespace Desktop_Frames
                 {
                     // Direct folder path
                     return Directory.Exists(shortcutPath);
+                }
+
+                // Try Unicode IShellLinkW first
+                if (TryResolveShortcutWithShellLinkW(shortcutPath, out string resolvedFolder, out _, out _, out _, out _) &&
+                    !string.IsNullOrEmpty(resolvedFolder) &&
+                    Directory.Exists(resolvedFolder))
+                {
+                    return true;
                 }
 
                 // It's a shortcut - get the real folder path

@@ -87,7 +87,22 @@ namespace Desktop_Frames
                 return;
             }
 
-            // --- 1. INITIALIZE PROFILES & SETTINGS FIRST ---
+            // --- 1. SINGLE INSTANCE FAST-PATH FOR SECONDARY (-create) COMMANDS ---
+            bool isNewInstance;
+            _mutex = new Mutex(true, UNIQUE_APP_NAME, out isNewInstance);
+            IsPrimaryInstance = isNewInstance;
+
+            bool isDrawCommand = e.Args.Any(arg => arg.IndexOf("-create", StringComparison.OrdinalIgnoreCase) >= 0)
+                                 || Environment.GetCommandLineArgs().Any(arg => arg.IndexOf("-create", StringComparison.OrdinalIgnoreCase) >= 0);
+
+            if (!isNewInstance && isDrawCommand)
+            {
+                try { RegistryHelper.WriteTrigger($"CMD_DRAW|{Guid.NewGuid()}"); } catch { }
+                Shutdown();
+                return;
+            }
+
+            // --- 2. INITIALIZE PROFILES & SETTINGS ---
             // This ensures we know the user's true DisableSingleInstance preference immediately
             try
             {
@@ -106,24 +121,11 @@ namespace Desktop_Frames
                 return;
             }
 
-            // --- 2. SINGLE INSTANCE PROTECTION START ---
-            bool isNewInstance;
-            _mutex = new Mutex(true, UNIQUE_APP_NAME, out isNewInstance);
-            IsPrimaryInstance = isNewInstance;
-
             // Only exit if it's not a new instance AND the user hasn't explicitly disabled the check
             if (!isNewInstance && !SettingsManager.DisableSingleInstance)
             {
-                // --- DEBUGGING GHOSTS START ---
                 try
                 {
-                    string debugLog = $"[{DateTime.Now}] Instance 2 Started.\n";
-                    debugLog += $"Args (e.Args): {string.Join(" | ", e.Args)}\n";
-                    debugLog += $"Args (Environment): {string.Join(" | ", Environment.GetCommandLineArgs())}\n";
-
-                    bool isDrawCommand = e.Args.Any(arg => arg.IndexOf("-create", StringComparison.OrdinalIgnoreCase) >= 0)
-                                         || Environment.GetCommandLineArgs().Any(arg => arg.IndexOf("-create", StringComparison.OrdinalIgnoreCase) >= 0);
-
                     if (isDrawCommand)
                     {
                         RegistryHelper.WriteTrigger($"CMD_DRAW|{Guid.NewGuid()}");
@@ -134,7 +136,6 @@ namespace Desktop_Frames
                     }
                 }
                 catch { }
-                // --- DEBUGGING GHOSTS END ---
 
                 Shutdown();
                 return;

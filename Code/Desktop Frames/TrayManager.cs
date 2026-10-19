@@ -263,7 +263,7 @@ namespace Desktop_Frames
             var trayMenu = new ContextMenuStrip();
 
             // 1. 核心建立（高頻使用）
-            trayMenu.Items.Add(Strings.MenuNewFrame, null, (s, e) => Framemanager.CreateNewFrame("", "Data"));
+            trayMenu.Items.Add(Strings.MenuNewFrame, null, (s, e) => Framemanager.CreateManagedStorageFence(100, 100));
             trayMenu.Items.Add(Strings.MenuDrawFrame, null, (s, e) => Framemanager.StartDrawMode());
 
             var notesMenuItem = new ToolStripMenuItem(Strings.Get("MenuDesktopNotes", "桌面便箋"));

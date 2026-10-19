@@ -315,7 +315,7 @@ namespace Desktop_Frames
         /// </summary>
         public static dynamic CreateNewFrame(string title, string itemsType, double x = 20, double y = 20,
             string customColor = null, string customLaunchEffect = null, double width = 230, double height = 130,
-            string portalPath = null)
+            string portalPath = null, bool? isManagedStorage = null, string storageRootPath = null)
         {
             try
             {
@@ -341,9 +341,16 @@ namespace Desktop_Frames
                 newframeDict["Items"] = itemsType == "Portal" ? "" : new JArray();
                 if (itemsType == "Portal")
                 {
+                    bool managed = isManagedStorage ?? string.IsNullOrEmpty(portalPath);
+                    newframeDict["IsManagedStorage"] = managed ? "true" : "false";
+                    if (managed)
+                    {
+                        newframeDict["StorageRootPath"] = !string.IsNullOrEmpty(storageRootPath) ? storageRootPath : SettingsManager.DefaultPortalStorageRoot;
+                    }
+
                     if (!string.IsNullOrEmpty(portalPath))
                     {
-                        // 若使用者已指定現成資料夾（連線模式），直接指派，不在本機倉庫誤建空目錄
+                        // 若使用者已指定現成資料夾，直接指派
                         newframeDict["Path"] = portalPath;
                     }
                     else if (!newframeDict.ContainsKey("Path") || string.IsNullOrEmpty(newframeDict["Path"]?.ToString()))
@@ -353,16 +360,18 @@ namespace Desktop_Frames
                         string safeFolderName = string.Join("_", baseFolderName.Split(Path.GetInvalidFileNameChars()));
                         if (string.IsNullOrWhiteSpace(safeFolderName)) safeFolderName = defaultPortalTitle;
 
-                        string targetDir = Path.Combine(SettingsManager.DefaultPortalStorageRoot, safeFolderName);
+                        string rootPath = SettingsManager.DefaultPortalStorageRoot;
+                        string targetDir = Path.Combine(rootPath, safeFolderName);
                         int dupCounter = 1;
                         while (Directory.Exists(targetDir))
                         {
                             safeFolderName = $"{baseFolderName} ({dupCounter++})";
-                            targetDir = Path.Combine(SettingsManager.DefaultPortalStorageRoot, safeFolderName);
+                            targetDir = Path.Combine(rootPath, safeFolderName);
                         }
 
                         frameName = safeFolderName;
                         newframeDict["Title"] = frameName;
+                        newframeDict["StorageRootPath"] = rootPath;
 
                         try
                         {
@@ -608,15 +617,30 @@ namespace Desktop_Frames
                 if (index >= 0)
                 {
                     dynamic actualFrame = _frameData[index];
-                    IDictionary<string, object> dict = actualFrame is IDictionary<string, object> d ?
-                        d : ((JObject)actualFrame).ToObject<IDictionary<string, object>>();
+                    string newParentVal = (parentIds != null && parentIds.Count > 0) ? string.Join(",", parentIds) : null;
+                    string oldParentVal = null;
 
-                    if (parentIds != null && parentIds.Count > 0) dict["DockedParentId"] = string.Join(",", parentIds);
-                    else if (dict.ContainsKey("DockedParentId")) dict.Remove("DockedParentId");
+                    if (actualFrame is JObject jObj)
+                    {
+                        oldParentVal = jObj["DockedParentId"]?.ToString();
+                        if (string.Equals(oldParentVal ?? "", newParentVal ?? "", StringComparison.Ordinal))
+                            return;
 
-                    _frameData[index] = JObject.FromObject(dict);
+                        if (!string.IsNullOrEmpty(newParentVal)) jObj["DockedParentId"] = newParentVal;
+                        else jObj.Remove("DockedParentId");
+                    }
+                    else if (actualFrame is IDictionary<string, object> dict)
+                    {
+                        oldParentVal = dict.ContainsKey("DockedParentId") ? dict["DockedParentId"]?.ToString() : null;
+                        if (string.Equals(oldParentVal ?? "", newParentVal ?? "", StringComparison.Ordinal))
+                            return;
+
+                        if (!string.IsNullOrEmpty(newParentVal)) dict["DockedParentId"] = newParentVal;
+                        else dict.Remove("DockedParentId");
+                    }
+
                     SaveFrameData();
-                    LogManager.Log(LogManager.LogLevel.Info, LogManager.LogCategory.General, $"Saved persistent multi-snap: '{childId}' -> '{string.Join(",", parentIds ?? new List<string>())}'");
+                    LogManager.Log(LogManager.LogLevel.Info, LogManager.LogCategory.General, $"Saved persistent multi-snap: '{childId}' -> '{newParentVal ?? ""}'");
                 }
             }
             catch (Exception ex)

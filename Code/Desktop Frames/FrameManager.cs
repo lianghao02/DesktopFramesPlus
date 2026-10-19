@@ -1176,6 +1176,56 @@ namespace Desktop_Frames
         {
             if (frame == null) return;
 
+            if (Desktop_Frames.Services.StorageFenceService.IsManagedStorage(frame))
+            {
+                string frameTitle = frame.Title?.ToString() ?? "收納柵欄";
+                string folderPath = frame.Path?.ToString() ?? string.Empty;
+                int itemCount = 0;
+                try
+                {
+                    if (Directory.Exists(folderPath))
+                    {
+                        itemCount = Directory.EnumerateFileSystemEntries(folderPath).Count();
+                    }
+                }
+                catch { }
+
+                string confirmMsg = $"確定要拆除收納柵欄「{frameTitle}」並將內含的 {itemCount} 個項目移至桌面嗎？\n\n（若桌面已有同名項目將自動加上編號，不會覆寫原檔；若有項目因開啟中或系統攔截無法移動，將安全保留柵欄與未完成檔案現場）";
+                if (!MessageBoxesManager.ShowCustomYesNoMessageBox(confirmMsg, "拆除收納柵欄"))
+                {
+                    return;
+                }
+
+                Desktop_Frames.Services.DismantleReport report = Desktop_Frames.Services.StorageFenceService.DismantleToDesktop(frame);
+                if (report.FolderDeleted)
+                {
+                    DeleteFrameConfiguration(frame, parentWindow);
+                    Services.FenceInventoryManager.RefreshDesktopShell();
+                    MessageBoxesManager.ShowOKOnlyMessageBoxForm($"已成功拆除收納柵欄，共將 {report.CompletedCount} 個項目移至桌面。", "拆除完成");
+                }
+                else
+                {
+                    string frameIdStr = frame.Id?.ToString();
+                    var portalEntry = _portalFrames.FirstOrDefault(kvp => kvp.Key?.Id?.ToString() == frameIdStr);
+                    if (portalEntry.Value != null)
+                    {
+                        portalEntry.Value.TriggerSync(immediate: true);
+                    }
+                    Services.FenceInventoryManager.RefreshDesktopShell();
+
+                    string errDetails = report.FolderDeletionReason;
+                    if (report.FailedCount > 0 || report.ConflictCount > 0)
+                    {
+                        var issues = report.Results.Where(r => r.Status == Desktop_Frames.Services.DismantleItemStatus.Failed || r.Status == Desktop_Frames.Services.DismantleItemStatus.PartialBothExist).Take(5).Select(r => $"{Path.GetFileName(r.SourcePath)}: {r.ErrorMessage}");
+                        errDetails += "\n" + string.Join("\n", issues);
+                    }
+
+                    string alertMsg = $"收納柵欄未能完全清空，已停止拆除並完整保留現場：\n\n{errDetails}\n\n已移至桌面：{report.CompletedCount} 項\n未完成/需確認：{report.FailedCount + report.ConflictCount} 項\n\n請關閉可能開啟中的檔案或解除鎖定後，再執行一次拆除。";
+                    MessageBoxesManager.ShowOKOnlyMessageBoxForm(alertMsg, "拆除未完成（現場已保留）");
+                }
+                return;
+            }
+
             bool result = MessageBoxesManager.ShowCustomMessageBoxForm();
             if (result != true) return;
 
@@ -1335,12 +1385,12 @@ namespace Desktop_Frames
             // Separator
             menu.Items.Add(new Separator());
 
-            // New frame items - 收斂為分類面板與獨立便箋
+            // New frame items - 建立專用收納柵欄與獨立便箋
             var newFrameItem = new MenuItem { Header = Strings.MenuNewFrame };
             newFrameItem.Click += (s, e) =>
             {
                 var mousePosition = System.Windows.Forms.Cursor.Position;
-                CreateNewFrame("", "Data", mousePosition.X, mousePosition.Y);
+                CreateManagedStorageFence(mousePosition.X, mousePosition.Y);
             };
             menu.Items.Add(newFrameItem);
 
@@ -1380,7 +1430,8 @@ namespace Desktop_Frames
 
             // --- REORDERED: Delete Option Second ---
             // Delete this frames
-            var deleteThisFrame = new MenuItem { Header = Strings.MenuDeleteThisFrame };
+            bool isManagedStorageFrame = Desktop_Frames.Services.StorageFenceService.IsManagedStorage(frame);
+            var deleteThisFrame = new MenuItem { Header = isManagedStorageFrame ? "拆除並將內容移至桌面…" : Strings.MenuDeleteThisFrame };
             deleteThisFrame.Click += (s, e) => DeleteFrameWithConfirmation(frame);
             menu.Items.Add(deleteThisFrame);
 
@@ -2544,24 +2595,27 @@ namespace Desktop_Frames
                     // Convert to dictionary safely
                     IDictionary<string, object> frameDict = actualFrame as IDictionary<string, object> ?? ((JObject)actualFrame).ToObject<IDictionary<string, object>>();
 
+                    object finalVal = value;
                     // Handle IsHidden specifically to store as string to match JSON format
                     if (propertyName == "IsHidden")
                     {
                         // Convert boolean-like string input to string "true" or "false"
                         bool parsedValue = value?.ToLower() == "true";
-                        frameDict[propertyName] = parsedValue.ToString().ToLower(); // Store as "true" or "false"
+                        finalVal = parsedValue.ToString().ToLower(); // Store as "true" or "false"
+                        frameDict[propertyName] = finalVal;
                     }
                     else if (propertyName == "FrameBorderThickness")
                     {
                         // BUG FIX: Enforce integer serialization to prevent JSON type wiping/fallback
                         if (int.TryParse(value, out int parsedThickness))
                         {
-                            frameDict[propertyName] = parsedThickness;
+                            finalVal = parsedThickness;
                         }
                         else
                         {
-                            frameDict[propertyName] = 2; // Failsafe
+                            finalVal = 2; // Failsafe
                         }
+                        frameDict[propertyName] = finalVal;
                     }
                     else
                     {
@@ -2569,8 +2623,27 @@ namespace Desktop_Frames
                         frameDict[propertyName] = value;
                     }
 
-                    // Update the frame in FrameDataManager.FrameData
-                    FrameDataManager.FrameData[index] = JObject.FromObject(frameDict);
+                    // Keep existing JObject references (e.g. PortalFramemanager._frame and window closures) in sync in-place
+                    JObject actualJObj = (object)actualFrame as JObject;
+                    if (actualJObj != null)
+                    {
+                        actualJObj[propertyName] = finalVal != null ? JToken.FromObject(finalVal) : JValue.CreateNull();
+                    }
+                    else
+                    {
+                        FrameDataManager.FrameData[index] = JObject.FromObject(frameDict);
+                    }
+
+                    JObject callerJObj = (object)frame as JObject;
+                    if (callerJObj != null && !ReferenceEquals(callerJObj, (object)actualFrame))
+                    {
+                        callerJObj[propertyName] = finalVal != null ? JToken.FromObject(finalVal) : JValue.CreateNull();
+                    }
+                    else if ((object)frame is IDictionary<string, object> callerDict && !ReferenceEquals(callerDict, frameDict))
+                    {
+                        callerDict[propertyName] = finalVal;
+                    }
+
                     FrameDataManager.SaveFrameData();
                     LogManager.Log(LogManager.LogLevel.Info, LogManager.LogCategory.FrameUpdate, $"{logMessage} for frame '{frame.Title}'");
 
@@ -2719,6 +2792,40 @@ namespace Desktop_Frames
             catch (Exception ex)
             {
                 LogManager.Log(LogManager.LogLevel.Error, LogManager.LogCategory.FrameUpdate, $"Error updating {propertyName} for frame '{frame.Title}': {ex.Message}");
+            }
+        }
+
+        public static void SetFrameIconSizeLive(NonActivatingWindow win, dynamic frame, string newSize)
+        {
+            try
+            {
+                string frameId = frame?.Id?.ToString() ?? win?.Tag?.ToString();
+                if (string.IsNullOrEmpty(frameId)) return;
+
+                var liveFrame = GetFrameData().FirstOrDefault(f => f.Id?.ToString() == frameId) ?? frame;
+                if (liveFrame == null) return;
+
+                UpdateFrameProperty(liveFrame, "IconSize", newSize, $"IconSize updated to '{newSize}'");
+
+                string itemsType = GetSafeProperty(liveFrame, "ItemsType");
+                if (itemsType == "Portal")
+                {
+                    var pEntry = _portalFrames.FirstOrDefault(kvp => kvp.Key?.Id?.ToString() == frameId);
+                    if (pEntry.Value != null)
+                    {
+                        string currentView = GetSafeProperty(liveFrame, "ViewMode");
+                        if (string.IsNullOrEmpty(currentView)) currentView = SettingsManager.DefaultPortalView;
+                        pEntry.Value.SetViewMode(currentView);
+                    }
+                }
+                else if (itemsType == "Data" && win != null)
+                {
+                    RefreshFrameUsingFormApproach(win, liveFrame);
+                }
+            }
+            catch (Exception ex)
+            {
+                LogManager.Log(LogManager.LogLevel.Error, LogManager.LogCategory.UI, $"SetFrameIconSizeLive error: {ex.Message}");
             }
         }
 
@@ -3550,7 +3657,22 @@ namespace Desktop_Frames
                 if (!dialog.Confirmed) return;
 
                 string name = dialog.FrameTitle;
-                var frame = FrameDataManager.CreateNewFrame(name, "Data", r.X, r.Y, width: r.Width, height: r.Height);
+                string storagePath = dialog.StoragePath;
+                if (!Directory.Exists(storagePath))
+                {
+                    Directory.CreateDirectory(storagePath);
+                }
+
+                var frame = FrameDataManager.CreateNewFrame(
+                    name,
+                    "Portal",
+                    r.X,
+                    r.Y,
+                    width: r.Width,
+                    height: r.Height,
+                    portalPath: storagePath,
+                    isManagedStorage: true,
+                    storageRootPath: SettingsManager.DefaultPortalStorageRoot);
 
                 var frameDict = frame as System.Collections.Generic.IDictionary<string, object>;
                 if (frameDict != null)
@@ -3558,10 +3680,13 @@ namespace Desktop_Frames
                     frameDict["Width"] = r.Width;
                     frameDict["Height"] = r.Height;
                     frameDict["Title"] = name;
+                    frameDict["Path"] = storagePath;
+                    frameDict["IsManagedStorage"] = "true";
+                    frameDict["StorageRootPath"] = SettingsManager.DefaultPortalStorageRoot;
                     FrameDataManager.SaveFrameData();
                 }
 
-                // 直接建立標準 Data 分類面板
+                // 建立專用收納柵欄
                 CreateFrame(frame, _currentTargetChecker ?? new TargetChecker(1000));
                 UpdateAllHeartContextMenus();
             }
@@ -3569,6 +3694,58 @@ namespace Desktop_Frames
             {
                 LogManager.Log(LogManager.LogLevel.Error, LogManager.LogCategory.UI, $"CreateFrameFromDraw failed: {ex}");
                 MessageBox.Show($"建立框架失敗：{ex.Message}", Strings.DlgError, MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        public static void CreateManagedStorageFence(double x = 40, double y = 40)
+        {
+            try
+            {
+                string defaultName = CoreUtilities.GenerateUniqueFrameName();
+                Rect r = new Rect(x, y, 360, 260);
+
+                var dialog = new DrawFrameConfirmDialog(r, defaultName);
+                dialog.ShowDialog();
+
+                if (!dialog.Confirmed) return;
+
+                string name = dialog.FrameTitle;
+                string storagePath = dialog.StoragePath;
+                if (!Directory.Exists(storagePath))
+                {
+                    Directory.CreateDirectory(storagePath);
+                }
+
+                var frame = FrameDataManager.CreateNewFrame(
+                    name,
+                    "Portal",
+                    r.X,
+                    r.Y,
+                    width: r.Width,
+                    height: r.Height,
+                    portalPath: storagePath,
+                    isManagedStorage: true,
+                    storageRootPath: SettingsManager.DefaultPortalStorageRoot);
+
+                var frameDict = frame as System.Collections.Generic.IDictionary<string, object>;
+                if (frameDict != null)
+                {
+                    frameDict["Width"] = r.Width;
+                    frameDict["Height"] = r.Height;
+                    frameDict["Title"] = name;
+                    frameDict["Path"] = storagePath;
+                    frameDict["IsManagedStorage"] = "true";
+                    frameDict["StorageRootPath"] = SettingsManager.DefaultPortalStorageRoot;
+                    FrameDataManager.SaveFrameData();
+                }
+
+                CreateFrame(frame, _currentTargetChecker ?? new TargetChecker(1000));
+                UpdateAllHeartContextMenus();
+            }
+            catch (Exception ex)
+            {
+                LogManager.Log(LogManager.LogLevel.Error, LogManager.LogCategory.UI, $"CreateManagedStorageFence failed: {ex}");
+                MessageBox.Show($"建立專用收納柵欄失敗：{ex.Message}", Strings.DlgError, MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
@@ -5098,8 +5275,10 @@ namespace Desktop_Frames
             MenuItem miNameAfterPath = null; // New: For Portal Renaming
             Separator sepNameAfterPath = null; // New: Separator for layout
             MenuItem miFitToContent = null; // 調整至最適大小
+            MenuItem miNewFolder = null; // NEW: 在收納框內直接新增資料夾
             MenuItem miOpenStorageFolder = null; // NEW: Portal 開啟實體收納資料夾
             MenuItem miChangeStoragePath = null; // NEW: Portal 變更收納資料夾位置
+            MenuItem miIconSizeMenu = null;      // NEW: 快速調整圖示大小子選單
             Separator sepPortalStorage = null;   // NEW: Portal 功能分隔線
 
             CnMnFramemanager.Opened += (contextSender, contextArgs) =>
@@ -5144,6 +5323,9 @@ namespace Desktop_Frames
                 if (miFitToContent != null && CnMnFramemanager.Items.Contains(miFitToContent))
                     CnMnFramemanager.Items.Remove(miFitToContent);
 
+                if (miNewFolder != null && CnMnFramemanager.Items.Contains(miNewFolder))
+                    CnMnFramemanager.Items.Remove(miNewFolder);
+
                 if (miNameAfterPath != null && CnMnFramemanager.Items.Contains(miNameAfterPath))
                     CnMnFramemanager.Items.Remove(miNameAfterPath);
 
@@ -5156,8 +5338,51 @@ namespace Desktop_Frames
                 if (miChangeStoragePath != null && CnMnFramemanager.Items.Contains(miChangeStoragePath))
                     CnMnFramemanager.Items.Remove(miChangeStoragePath);
 
+                if (miIconSizeMenu != null && CnMnFramemanager.Items.Contains(miIconSizeMenu))
+                    CnMnFramemanager.Items.Remove(miIconSizeMenu);
+
                 if (sepPortalStorage != null && CnMnFramemanager.Items.Contains(sepPortalStorage))
                     CnMnFramemanager.Items.Remove(sepPortalStorage);
+
+                // C0. 圖示大小快速選單 (Data 與 Portal 皆可用)
+                if (isDataFrame || isPortalFrame)
+                {
+                    string id = frame.Id?.ToString();
+                    var liveFrame = GetFrameData().FirstOrDefault(f => f.Id?.ToString() == id) ?? frame;
+                    string currentIconSize = GetSafeProperty(liveFrame, "IconSize");
+                    if (string.IsNullOrEmpty(currentIconSize)) currentIconSize = "Medium";
+
+                    string menuHeader = (Strings.LblIconSize ?? "圖示大小").TrimEnd(':', '：', ' ');
+                    miIconSizeMenu = new MenuItem { Header = menuHeader };
+
+                    var sizeOptions = new (string Key, string Label)[]
+                    {
+                        ("Tiny", Strings.Get("OptTiny", "極小 (Tiny)")),
+                        ("Small", Strings.Get("OptSmall", "小 (Small)")),
+                        ("Medium", Strings.Get("OptMedium", "中 (Medium)")),
+                        ("Large", Strings.Get("OptLarge", "大 (Large)")),
+                        ("Huge", Strings.Get("OptHuge", "特大 (Huge)"))
+                    };
+
+                    foreach (var opt in sizeOptions)
+                    {
+                        string sizeKey = opt.Key;
+                        var subItem = new MenuItem
+                        {
+                            Header = opt.Label,
+                            IsCheckable = true,
+                            IsChecked = string.Equals(currentIconSize, sizeKey, StringComparison.OrdinalIgnoreCase)
+                        };
+                        subItem.Click += (s, e) => SetFrameIconSizeLive(win, liveFrame, sizeKey);
+                        miIconSizeMenu.Items.Add(subItem);
+                    }
+
+                    int sizeInsertIndex = CnMnFramemanager.Items.Count - 1;
+                    var customizeItemForSize = CnMnFramemanager.Items.OfType<MenuItem>()
+                        .FirstOrDefault(m => m.Header.ToString() == Strings.MenuCustomize);
+                    if (customizeItemForSize != null) sizeInsertIndex = CnMnFramemanager.Items.IndexOf(customizeItemForSize);
+                    CnMnFramemanager.Items.Insert(sizeInsertIndex, miIconSizeMenu);
+                }
 
                 // C. Export All (Data Frame + Ctrl 才顯示)
                 if (isCtrlPressed && isDataFrame)
@@ -5327,12 +5552,64 @@ namespace Desktop_Frames
                     var customizeItemFit = CnMnFramemanager.Items.OfType<MenuItem>()
                         .FirstOrDefault(m => m.Header.ToString() == Strings.MenuCustomize);
                     if (customizeItemFit != null) fitInsertIndex = CnMnFramemanager.Items.IndexOf(customizeItemFit);
-                    CnMnFramemanager.Items.Insert(fitInsertIndex, miFitToContent);
+
+                    miNewFolder = new MenuItem { Header = Strings.MenuNewFolder };
+                    miNewFolder.Click += (s, e) =>
+                    {
+                        try
+                        {
+                            string baseRoot = SettingsManager.DefaultPortalStorageRoot;
+                            string frameTitle = frame.Title?.ToString() ?? "收納區";
+                            var invalidChars = System.IO.Path.GetInvalidFileNameChars();
+                            string cleanTitle = new string(frameTitle.Where(c => !invalidChars.Contains(c)).ToArray()).Trim();
+                            if (string.IsNullOrWhiteSpace(cleanTitle)) cleanTitle = "收納區";
+                            string targetParentDir = System.IO.Path.Combine(baseRoot, cleanTitle);
+
+                            string created = Desktop_Frames.Services.StorageFenceService.PromptAndCreateNewFolder(targetParentDir, win);
+                            if (!string.IsNullOrEmpty(created))
+                            {
+                                string id = frame.Id?.ToString();
+                                var liveFrame = GetFrameData().FirstOrDefault(f => f.Id?.ToString() == id) ?? frame;
+                                AddItemToDataFrame(liveFrame, created);
+                                FrameDataManager.SaveFrameData();
+                                RefreshFrameUsingFormApproach(win, liveFrame);
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            LogManager.Log(LogManager.LogLevel.Error, LogManager.LogCategory.UI, $"Data frame NewFolder error: {ex.Message}");
+                        }
+                    };
+                    CnMnFramemanager.Items.Insert(fitInsertIndex, miNewFolder);
+                    CnMnFramemanager.Items.Insert(fitInsertIndex + 1, miFitToContent);
                 }
 
                 // D1. Portal Frame 操作功能（無需按 Ctrl，一般右鍵直接可用）
                 if (isPortalFrame)
                 {
+                    miNewFolder = new MenuItem { Header = Strings.MenuNewFolder };
+                    miNewFolder.Click += (s, e) =>
+                    {
+                        try
+                        {
+                            string fId = frame.Id?.ToString();
+                            var pEntry = _portalFrames.FirstOrDefault(kvp => kvp.Key?.Id?.ToString() == fId);
+                            string targetDir = pEntry.Value?.CurrentTargetFolderPath ?? frame.Path?.ToString();
+                            if (!string.IsNullOrWhiteSpace(targetDir))
+                            {
+                                string created = Desktop_Frames.Services.StorageFenceService.PromptAndCreateNewFolder(targetDir, win);
+                                if (!string.IsNullOrEmpty(created))
+                                {
+                                    pEntry.Value?.TriggerSync(immediate: true);
+                                }
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            LogManager.Log(LogManager.LogLevel.Error, LogManager.LogCategory.UI, $"Portal frame NewFolder error: {ex.Message}");
+                        }
+                    };
+
                     miOpenStorageFolder = new MenuItem { Header = Strings.MenuOpenTargetFolder };
                     miOpenStorageFolder.Click += (s, e) =>
                     {
@@ -5383,17 +5660,44 @@ namespace Desktop_Frames
                                     var liveFrame = GetFrameData().FirstOrDefault(f => f.Id?.ToString() == id);
                                     if (liveFrame != null)
                                     {
+                                        string oldPath = GetSafeProperty(liveFrame, "Path") ?? currentPath ?? "";
+                                        string oldFolderName = "";
+                                        try { if (!string.IsNullOrEmpty(oldPath)) oldFolderName = new DirectoryInfo(oldPath).Name; } catch { }
+                                        string newFolderName = "";
+                                        try { newFolderName = new DirectoryInfo(newPath).Name; } catch { }
+
+                                        string curTitle = GetSafeProperty(liveFrame, "Title") ?? "";
+                                        bool shouldAutoRenameTitle = !string.IsNullOrEmpty(newFolderName) &&
+                                            (string.IsNullOrWhiteSpace(curTitle) ||
+                                             curTitle == "捷徑" ||
+                                             curTitle == "Shortcuts" ||
+                                             curTitle == "收納區" ||
+                                             string.Equals(curTitle, oldFolderName, StringComparison.OrdinalIgnoreCase));
+
                                         if (liveFrame is JObject jFrame)
                                         {
                                             jFrame["Path"] = newPath;
+                                            if (shouldAutoRenameTitle) jFrame["Title"] = newFolderName;
                                         }
                                         else
                                         {
                                             liveFrame.Path = newPath;
+                                            if (shouldAutoRenameTitle) liveFrame.Title = newFolderName;
                                         }
                                         frame.Path = newPath;
+                                        if (shouldAutoRenameTitle)
+                                        {
+                                            frame.Title = newFolderName;
+                                            titlelabel.Content = newFolderName;
+                                            win.Title = newFolderName;
+                                            titletb.Text = newFolderName;
+                                        }
+                                        if (!string.IsNullOrEmpty(id))
+                                        {
+                                            _portalNavigationStates.Remove(id);
+                                        }
                                         FrameDataManager.SaveFrameData();
-                                        RefreshFrameUsingFormApproach(win, liveFrame);
+                                        NavigatePortalFrame(liveFrame, newPath);
                                         LogManager.Log(LogManager.LogLevel.Info, LogManager.LogCategory.UI, $"Changed portal frame storage path to: {newPath}");
                                     }
                                 }
@@ -5412,9 +5716,10 @@ namespace Desktop_Frames
                         .FirstOrDefault(m => m.Header.ToString() == Strings.MenuCustomize);
                     if (customizeItemPortal != null) portalInsertIndex = CnMnFramemanager.Items.IndexOf(customizeItemPortal);
 
-                    CnMnFramemanager.Items.Insert(portalInsertIndex, miOpenStorageFolder);
-                    CnMnFramemanager.Items.Insert(portalInsertIndex + 1, miChangeStoragePath);
-                    CnMnFramemanager.Items.Insert(portalInsertIndex + 2, sepPortalStorage);
+                    CnMnFramemanager.Items.Insert(portalInsertIndex, miNewFolder);
+                    CnMnFramemanager.Items.Insert(portalInsertIndex + 1, miOpenStorageFolder);
+                    CnMnFramemanager.Items.Insert(portalInsertIndex + 2, miChangeStoragePath);
+                    CnMnFramemanager.Items.Insert(portalInsertIndex + 3, sepPortalStorage);
                 }
 
                 // D2. Name After Target (Portal Frame + Ctrl)
@@ -6326,7 +6631,7 @@ namespace Desktop_Frames
                 ItemHeight = double.NaN,
                 HorizontalAlignment = HorizontalAlignment.Stretch,
                 VerticalAlignment = VerticalAlignment.Top,
-                Margin = new Thickness(0)
+                Margin = new Thickness(6, 4, 6, 6)
             };
 
             // CRITICAL: Tag the panel with the frame ID so AddIcon can find settings
@@ -6338,22 +6643,63 @@ namespace Desktop_Frames
             {
                 Content = wpcont,
                 VerticalScrollBarVisibility = SettingsManager.DisableFrameScrollbars ? ScrollBarVisibility.Hidden : ScrollBarVisibility.Auto,
-                
+            };
+
+            wpcont.SizeChanged += (s, e) =>
+            {
+                if (e.WidthChanged) UpdateAdaptiveIconGrid(wpcont);
+            };
+            wpcontscr.SizeChanged += (s, e) =>
+            {
+                if (e.WidthChanged) UpdateAdaptiveIconGrid(wpcont);
+            };
+            wpcontscr.PreviewMouseWheel += (s, e) =>
+            {
+                if ((Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control)
+                {
+                    try
+                    {
+                        string id = frame.Id?.ToString() ?? win.Tag?.ToString();
+                        var liveFrame = GetFrameData().FirstOrDefault(f => f.Id?.ToString() == id) ?? frame;
+                        string itemsType = GetSafeProperty(liveFrame, "ItemsType");
+                        if (itemsType == "Data" || itemsType == "Portal")
+                        {
+                            string[] sizes = { "Tiny", "Small", "Medium", "Large", "Huge" };
+                            string curSize = GetSafeProperty(liveFrame, "IconSize");
+                            if (string.IsNullOrEmpty(curSize)) curSize = "Medium";
+                            int idx = Array.FindIndex(sizes, sz => string.Equals(sz, curSize, StringComparison.OrdinalIgnoreCase));
+                            if (idx < 0) idx = 2;
+
+                            int nextIdx = e.Delta > 0
+                                ? Math.Min(sizes.Length - 1, idx + 1)
+                                : Math.Max(0, idx - 1);
+
+                            e.Handled = true;
+                            if (nextIdx != idx)
+                            {
+                                SetFrameIconSizeLive(win, liveFrame, sizes[nextIdx]);
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        LogManager.Log(LogManager.LogLevel.Error, LogManager.LogCategory.UI, $"Ctrl+Wheel icon zoom error: {ex.Message}");
+                    }
+                }
             };
 
             // --- PERFORMANCE TWEAK: Hardware Acceleration & Safe UI Culling ---
             IconManager.OptimizeFramePanel(wpcont, wpcontscr, frame.ItemsType?.ToString() != "Data");
 
-            // Προσθήκη watermark για Portal frames
-            if (frame.ItemsType?.ToString() == "Portal")
+            // 專用收納柵欄不顯示傳送門浮水印背景圖；舊版 Portal 依設定決定
+            if (frame.ItemsType?.ToString() == "Portal" && !Desktop_Frames.Services.StorageFenceService.IsManagedStorage(frame))
             {
-                if (_options.ShowBackgroundImageOnPortalFences ?? true)
+                if (_options.ShowBackgroundImageOnPortalFences ?? false)
                 {
                     double opacity = (SettingsManager.PortalBackgroundOpacity / 100.0);
                     wpcontscr.Background = new ImageBrush
                     {
                         ImageSource = new BitmapImage(new Uri("pack://application:,,,/Resources/portal.png")),
-                        // Opacity = 0.2,
                         Opacity = opacity,
                         Stretch = Stretch.UniformToFill
                     };
@@ -6702,8 +7048,45 @@ namespace Desktop_Frames
 
                 if (frame.ItemsType?.ToString() == "Portal")
                 {
-                    e.Effects = DragDropEffects.None;
-                    cborder.BorderBrush = new SolidColorBrush(System.Windows.Media.Color.FromArgb(180, 220, 80, 80));
+                    if (!Desktop_Frames.Services.StorageFenceService.IsManagedStorage(frame))
+                    {
+                        e.Effects = DragDropEffects.None;
+                        cborder.BorderBrush = new SolidColorBrush(System.Windows.Media.Color.FromArgb(180, 220, 80, 80));
+                        e.Handled = true;
+                        return;
+                    }
+
+                    // --- 專用收納柵欄 (Managed Storage Fence) ---
+                    string[] portalDragFiles = e.Data.GetData(DataFormats.FileDrop) as string[];
+                    string commonDesktopDir = Environment.GetFolderPath(Environment.SpecialFolder.CommonDesktopDirectory);
+                    bool isAllCommonDesktop = portalDragFiles != null && portalDragFiles.Length > 0 &&
+                        portalDragFiles.All(f => !string.IsNullOrEmpty(commonDesktopDir) &&
+                            System.IO.Path.GetFullPath(f).StartsWith(commonDesktopDir, StringComparison.OrdinalIgnoreCase));
+
+                    string gestureHint = "";
+                    if ((Keyboard.Modifiers & ModifierKeys.Alt) == ModifierKeys.Alt)
+                    {
+                        e.Effects = DragDropEffects.Link;
+                        gestureHint = "在收納柵欄建立捷徑";
+                    }
+                    else if ((Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control)
+                    {
+                        e.Effects = DragDropEffects.Copy;
+                        gestureHint = "複製至收納柵欄";
+                    }
+                    else if (isAllCommonDesktop)
+                    {
+                        e.Effects = DragDropEffects.Copy;
+                        gestureHint = "從公用桌面複製捷徑";
+                    }
+                    else
+                    {
+                        e.Effects = DragDropEffects.Move;
+                        gestureHint = "搬移至收納柵欄";
+                    }
+
+                    cborder.BorderBrush = new SolidColorBrush(System.Windows.Media.Color.FromArgb(220, 0, 150, 255));
+                    win.ToolTip = gestureHint;
                     e.Handled = true;
                     return;
                 }
@@ -6731,11 +7114,13 @@ namespace Desktop_Frames
             win.DragLeave += (sender, e) =>
             {
                 cborder.BorderBrush = defaultFrameBorderBrush;
+                win.ToolTip = null;
             };
 
             win.Drop += (sender, e) =>
             {
                 cborder.BorderBrush = defaultFrameBorderBrush;
+                win.ToolTip = null;
                 e.Handled = true;
                 if (e.Data.GetDataPresent(DataFormats.FileDrop))
                 {
@@ -6755,9 +7140,57 @@ namespace Desktop_Frames
                     if (droppedFiles == null) return;
                     if (frame.ItemsType?.ToString() == "Portal")
                     {
-                        e.Effects = DragDropEffects.None;
-                        e.Handled = true;
-                        TrayManager.Instance?.ShowFarmFenceWarning(Strings.Get("MsgPortalReadOnly"));
+                        if (!Desktop_Frames.Services.StorageFenceService.IsManagedStorage(frame))
+                        {
+                            e.Effects = DragDropEffects.None;
+                            e.Handled = true;
+                            TrayManager.Instance?.ShowFarmFenceWarning(Strings.Get("MsgPortalReadOnly"));
+                            return;
+                        }
+
+                        // --- 專用收納柵欄 Drop 執行 ---
+                        var gesture = Desktop_Frames.Services.StorageDropAction.Move;
+                        if ((Keyboard.Modifiers & ModifierKeys.Alt) == ModifierKeys.Alt)
+                        {
+                            gesture = Desktop_Frames.Services.StorageDropAction.Link;
+                        }
+                        else if ((Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control)
+                        {
+                            gesture = Desktop_Frames.Services.StorageDropAction.Copy;
+                        }
+
+                        int successCount = 0;
+                        int noopCount = 0;
+                        var failedItems = new System.Collections.Generic.List<string>();
+
+                        foreach (string item in droppedFiles)
+                        {
+                            Desktop_Frames.Services.IngestResult res = Desktop_Frames.Services.StorageFenceService.IngestItem(frame, item, gesture);
+                            if (res.Status == Desktop_Frames.Services.IngestResultStatus.Completed)
+                            {
+                                successCount++;
+                            }
+                            else if (res.Status == Desktop_Frames.Services.IngestResultStatus.SkippedSameFolder)
+                            {
+                                noopCount++;
+                            }
+                            else
+                            {
+                                failedItems.Add($"{System.IO.Path.GetFileName(item)}: {res.ErrorMessage}");
+                            }
+                        }
+
+                        // 觸發該 Portal 的即時刷新與桌面 Shell 刷新
+                        string fId = frame.Id?.ToString();
+                        var portalEntry = _portalFrames.FirstOrDefault(kvp => kvp.Key?.Id?.ToString() == fId);
+                        portalEntry.Value?.TriggerSync(immediate: true);
+                        Desktop_Frames.Services.FenceInventoryManager.RefreshDesktopShell();
+
+                        if (failedItems.Count > 0)
+                        {
+                            string alert = $"部分項目收納未完成：\n\n" + string.Join("\n", failedItems.Take(5));
+                            MessageBoxesManager.ShowOKOnlyMessageBoxForm(alert, "收納未完成");
+                        }
                         return;
                     }
 
@@ -7335,6 +7768,125 @@ namespace Desktop_Frames
             targetChecker.Start();
         }
 
+        /// <summary>
+        /// 自適應圖示網格排版：當收納框縮小或調整寬度時，平滑壓縮與均分每列圖示槽位寬度與左右間距，
+        /// 避免傳統固定寬度 WrapPanel 提早換行造成右側大片留白或文字裁切。
+        /// </summary>
+        public static void UpdateAdaptiveIconGrid(WrapPanel wpcont)
+        {
+            if (wpcont == null || wpcont.Children.Count == 0) return;
+            try
+            {
+                int iconSpacing = 5;
+                double iconWidth = 40;
+
+                dynamic settings = null;
+                if (wpcont.Tag != null)
+                {
+                    string fId = wpcont.Tag.ToString();
+                    settings = GetFrameData().FirstOrDefault(f => f.Id?.ToString() == fId);
+                }
+
+                if (settings != null)
+                {
+                    try { iconSpacing = Convert.ToInt32(settings.IconSpacing?.ToString() ?? "5"); } catch { }
+                    string sizeVal = settings.IconSize?.ToString() ?? "Medium";
+                    switch (sizeVal)
+                    {
+                        case "Tiny": iconWidth = 24; break;
+                        case "Small": iconWidth = 32; break;
+                        case "Large": iconWidth = 48; break;
+                        case "Huge": iconWidth = 64; break;
+                        default: iconWidth = 40; break;
+                    }
+                }
+
+                double baseCellWidth = Math.Max(62.0, iconWidth + 22.0);
+                double baseMarginX = Math.Max(2.0, iconSpacing);
+                double baseMarginY = Math.Max(2.0, iconSpacing - 1);
+                double idealSlotWidth = baseCellWidth + (baseMarginX * 2.0);
+
+                double minCellWidth = Math.Max(48.0, iconWidth + 10.0);
+                double minMarginX = Math.Max(2.0, Math.Floor(baseMarginX * 0.5));
+                double minSlotWidth = minCellWidth + (minMarginX * 2.0);
+
+                double availWidth = wpcont.ActualWidth;
+                if (availWidth <= 10)
+                {
+                    var sv = wpcont.Parent as ScrollViewer;
+                    if (sv != null && sv.ActualWidth > 20)
+                    {
+                        availWidth = sv.ActualWidth - wpcont.Margin.Left - wpcont.Margin.Right - 4;
+                    }
+                    else
+                    {
+                        var win = FindVisualParent<NonActivatingWindow>(wpcont);
+                        if (win != null)
+                        {
+                            double w = win.ActualWidth > 20 ? win.ActualWidth : win.Width;
+                            if (w > 24) availWidth = w - 24;
+                        }
+                    }
+                }
+
+                var visiblePanels = wpcont.Children.OfType<StackPanel>()
+                    .Where(p => p.Visibility != Visibility.Collapsed)
+                    .ToList();
+
+                if (visiblePanels.Count == 0) return;
+
+                double targetCellWidth = baseCellWidth;
+                double targetMarginX = baseMarginX;
+
+                if (availWidth >= minSlotWidth)
+                {
+                    int idealCols = Math.Max(1, (int)Math.Floor((availWidth + 0.5) / idealSlotWidth));
+                    int targetCols = idealCols;
+
+                    // 若框稍微縮小但以緊湊間距仍可容納多 1 欄，優先維持原欄數並平滑收斂間距，避免突兀換行
+                    if (visiblePanels.Count > idealCols && (idealCols + 1) * minSlotWidth <= availWidth + 0.5)
+                    {
+                        targetCols = idealCols + 1;
+                    }
+
+                    bool singleRowFitsIdeally = visiblePanels.Count <= targetCols &&
+                                                (visiblePanels.Count * idealSlotWidth) <= (availWidth + 1.0);
+
+                    if (!singleRowFitsIdeally)
+                    {
+                        int activeCols = Math.Max(1, Math.Min(visiblePanels.Count, targetCols));
+                        double rawSlotWidth = Math.Floor((availWidth - 1.0) / activeCols);
+                        double clampedSlotWidth = Math.Clamp(rawSlotWidth, minSlotWidth, idealSlotWidth + 14.0);
+
+                        double span = Math.Max(1.0, idealSlotWidth - minSlotWidth);
+                        double ratio = Math.Clamp((clampedSlotWidth - minSlotWidth) / span, 0.0, 1.25);
+
+                        targetMarginX = Math.Round(Math.Clamp(minMarginX + (baseMarginX - minMarginX) * ratio, 2.0, baseMarginX + 3.0));
+                        targetCellWidth = Math.Max(minCellWidth, clampedSlotWidth - (targetMarginX * 2.0));
+                    }
+                }
+
+                foreach (var sp in visiblePanels)
+                {
+                    if (Math.Abs(sp.Width - targetCellWidth) > 0.5)
+                        sp.Width = targetCellWidth;
+
+                    var m = sp.Margin;
+                    if (Math.Abs(m.Left - targetMarginX) > 0.5 || Math.Abs(m.Top - baseMarginY) > 0.5)
+                        sp.Margin = new Thickness(targetMarginX, baseMarginY, targetMarginX, baseMarginY);
+
+                    var lbl = sp.Children.OfType<TextBlock>().LastOrDefault();
+                    if (lbl != null)
+                    {
+                        double lblMax = Math.Max(44.0, targetCellWidth - 2.0);
+                        if (Math.Abs(lbl.MaxWidth - lblMax) > 0.5)
+                            lbl.MaxWidth = lblMax;
+                    }
+                }
+            }
+            catch { }
+        }
+
         public static void AddIcon(dynamic icon, WrapPanel wpcont, dynamic frameContext = null)
         {
             // 1. EXTRACT DATA
@@ -7353,29 +7905,23 @@ namespace Desktop_Frames
                 isNetwork = IsNetworkPath(filePath);
             }
 
-            // --- STEP 1: Determine Settings Context ---
-            dynamic settings = frameContext;
-            if (settings == null)
+            // --- STEP 1: Determine Settings Context (Always prefer live FrameData by Id) ---
+            dynamic settings = null;
+            try
             {
-                try
+                string frameId = frameContext?.Id?.ToString() ?? wpcont.Tag?.ToString();
+                if (string.IsNullOrEmpty(frameId))
                 {
-                    if (wpcont.Tag != null)
-                    {
-                        string frameId = wpcont.Tag.ToString();
-                        settings = GetFrameData().FirstOrDefault(f => f.Id?.ToString() == frameId);
-                    }
-                    if (settings == null)
-                    {
-                        NonActivatingWindow win = FindVisualParent<NonActivatingWindow>(wpcont);
-                        string frameId = win?.Tag?.ToString();
-                        if (!string.IsNullOrEmpty(frameId))
-                        {
-                            settings = GetFrameData().FirstOrDefault(f => f.Id?.ToString() == frameId);
-                        }
-                    }
+                    NonActivatingWindow win = FindVisualParent<NonActivatingWindow>(wpcont);
+                    frameId = win?.Tag?.ToString();
                 }
-                catch { }
+                if (!string.IsNullOrEmpty(frameId))
+                {
+                    settings = GetFrameData().FirstOrDefault(f => f.Id?.ToString() == frameId);
+                }
             }
+            catch { }
+            if (settings == null) settings = frameContext;
 
             // --- NEW: Identify frame Type (Portal vs Data) ---
             bool isPortal = false;
@@ -7419,17 +7965,19 @@ namespace Desktop_Frames
             }
 
             // --- STEP 3: Create UI Elements ---
+            double baseCellWidth = Math.Max(62.0, iconWidth + 22.0);
+            double baseMarginY = Math.Max(2.0, iconSpacing - 1);
             StackPanel sp = new StackPanel
             {
-                Margin = new Thickness(iconSpacing),
-                Width = 60 + (iconSpacing * 2)
+                Margin = new Thickness(iconSpacing, baseMarginY, iconSpacing, baseMarginY),
+                Width = baseCellWidth
             };
 
             System.Windows.Controls.Image ico = new System.Windows.Controls.Image
             {
                 Width = iconWidth,
                 Height = iconHeight,
-                Margin = new Thickness(5),
+                Margin = new Thickness(4, 4, 4, 2),
                 Stretch = Stretch.Uniform,
                 HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Center
@@ -7456,6 +8004,7 @@ namespace Desktop_Frames
                 sp.Tag = new { FilePath = filePath, IsFolder = false, Arguments = (string)null };
                 sp.ToolTip = new ToolTip { Content = Strings.TooltipBlankSpacer };
                 wpcont.Children.Add(sp);
+                UpdateAdaptiveIconGrid(wpcont);
                 return; // Skip standard extraction
             }
 
@@ -7545,7 +8094,7 @@ namespace Desktop_Frames
                 TextAlignment = TextAlignment.Center,
                 HorizontalAlignment = HorizontalAlignment.Center,
                 Foreground = textBrush,
-                MaxWidth = 74,
+                MaxWidth = baseCellWidth - 2.0,
                 MaxHeight = 34, // 精確限制最多 2 行（行高 16px * 2 + 2px 容差），超過自動在第 2 行末端顯示省略號（...）
                 LineHeight = 16,
                 LineStackingStrategy = LineStackingStrategy.BlockLineHeight,
@@ -7575,6 +8124,7 @@ namespace Desktop_Frames
             sp.ToolTip = new ToolTip { Content = originalDisplayName + "\nLoading target..." };
 
             wpcont.Children.Add(sp); // ADD TO UI INSTANTLY!
+            UpdateAdaptiveIconGrid(wpcont);
 
             // --- 5. BACKGROUND RESOLVER TASK ---
             // This offloads the 30-second WshShell and Directory.Exists network hangs!
@@ -7604,24 +8154,38 @@ namespace Desktop_Frames
                         if (urlIcon.Path != null) shortcutIcon = IconManager.ExtractIconFromFile(urlIcon.Path, urlIcon.Index);
                     }
 
-                    if (shortcutIcon == null)
+                    if (shortcutIcon == null && isShortcut)
                     {
-                        try
+                        // 優先使用 Win32 IShellLinkW (Unicode-safe) 解析目標與自訂圖示，避免 WshShell 將 ● 等字元轉為 ?
+                        if (FilePathUtilities.TryResolveShortcutWithShellLinkW(filePath, out string slTarget, out _, out _, out string slIconPath, out int slIconIdx))
                         {
-                            WshShell shell = new WshShell();
-                            IWshShortcut shortcut = (IWshShortcut)shell.CreateShortcut(System.IO.Path.GetFullPath(filePath));
-                            targetPath = shortcut.TargetPath;
-
-                            if (!string.IsNullOrEmpty(shortcut.IconLocation) && shortcut.IconLocation != ",0")
+                            targetPath = slTarget;
+                            if (!string.IsNullOrEmpty(slIconPath) && System.IO.File.Exists(slIconPath))
                             {
-                                string[] iconParts = shortcut.IconLocation.Split(',');
-                                string iconPath = iconParts[0];
-                                int iconIndex = 0;
-                                if (iconParts.Length == 2 && int.TryParse(iconParts[1], out int parsedIndex)) iconIndex = parsedIndex;
-                                if (System.IO.File.Exists(iconPath)) shortcutIcon = IconManager.ExtractIconFromFile(iconPath, iconIndex);
+                                shortcutIcon = IconManager.ExtractIconFromFile(slIconPath, slIconIdx);
                             }
                         }
-                        catch { }
+
+                        if (shortcutIcon == null && string.IsNullOrEmpty(targetPath))
+                        {
+                            try
+                            {
+                                WshShell shell = new WshShell();
+                                IWshShortcut shortcut = (IWshShortcut)shell.CreateShortcut(System.IO.Path.GetFullPath(filePath));
+                                if (!string.IsNullOrEmpty(shortcut.TargetPath) && !shortcut.TargetPath.Contains("?"))
+                                    targetPath = shortcut.TargetPath;
+
+                                if (!string.IsNullOrEmpty(shortcut.IconLocation) && shortcut.IconLocation != ",0")
+                                {
+                                    string[] iconParts = shortcut.IconLocation.Split(',');
+                                    string iconPath = iconParts[0];
+                                    int iconIndex = 0;
+                                    if (iconParts.Length == 2 && int.TryParse(iconParts[1], out int parsedIndex)) iconIndex = parsedIndex;
+                                    if (System.IO.File.Exists(iconPath)) shortcutIcon = IconManager.ExtractIconFromFile(iconPath, iconIndex);
+                                }
+                            }
+                            catch { }
+                        }
                     }
                 }
 
@@ -7652,11 +8216,8 @@ namespace Desktop_Frames
                     {
                         try
                         {
-                            if (string.IsNullOrEmpty(targetPath)) targetPath = FilePathUtilities.GetShortcutTargetUnicodeSafe(filePath);
-                            if (string.IsNullOrEmpty(targetPath))
-                            {
-                                try { WshShell shell = new WshShell(); IWshShortcut shortcut = (IWshShortcut)shell.CreateShortcut(System.IO.Path.GetFullPath(filePath)); targetPath = shortcut.TargetPath; } catch { }
-                            }
+                            if (string.IsNullOrEmpty(targetPath) || targetPath.Contains("?"))
+                                targetPath = FilePathUtilities.GetShortcutTargetUnicodeSafe(filePath);
                             if (IsUncRoot(targetPath)) { targetIsUncRoot = true; isFolder = true; isNetwork = true; }
                         }
                         catch { }
@@ -9049,7 +9610,11 @@ namespace Desktop_Frames
                 {
                     RemoveDataItem(targetArray, liveItem);
                     var wp = VisualTreeHelper.GetParent(selectedSp) as WrapPanel;
-                    if (wp != null) wp.Children.Remove(selectedSp);
+                    if (wp != null)
+                    {
+                        wp.Children.Remove(selectedSp);
+                        UpdateAdaptiveIconGrid(wp);
+                    }
                     DeselectIcon();
                 }
             }
@@ -9122,23 +9687,28 @@ namespace Desktop_Frames
 
                     if (frame != null && frame.ItemsType?.ToString() == "Portal")
                     {
-                        // Safe resolution for Portal frames
-                        bool isPortalFolder = isFolder;
-                        if (!isPortalFolder && isShortcut)
+                        // 僅在按住 Ctrl + 連點兩下時才執行「框內原地切換路徑」；
+                        // 一般連點兩下直接由下方 LaunchItem 以檔案總管開啟資料夾（符合桌面直覺與詳細資料檢視行為）
+                        if ((Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control)
                         {
-                            try { isPortalFolder = System.IO.Directory.Exists(Utility.GetShortcutTarget(path)); } catch { }
-                        }
+                            string portalTargetFolder = isFolder ? path : null;
+                            if (string.IsNullOrEmpty(portalTargetFolder) && isShortcut)
+                            {
+                                try
+                                {
+                                    string resolved = FilePathUtilities.GetShortcutTargetUnicodeSafe(path);
+                                    if (!string.IsNullOrEmpty(resolved) && System.IO.Directory.Exists(resolved))
+                                        portalTargetFolder = resolved;
+                                }
+                                catch { }
+                            }
 
-                        if (isPortalFolder)
-                        {
-                            NavigatePortalFrame(frame, path);
-                            e.Handled = true;
-                            return;
-                        }
-                        else
-                        {
-                            e.Handled = true;
-                            return;
+                            if (!string.IsNullOrEmpty(portalTargetFolder) && System.IO.Directory.Exists(portalTargetFolder))
+                            {
+                                NavigatePortalFrame(frame, portalTargetFolder);
+                                e.Handled = true;
+                                return;
+                            }
                         }
                     }
 
@@ -9177,6 +9747,11 @@ namespace Desktop_Frames
                             else
                             {
                                 targetExists = dynamicIsFolder ? System.IO.Directory.Exists(path) : System.IO.File.Exists(path);
+                                if (!targetExists && !dynamicIsFolder && System.IO.Directory.Exists(path))
+                                {
+                                    dynamicIsFolder = true;
+                                    targetExists = true;
+                                }
                             }
 
                             bool isStoreApp = false;
@@ -9228,9 +9803,46 @@ namespace Desktop_Frames
                 if (e.LeftButton == MouseButtonState.Pressed && iconMouseDownPos.HasValue && !isIconDragging && !IconDragDropManager.IsDragging)
                 {
                     System.Windows.Point currentPos = e.GetPosition(sp);
-                    if (Math.Abs(currentPos.X - iconMouseDownPos.Value.X) >= SystemParameters.MinimumHorizontalDragDistance ||
-                        Math.Abs(currentPos.Y - iconMouseDownPos.Value.Y) >= SystemParameters.MinimumVerticalDragDistance)
+                    double dragThresholdX = Math.Max(10.0, SystemParameters.MinimumHorizontalDragDistance * 2.5);
+                    double dragThresholdY = Math.Max(10.0, SystemParameters.MinimumVerticalDragDistance * 2.5);
+                    if (Math.Abs(currentPos.X - iconMouseDownPos.Value.X) >= dragThresholdX ||
+                        Math.Abs(currentPos.Y - iconMouseDownPos.Value.Y) >= dragThresholdY)
                     {
+                        NonActivatingWindow win = FindVisualParent<NonActivatingWindow>(sp);
+                        string frameId = win?.Tag?.ToString();
+                        dynamic frame = null;
+                        if (!string.IsNullOrEmpty(frameId))
+                            frame = FrameDataManager.FrameData.FirstOrDefault(f => f.Id?.ToString() == frameId);
+
+                        if (frame != null && Desktop_Frames.Services.StorageFenceService.IsManagedStorage(frame))
+                        {
+                            isIconDragging = true;
+                            try
+                            {
+                                var data = new DataObject(DataFormats.FileDrop, new string[] { path });
+                                System.IO.MemoryStream dropEffect = new System.IO.MemoryStream(new byte[] { 2, 0, 0, 0 });
+                                data.SetData("Preferred DropEffect", dropEffect);
+                                DragDrop.DoDragDrop(sp, data, DragDropEffects.Move | DragDropEffects.Copy | DragDropEffects.Link);
+                            }
+                            catch (Exception ex)
+                            {
+                                LogManager.Log(LogManager.LogLevel.Warn, LogManager.LogCategory.UI, $"專用收納圖示拖曳異常: {ex.Message}");
+                            }
+                            finally
+                            {
+                                isIconDragging = false;
+                                iconMouseDownPos = null;
+                                try
+                                {
+                                    var pEntry = _portalFrames.FirstOrDefault(kvp => kvp.Key?.Id?.ToString() == frameId);
+                                    pEntry.Value?.TriggerSync(immediate: true);
+                                    Desktop_Frames.Services.FenceInventoryManager.RefreshDesktopShell();
+                                }
+                                catch { }
+                            }
+                            return;
+                        }
+
                         isIconDragging = true;
                         IconDragDropManager.StartIconDrag(sp, iconMouseDownPos.Value);
                     }
@@ -9473,24 +10085,36 @@ namespace Desktop_Frames
                 }
                 else if (isLnk)
                 {
-                    string resolved = FilePathUtilities.GetShortcutTargetUnicodeSafe(fullPath);
-                    if (string.IsNullOrEmpty(resolved)) resolved = GetScrapedNetworkPath(fullPath);
-
-                    if (!string.IsNullOrEmpty(resolved))
+                    if (FilePathUtilities.TryResolveShortcutWithShellLinkW(fullPath, out string slTarget, out string slArgs, out string slWorkDir, out _, out _))
                     {
-                        targetPath = resolved;
-                        try
+                        targetPath = slTarget;
+                        if (!slTarget.EndsWith("explorer.exe", StringComparison.OrdinalIgnoreCase))
                         {
-                            WshShell shell = new WshShell();
-                            IWshShortcut shortcut = (IWshShortcut)shell.CreateShortcut(fullPath);
-                            string rawTarget = shortcut.TargetPath?.ToLower() ?? "";
-                            if (!rawTarget.EndsWith("explorer.exe"))
-                            {
-                                if (string.IsNullOrEmpty(finalArguments)) finalArguments = shortcut.Arguments;
-                                workingDirectory = shortcut.WorkingDirectory;
-                            }
+                            if (string.IsNullOrEmpty(finalArguments) && !string.IsNullOrEmpty(slArgs)) finalArguments = slArgs;
+                            if (!string.IsNullOrEmpty(slWorkDir)) workingDirectory = slWorkDir;
                         }
-                        catch { }
+                    }
+                    else
+                    {
+                        string resolved = FilePathUtilities.GetShortcutTargetUnicodeSafe(fullPath);
+                        if (string.IsNullOrEmpty(resolved)) resolved = GetScrapedNetworkPath(fullPath);
+
+                        if (!string.IsNullOrEmpty(resolved))
+                        {
+                            targetPath = resolved;
+                            try
+                            {
+                                WshShell shell = new WshShell();
+                                IWshShortcut shortcut = (IWshShortcut)shell.CreateShortcut(fullPath);
+                                string rawTarget = shortcut.TargetPath?.ToLower() ?? "";
+                                if (!rawTarget.EndsWith("explorer.exe"))
+                                {
+                                    if (string.IsNullOrEmpty(finalArguments)) finalArguments = shortcut.Arguments;
+                                    workingDirectory = shortcut.WorkingDirectory;
+                                }
+                            }
+                            catch { }
+                        }
                     }
                 }
 

@@ -1,4 +1,4 @@
-﻿using Strings = Desktop_Frames.Localization.Strings;
+using Strings = Desktop_Frames.Localization.Strings;
 using IWshRuntimeLibrary;
 using Microsoft.VisualBasic;
 using Newtonsoft.Json.Linq;
@@ -17,7 +17,30 @@ namespace Desktop_Frames
 {
     public class PortalFramemanager
     {
-        private bool IsLegacyReadOnly => true;
+        private bool IsLegacyReadOnly => !Desktop_Frames.Services.StorageFenceService.IsManagedStorage(_frame);
+        public string CurrentTargetFolderPath => _targetFolderPath;
+
+        public string? CreateNewFolderInteractive(string? customName = null)
+        {
+            if (IsLegacyReadOnly || string.IsNullOrWhiteSpace(_targetFolderPath)) return null;
+            try
+            {
+                string? created = customName != null
+                    ? Desktop_Frames.Services.StorageFenceService.CreateNewFolder(_targetFolderPath, customName)
+                    : Desktop_Frames.Services.StorageFenceService.PromptAndCreateNewFolder(_targetFolderPath);
+
+                if (!string.IsNullOrEmpty(created))
+                {
+                    TriggerSync(immediate: true);
+                }
+                return created;
+            }
+            catch (Exception ex)
+            {
+                LogManager.Log(LogManager.LogLevel.Error, LogManager.LogCategory.UI, $"CreateNewFolder error: {ex.Message}");
+                return null;
+            }
+        }
         // New field for the active filter
         private string _currentFilter = null;
         private int _sortMode = 0; // 0=Name, 1=Date Modified, 2=Type, 3=Size
@@ -528,6 +551,7 @@ namespace Desktop_Frames
                 foreach (var sp in sorted)
                 {
                     _wpcont.Children.Add(sp);
+                Framemanager.UpdateAdaptiveIconGrid(_wpcont);
                 }
             });
         }
@@ -596,7 +620,7 @@ namespace Desktop_Frames
             //  // --- TEST CODE END ---
         }
 
-        private void TriggerSync(bool immediate = false)
+        internal void TriggerSync(bool immediate = false)
         {
             _dispatcher.InvokeAsync(() =>
             {
@@ -851,14 +875,14 @@ namespace Desktop_Frames
                     }
                     catch (Exception ex) { LogManager.Log(LogManager.LogLevel.Error, LogManager.LogCategory.UI, $"Error cutting item: {ex.Message}"); }
                 };
-                cutFileItem.IsEnabled = false;
-                cutFileItem.ToolTip = Strings.Get("MsgPortalReadOnly");
+                cutFileItem.IsEnabled = !IsLegacyReadOnly;
+                if (IsLegacyReadOnly) cutFileItem.ToolTip = Strings.Get("MsgPortalReadOnly");
                 contextMenu.Items.Add(cutFileItem);
 
                 MenuItem renameItem = new MenuItem { Header = Strings.MenuRenameItem };
                 renameItem.Click += (s, e) => RenameItem(path, null);
-                renameItem.IsEnabled = false;
-                renameItem.ToolTip = Strings.Get("MsgPortalReadOnly");
+                renameItem.IsEnabled = !IsLegacyReadOnly;
+                if (IsLegacyReadOnly) renameItem.ToolTip = Strings.Get("MsgPortalReadOnly");
                 contextMenu.Items.Add(renameItem);
 
                 MenuItem deleteItem = new MenuItem { Header = Strings.MenuDeleteItem };
@@ -867,9 +891,20 @@ namespace Desktop_Frames
                     DeleteItem(path, null);
                     if (_detailsListView.Items.Contains(itemModel)) _detailsListView.Items.Remove(itemModel);
                 };
-                deleteItem.IsEnabled = false;
-                deleteItem.ToolTip = Strings.Get("MsgPortalReadOnly");
+                deleteItem.IsEnabled = !IsLegacyReadOnly;
+                if (IsLegacyReadOnly) deleteItem.ToolTip = Strings.Get("MsgPortalReadOnly");
                 contextMenu.Items.Add(deleteItem);
+
+                MenuItem refreshItem = new MenuItem { Header = Strings.Get("MenuRefreshContents", "重新整理內容") };
+                refreshItem.Click += (s, e) => TriggerSync(immediate: true);
+                contextMenu.Items.Add(refreshItem);
+
+                if (!IsLegacyReadOnly)
+                {
+                    MenuItem newFolderItem = new MenuItem { Header = Strings.MenuNewFolder };
+                    newFolderItem.Click += (s, e) => CreateNewFolderInteractive();
+                    contextMenu.Items.Add(newFolderItem);
+                }
 
                 if (!isFolder)
                 {
@@ -1038,23 +1073,34 @@ namespace Desktop_Frames
                         LogManager.Log(LogManager.LogLevel.Error, LogManager.LogCategory.UI, $"Error cutting item: {ex.Message}");
                     }
                 };
-                cutFileItem.IsEnabled = false;
-                cutFileItem.ToolTip = Strings.Get("MsgPortalReadOnly");
+                cutFileItem.IsEnabled = !IsLegacyReadOnly;
+                if (IsLegacyReadOnly) cutFileItem.ToolTip = Strings.Get("MsgPortalReadOnly");
                 contextMenu.Items.Add(cutFileItem);
 
                 // 3. Rename item (Existing)
                 MenuItem renameItem = new MenuItem { Header = Strings.MenuRenameItem };
                 renameItem.Click += (s, e) => RenameItem(path, sp);
-                renameItem.IsEnabled = false;
-                renameItem.ToolTip = Strings.Get("MsgPortalReadOnly");
+                renameItem.IsEnabled = !IsLegacyReadOnly;
+                if (IsLegacyReadOnly) renameItem.ToolTip = Strings.Get("MsgPortalReadOnly");
                 contextMenu.Items.Add(renameItem);
 
                 // 4. Delete item (Existing)
                 MenuItem deleteItem = new MenuItem { Header = Strings.MenuDeleteItem };
                 deleteItem.Click += (s, e) => DeleteItem(path, sp);
-                deleteItem.IsEnabled = false;
-                deleteItem.ToolTip = Strings.Get("MsgPortalReadOnly");
+                deleteItem.IsEnabled = !IsLegacyReadOnly;
+                if (IsLegacyReadOnly) deleteItem.ToolTip = Strings.Get("MsgPortalReadOnly");
                 contextMenu.Items.Add(deleteItem);
+
+                MenuItem refreshItem = new MenuItem { Header = Strings.Get("MenuRefreshContents", "重新整理內容") };
+                refreshItem.Click += (s, e) => TriggerSync(immediate: true);
+                contextMenu.Items.Add(refreshItem);
+
+                if (!IsLegacyReadOnly)
+                {
+                    MenuItem newFolderItem = new MenuItem { Header = Strings.MenuNewFolder };
+                    newFolderItem.Click += (s, e) => CreateNewFolderInteractive();
+                    contextMenu.Items.Add(newFolderItem);
+                }
 
                 // 4.5 Open with (Files only)
                 if (!isFolder)
@@ -1235,7 +1281,7 @@ namespace Desktop_Frames
         private void DeleteItem(string path, StackPanel sp)
         {
             if (IsLegacyReadOnly) return;
-            bool UseRecycleBin = SettingsManager.UseRecycleBin;
+            bool UseRecycleBin = SettingsManager.UseRecycleBin || Desktop_Frames.Services.StorageFenceService.IsManagedStorage(_frame);
             if (UseRecycleBin == true)
             {
                 try
@@ -1356,6 +1402,7 @@ namespace Desktop_Frames
             if (sp != null)
             {
                 _wpcont.Children.Remove(sp);
+                Framemanager.UpdateAdaptiveIconGrid(_wpcont);
                 LogManager.Log(LogManager.LogLevel.Debug, LogManager.LogCategory.General, $"Successfully removed icon for {path}");
             }
             else
@@ -1606,6 +1653,45 @@ namespace Desktop_Frames
                     {
                         bool isCtrl = (Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control;
                         if (!isCtrl) HandleItemInteraction(selected, false);
+                    }
+                };
+
+                System.Windows.Point? detailsMouseDownPos = null;
+                _detailsListView.PreviewMouseLeftButtonDown += (s, e) =>
+                {
+                    detailsMouseDownPos = e.GetPosition(_detailsListView);
+                };
+
+                _detailsListView.PreviewMouseMove += (s, e) =>
+                {
+                    if (e.LeftButton == MouseButtonState.Pressed && detailsMouseDownPos.HasValue && !IsLegacyReadOnly)
+                    {
+                        var current = e.GetPosition(_detailsListView);
+                        if (Math.Abs(current.X - detailsMouseDownPos.Value.X) >= SystemParameters.MinimumHorizontalDragDistance ||
+                            Math.Abs(current.Y - detailsMouseDownPos.Value.Y) >= SystemParameters.MinimumVerticalDragDistance)
+                        {
+                            var row = GetClickedListViewItem(e.OriginalSource as DependencyObject);
+                            if (row?.Content is PortalItemModel selected && !string.IsNullOrEmpty(selected.FullPath))
+                            {
+                                detailsMouseDownPos = null;
+                                try
+                                {
+                                    var data = new DataObject(DataFormats.FileDrop, new string[] { selected.FullPath });
+                                    System.IO.MemoryStream dropEffect = new System.IO.MemoryStream(new byte[] { 2, 0, 0, 0 });
+                                    data.SetData("Preferred DropEffect", dropEffect);
+                                    DragDrop.DoDragDrop(_detailsListView, data, DragDropEffects.Move | DragDropEffects.Copy | DragDropEffects.Link);
+                                }
+                                catch (Exception dragEx)
+                                {
+                                    LogManager.Log(LogManager.LogLevel.Warn, LogManager.LogCategory.UI, $"清單拖曳異常: {dragEx.Message}");
+                                }
+                                finally
+                                {
+                                    TriggerSync(immediate: true);
+                                    Desktop_Frames.Services.FenceInventoryManager.RefreshDesktopShell();
+                                }
+                            }
+                        }
                     }
                 };
 

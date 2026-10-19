@@ -4,7 +4,7 @@
 
 ## 1. 不可觸碰之核心架構與邊界
 - **嚴禁重構或大拆 `FrameManager.cs`**：該模組深度依賴 Win32 視窗控制代碼（HWND）、訊息攔截（WndProc）與即時座標計算，重構風險極高。
-- **嚴禁修改設定檔儲存結構**：保留現有 `options.json`、`frames.json` 與 `MasterOptions.json` 格式，維持設定向下相容性。
+- **維持設定檔向下相容性**：保留現有 `options.json`、`frames.json` 與 `MasterOptions.json` 基本架構。允許對單一 Frame 新增具向前相容之選擇性屬性（如專用收納柵欄之 `IsManagedStorage`、`StorageRootPath`），舊版本或未支援模組讀取時自動忽略，嚴禁破壞性修改或移除既有必要欄位。
 - **維持 Portable 可攜性機制**：設定檔集中於 `Profiles/` 或執行檔同層，不得依賴絕對路徑或註冊表儲存核心配置。
 
 ## 2. 上游同步與發行責任原則

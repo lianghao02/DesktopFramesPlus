@@ -789,6 +789,16 @@ namespace Desktop_Frames.Localization
         public static string RandomNameAdjectives => Get("RandomNameAdjectives");
         public static string RandomNamePlaces => Get("RandomNamePlaces");
         public static string MenuFitToContent => Get("MenuFitToContent");
+        public static string MenuNewFolder
+        {
+            get
+            {
+                string val = Get("MenuNewFolder");
+                if (string.IsNullOrEmpty(val) || val == "MenuNewFolder")
+                    return Culture.Name.StartsWith("zh", StringComparison.OrdinalIgnoreCase) ? "新增資料夾…" : "New Folder...";
+                return val;
+            }
+        }
         public static string MsgConfirmRemoveItem => Get("MsgConfirmRemoveItem");
     }
 }

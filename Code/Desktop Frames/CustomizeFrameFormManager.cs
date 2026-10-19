@@ -1,4 +1,4 @@
-﻿using Desktop_Frames.Localization;
+using Desktop_Frames.Localization;
 using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
@@ -812,8 +812,8 @@ namespace Desktop_Frames
         /// </summary>
         private void ApplyChanges()
         {
-            ApplyRuntimeChanges(); // --- SPEED FIX: Update visuals instantly first ---
-            SaveAllPropertiesToJson(); // Then save to JSON
+            SaveAllPropertiesToJson(); // 先寫入屬性至記憶體與 JSON，確保後續視覺重繪讀到最新 IconSize 等設定
+            ApplyRuntimeChanges();     // 立即重繪框架與圖示
             _result = true; // Mark as successful so if they close later, it counts as saved
         }
 
@@ -848,15 +848,23 @@ namespace Desktop_Frames
 
                 var windows = System.Windows.Application.Current.Windows.OfType<NonActivatingWindow>().ToList();
 
-                // TEST
-
-
                 // --- PHASE 1: INSTANT VISUAL UPDATE ---
                 // We update the screen first before touching the heavy JSON data engine
                 foreach (dynamic targetFrame in allFrames)
                 {
                     string frameId = targetFrame.Id?.ToString();
                     if (string.IsNullOrEmpty(frameId)) continue;
+
+                    // 先同步記憶體中的圖示外觀屬性，確保後續重繪時讀取新值
+                    if (targetFrame is Newtonsoft.Json.Linq.JObject jTarget)
+                    {
+                        jTarget["IconSize"] = iconSize;
+                        jTarget["IconSpacing"] = iconSpacing;
+                        jTarget["TextColor"] = textColor;
+                        jTarget["DisableTextShadow"] = disableTextShadow;
+                        jTarget["GrayscaleIcons"] = grayscaleIcons;
+                        jTarget["CustomLaunchEffect"] = customLaunchEffect;
+                    }
 
                     var win = windows.FirstOrDefault(w => w.Tag?.ToString() == frameId);
                     if (win != null)
@@ -969,8 +977,6 @@ namespace Desktop_Frames
                 bool isPortalFrame = itemsType == "Portal";
                 bool isnoteFrame = itemsType == "Note";
 
-                if (isPortalFrame)
-                    LogManager.Log(LogManager.LogLevel.Debug, LogManager.LogCategory.UI, $"Portal frame detected - disabling icon controls for '{frameTitle}'");
                 if (isnoteFrame)
                     LogManager.Log(LogManager.LogLevel.Debug, LogManager.LogCategory.UI, $"Note frame detected - disabling icon controls for '{frameTitle}'");
 
@@ -985,17 +991,10 @@ namespace Desktop_Frames
                 LoadDropdownValue(_cmbTitleTextSize, GetSafeProp("TitleTextSize"), "TitleTextSize");
                 LoadCheckboxValue(_chkBoldTitleText, GetSafeProp("BoldTitleText"), "BoldTitleText");
 
-                // Load Icons Section properties
-                if (isnoteFrame || isPortalFrame)
+                // Load Icons Section properties (收納柵欄 Portal 與一般 Data 框皆支援圖示大小與外觀調整；僅便箋框停用)
+                if (isnoteFrame)
                 {
                     DisableIconControls();
-                    if (isPortalFrame)
-                    {
-                        _cmbPortalView.IsEnabled = true;
-                        _cmbPortalView.Background = SystemColors.WindowBrush;
-                        _cmbPortalView.ToolTip = null;
-                        LoadDropdownValue(_cmbPortalView, GetSafeProp("ViewMode"), "ViewMode");
-                    }
                 }
                 else
                 {
@@ -1005,6 +1004,14 @@ namespace Desktop_Frames
                     LoadDropdownValue(_cmbTextColor, GetSafeProp("TextColor"), "TextColor");
                     LoadCheckboxValue(_chkDisableTextShadow, GetSafeProp("DisableTextShadow"), "DisableTextShadow");
                     LoadCheckboxValue(_chkGrayscaleIcons, GetSafeProp("GrayscaleIcons"), "GrayscaleIcons");
+
+                    if (isPortalFrame)
+                    {
+                        _cmbPortalView.IsEnabled = true;
+                        _cmbPortalView.Background = SystemColors.WindowBrush;
+                        _cmbPortalView.ToolTip = null;
+                        LoadDropdownValue(_cmbPortalView, GetSafeProp("ViewMode"), "ViewMode");
+                    }
                 }
 
                 LogManager.Log(LogManager.LogLevel.Debug, LogManager.LogCategory.UI, $"Successfully loaded all current values for frame '{frameTitle}' (Portal: {isPortalFrame})");

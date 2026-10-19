@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -28,9 +28,12 @@ namespace Desktop_Frames
 
         static LogManager()
         {
-            _logFilePath = System.IO.Path.Combine(
-                System.IO.Path.GetDirectoryName(Assembly.GetEntryAssembly().Location),
-                "Desktop_Frames.log");
+            string baseDir = AppDomain.CurrentDomain.BaseDirectory;
+            if (string.IsNullOrEmpty(baseDir))
+            {
+                baseDir = System.IO.Path.GetDirectoryName(Assembly.GetEntryAssembly()?.Location ?? "") ?? ".";
+            }
+            _logFilePath = System.IO.Path.Combine(baseDir, "Desktop_Frames.log");
         }
 
         public static void Log(LogLevel level, LogCategory category, string message)
@@ -54,8 +57,8 @@ namespace Desktop_Frames
                         _rotationCheckCounter = 0;
                     }
 
-                    string logMessage = $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} [{level}][{category}] {message}\n";
-                    System.IO.File.AppendAllText(_logFilePath, logMessage);
+                    string logMessage = $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} [{level}][{category}] {message}{Environment.NewLine}";
+                    System.IO.File.AppendAllText(_logFilePath, logMessage, new System.Text.UTF8Encoding(false));
                 }
             }
             catch (Exception ex)
