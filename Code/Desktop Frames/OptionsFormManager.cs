@@ -129,7 +129,7 @@ namespace Desktop_Frames
                     MinHeight = Math.Min(450, screenHeightDiu * 0.75),
                     ResizeMode = ResizeMode.CanResizeWithGrip,
                     WindowStyle = WindowStyle.None,
-                    Background = new SolidColorBrush(Color.FromRgb(248, 249, 250)),
+                    Background = GameTheme.Paper,
                     AllowsTransparency = true
                 };
 
@@ -142,20 +142,23 @@ namespace Desktop_Frames
                 }
                 catch { }
 
-                Border mainBorder = new Border
+                Border mainBorder = new GameSkin
                 {
-                    Background = Brushes.White,
+                    Background = GameTheme.Paper,
                     Margin = new Thickness(8),
                     Effect = new DropShadowEffect { Color = Colors.Black, Direction = 270, ShadowDepth = 2, BlurRadius = 10, Opacity = 0.2 }
                 };
 
+                GameTheme.StyleDialog(mainBorder);
+                _optionsWindow.FontFamily = new FontFamily("Segoe UI, Microsoft JhengHei UI");
+                _optionsWindow.Foreground = GameTheme.Ink;
                 Grid mainGrid = new Grid();
                 mainGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(40) }); // Header
                 mainGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) }); // Content
                 mainGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(56) }); // Footer
 
                 // Header
-                Border headerBorder = new Border { Background = new SolidColorBrush(_userAccentColor), Height = 40 };
+                Border headerBorder = new GameSkin { Skin = GameSkinKind.Header, Background = GameTheme.Accent, Height = 40, CornerRadius = new CornerRadius(12, 12, 0, 0) };
                 Grid.SetRow(headerBorder, 0);
 
                 Grid headerGrid = new Grid();
@@ -166,12 +169,20 @@ namespace Desktop_Frames
                 TextBlock titleBlock = new TextBlock
                 {
                     Text = Strings.OptionsHeading,
-                    FontFamily = new FontFamily("Segoe UI"),
+                    FontFamily = new FontFamily("Segoe UI, Microsoft JhengHei UI"),
                     FontSize = 16,
                     FontWeight = FontWeights.Bold,
                     Foreground = Brushes.White,
                     VerticalAlignment = VerticalAlignment.Center,
-                    Margin = new Thickness(20, 0, 0, 0)
+                    Margin = new Thickness(20, 0, 0, 0),
+                    Effect = new System.Windows.Media.Effects.DropShadowEffect
+                    {
+                        Color = Color.FromRgb(11, 35, 20),
+                        BlurRadius = 2.5,
+                        ShadowDepth = 1.2,
+                        Direction = 270,
+                        Opacity = 0.85
+                    }
                 };
 
                 Button maxButton = new Button
@@ -202,7 +213,11 @@ namespace Desktop_Frames
                 };
                 closeButton.Click += (s, e) => _optionsWindow.Close();
 
-                Grid.SetColumn(titleBlock, 0); headerGrid.Children.Add(titleBlock);
+                Grid.SetColumn(titleBlock, 0); var titleStack = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(12, 0, 0, 0) };
+                titleBlock.Margin = new Thickness(0);
+                titleStack.Children.Add(GameTheme.StorageBadge());
+                titleStack.Children.Add(titleBlock);
+                headerGrid.Children.Add(titleStack);
                 Grid.SetColumn(maxButton, 1); headerGrid.Children.Add(maxButton);
                 Grid.SetColumn(closeButton, 2); headerGrid.Children.Add(closeButton);
                 headerBorder.Child = headerGrid;
@@ -252,16 +267,16 @@ namespace Desktop_Frames
             contentGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
             Grid.SetRow(contentGrid, 1);
 
-            StackPanel tabPanel = new StackPanel { Background = new SolidColorBrush(Color.FromRgb(240, 240, 240)) };
+            StackPanel tabPanel = new StackPanel { Background = new SolidColorBrush(Color.FromRgb(237, 224, 196)) };
             ScrollViewer tabScrollViewer = new ScrollViewer
             {
                 Content = tabPanel,
                 VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
                 HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
-                Background = new SolidColorBrush(Color.FromRgb(240, 240, 240)),
+                Background = new SolidColorBrush(Color.FromRgb(237, 224, 196)),
                 Margin = new Thickness(0, 20, 0, 0)
             };
-            Border contentBorder = new Border { Background = Brushes.White, BorderBrush = new SolidColorBrush(Color.FromRgb(218, 220, 224)), BorderThickness = new Thickness(1, 0, 0, 0), Padding = new Thickness(20), Margin = new Thickness(0, 20, 0, 0) };
+            Border contentBorder = new Border { Background = GameTheme.Paper, BorderBrush = GameTheme.Outline, BorderThickness = new Thickness(1, 0, 0, 0), Padding = new Thickness(20), Margin = new Thickness(0, 20, 0, 0) };
 
             _tabControl = new TabControl { Background = Brushes.Transparent, BorderThickness = new Thickness(0) };
             var template = new ControlTemplate(typeof(TabControl));
@@ -321,9 +336,12 @@ namespace Desktop_Frames
             // Keyed on the tab index, not on its label. The labels are translated
             // now, and a switch needs compile-time constants anyway.
             Color activeColor = tabIndex switch { 1 => ColorStyle, 2 => ColorTools, 3 => ColorProfiles, 4 => ColorHotkeys, 5 => ColorSmartDesktop, 6 => ColorLookDeeper, _ => _userAccentColor };
-            if (isSelected) { button.Background = new SolidColorBrush(activeColor); button.Foreground = Brushes.White; }
-            else if (isHover) { button.Background = new SolidColorBrush(Color.FromRgb((byte)Math.Min(255, activeColor.R + 28), (byte)Math.Min(255, activeColor.G + 28), (byte)Math.Min(255, activeColor.B + 28))); button.Foreground = Brushes.White; }
-            else { button.Background = new SolidColorBrush(Color.FromRgb(234, 236, 239)); button.Foreground = new SolidColorBrush(Color.FromRgb(44, 62, 80)); }
+            if (isSelected) { button.Background = GameTheme.Accent; button.Foreground = Brushes.White; }
+            else if (isHover) { button.Background = GameTheme.Honey; button.Foreground = GameTheme.Ink; }
+            else { button.Background = GameTheme.Paper; button.Foreground = GameTheme.Ink; }
+            GameTheme.SetIsSelected(button, isSelected);
+            button.BorderThickness = isSelected ? new Thickness(3) : new Thickness(2);
+            button.Margin = new Thickness(8, 3, 8, 5);
         }
 
         private static void SelectTab(int tabIndex, Button selectedButton)
@@ -417,7 +435,7 @@ namespace Desktop_Frames
                 VerticalAlignment = VerticalAlignment.Center
             });
 
-            StackPanel right = new StackPanel { Orientation = Orientation.Horizontal };
+            WrapPanel right = new WrapPanel { Orientation = Orientation.Horizontal };
             Grid.SetColumn(right, 1);
 
             ComboBox cb = new ComboBox
@@ -451,7 +469,7 @@ namespace Desktop_Frames
                 MinWidth = 150,
                 Height = 25,
                 Padding = new Thickness(10, 0, 10, 0),
-                Margin = new Thickness(10, 0, 0, 0),
+                Margin = new Thickness(0, 6, 8, 0),
                 Cursor = Cursors.Hand,
                 FontFamily = new FontFamily("Segoe UI"),
                 FontSize = 12
@@ -465,7 +483,7 @@ namespace Desktop_Frames
                 MinWidth = 150,
                 Height = 25,
                 Padding = new Thickness(10, 0, 10, 0),
-                Margin = new Thickness(8, 0, 0, 0),
+                Margin = new Thickness(0, 6, 8, 0),
                 Cursor = Cursors.Hand,
                 FontFamily = new FontFamily("Segoe UI"),
                 FontSize = 12
@@ -532,16 +550,18 @@ namespace Desktop_Frames
 
         private static StackPanel CreateGroupCard(StackPanel parent, string title, Color themeColor, string subtitle = null)
         {
-            Border card = new Border
+            Border card = new GameSkin
             {
-                Background = Brushes.White,
+                Skin = GameSkinKind.Paper,
+                Background = GameTheme.Paper,
                 BorderBrush = new SolidColorBrush(Color.FromRgb(225, 228, 232)),
                 BorderThickness = new Thickness(1),
                 CornerRadius = new CornerRadius(6),
                 Margin = new Thickness(8, 4, 8, 14),
                 Padding = new Thickness(14, 10, 14, 12),
                 MaxWidth = 780,
-                HorizontalAlignment = HorizontalAlignment.Left
+                // 卡片統一撐滿可用寬度（上限 780），避免各段落依內容寬度參差不齊。
+                HorizontalAlignment = HorizontalAlignment.Stretch
             };
 
             StackPanel cardContent = new StackPanel();
@@ -579,7 +599,7 @@ namespace Desktop_Frames
                     Text = subtitle,
                     FontFamily = new FontFamily("Segoe UI"),
                     FontSize = 11,
-                    Foreground = new SolidColorBrush(Color.FromRgb(120, 120, 120)),
+                    Foreground = GameTheme.InkSoft,
                     Margin = new Thickness(0, 2, 0, 0),
                     TextWrapping = TextWrapping.Wrap
                 };
@@ -641,7 +661,7 @@ namespace Desktop_Frames
                 FontFamily = new FontFamily("Segoe UI"),
                 FontSize = 11,
                 FontStyle = FontStyles.Italic,
-                Foreground = new SolidColorBrush(Color.FromRgb(120, 120, 120)),
+                Foreground = GameTheme.InkSoft,
                 TextWrapping = TextWrapping.Wrap,
                 Margin = new Thickness(6, 0, 6, 4)
             });
@@ -762,7 +782,7 @@ namespace Desktop_Frames
                 Text = "※ 備註：此處設定僅套用於之後新建的桌面便箋，不會影響既有便箋的內容與樣式。",
                 FontSize = 11,
                 FontStyle = FontStyles.Italic,
-                Foreground = new SolidColorBrush(Color.FromRgb(120, 120, 120)),
+                Foreground = GameTheme.InkSoft,
                 Margin = new Thickness(6, 0, 6, 4)
             });
 
@@ -785,7 +805,7 @@ namespace Desktop_Frames
             {
                 Text = Strings.SecIdleAutoRoll + "：" + Strings.NoteAutoRoll,
                 FontStyle = FontStyles.Italic,
-                Foreground = Brushes.Gray,
+                Foreground = GameTheme.InkSoft,
                 FontSize = 12,
                 Margin = new Thickness(6, 2, 6, 6),
                 TextWrapping = TextWrapping.Wrap
@@ -1045,7 +1065,7 @@ namespace Desktop_Frames
             var cardRules = CreateGroupCard(c, Strings.Get("SecSmartDesktopRules"), ColorSmartDesktop, "依檔案類型、副檔名或關鍵字設定自動歸檔規則，亦可手動單次觸發");
             StackPanel statsPanel = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(6, 4, 0, 10) };
             TextBlock txtTotalRules = new TextBlock { Text = Strings.Get("LblTotalRules", AutoOrganizeManager.Rules.Count), FontFamily = new FontFamily("Segoe UI"), FontSize = 13, FontWeight = FontWeights.Medium };
-            TextBlock txtSeparator = new TextBlock { Text = "   -   ", FontFamily = new FontFamily("Segoe UI"), FontSize = 13, FontWeight = FontWeights.Medium, Foreground = Brushes.Gray };
+            TextBlock txtSeparator = new TextBlock { Text = "   -   ", FontFamily = new FontFamily("Segoe UI"), FontSize = 13, FontWeight = FontWeights.Medium, Foreground = GameTheme.InkSoft };
             TextBlock txtEnabledRules = new TextBlock { Text = Strings.Get("LblEnabledRules", AutoOrganizeManager.Rules.Count(r => r.IsEnabled)), FontFamily = new FontFamily("Segoe UI"), FontSize = 13, FontWeight = FontWeights.Bold, Foreground = new SolidColorBrush(Color.FromRgb(34, 139, 34)) };
             statsPanel.Children.Add(txtTotalRules);
             statsPanel.Children.Add(txtSeparator);
@@ -1079,7 +1099,7 @@ namespace Desktop_Frames
             {
                 Text = Strings.NoteAutoOrganize,
                 FontStyle = FontStyles.Italic,
-                Foreground = Brushes.Gray,
+                Foreground = GameTheme.InkSoft,
                 Margin = new Thickness(6, 6, 6, 4),
                 TextWrapping = TextWrapping.Wrap
             });
@@ -1271,7 +1291,7 @@ namespace Desktop_Frames
                     var genCheckBoxes = FindDescendants<CheckBox>(generalContent);
                     foreach (var cb in genCheckBoxes)
                     {
-                        if (cb.Name == "StartWithWindows" && cb.IsChecked != TrayManager.IsStartWithWindows) TrayManager.Instance?.ToggleStartWithWindows(cb.IsChecked == true);
+                        if (cb.Name == "StartWithWindows") TrayManager.Instance?.ToggleStartWithWindows(cb.IsChecked == true);
                         if (cb.Name == "SingleClickToLaunch") SettingsManager.SingleClickToLaunch = cb.IsChecked == true;
                         if (cb.Name == "EnableSnapNearFrames") SettingsManager.IsSnapEnabled = cb.IsChecked == true;
                         if (cb.Name == "EnableDimensionSnap") SettingsManager.EnableDimensionSnap = cb.IsChecked == true;
@@ -1534,11 +1554,11 @@ namespace Desktop_Frames
 
         private static void CreateFooter(Grid mainGrid)
         {
-            Border f = new Border { Background = new SolidColorBrush(Color.FromRgb(248, 249, 250)), BorderBrush = new SolidColorBrush(Color.FromRgb(218, 220, 224)), BorderThickness = new Thickness(0, 1, 0, 0), Padding = new Thickness(20, 8, 20, 8) };
+            Border f = new Border { Background = GameTheme.Paper, BorderBrush = GameTheme.Outline, BorderThickness = new Thickness(0, 1, 0, 0), Padding = new Thickness(20, 8, 20, 8) };
             Grid.SetRow(f, 2);
             StackPanel sp = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right };
 
-            Button c = new Button { Content = Strings.BtnCancel, Width = 100, Height = 34, FontWeight = FontWeights.Bold, Background = Brushes.White, BorderBrush = new SolidColorBrush(Color.FromRgb(218, 220, 224)), BorderThickness = new Thickness(1), Margin = new Thickness(0, 0, 10, 0), Cursor = Cursors.Hand };
+            Button c = new Button { Content = Strings.BtnCancel, Width = 100, Height = 34, FontWeight = FontWeights.Bold, Background = GameTheme.Paper, BorderBrush = GameTheme.Outline, BorderThickness = new Thickness(1), Margin = new Thickness(0, 0, 10, 0), Cursor = Cursors.Hand };
             c.Click += (s, e) => _optionsWindow.Close();
 
             Button sv = new Button { Content = Strings.BtnSave, Width = 100, Height = 34, FontWeight = FontWeights.Bold, Background = new SolidColorBrush(_userAccentColor), Foreground = Brushes.White, BorderThickness = new Thickness(0), Cursor = Cursors.Hand };

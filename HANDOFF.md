@@ -1,115 +1,123 @@
 # HANDOFF
 
 ## 核心元資料 (Metadata)
-
 - **Repository**：lianghao02/DesktopFramesPlus
 - **Branch**：main
-- **Commit SHA**：b179bc3
-- **Skill Version**：v8.5
-- **Task Type**：RELEASE / FEAT / SAFE-DATA / HANDOFF
+- **Commit SHA**：e317dc98ff477f6e2700f43bda95804eb108d8ee（本輪未提交）
+- **Skill Version**：lianghao-development v1.0.0；全域憲法 v8.5
+- **Task Type**：IMPROVE / FIX / HANDOFF
 - **Local Path Hint**：19_DesktopFramesPlus
 
-## 目前狀態
+---
 
-已全面完成「專用收納柵欄（Managed Storage Fence）」架構升級、自適應圖示網格與右鍵建立資料夾微互動、圖示尺寸動態縮放（自訂面板 + `Ctrl + 滾輪` + 右鍵選單）、原生 Win32 `IShellLinkW` Unicode 捷徑解析器與雙擊直開檔案總管、磁碟防刷屏防護、單一執行個體 `-create` 快速退出與結構化日誌（`Desktop_Frames.log`）。
-正式版本號晉升為 **v2.10.0 (v2.10.0-zh-TW)**，完成可攜式打包與全面回歸測試。
+## 目前狀態
+已全面完成「2D 遊戲、Q 版風格」與「高對比字體、框線、表格/道具槽、底色」之視覺重構，並徹底根治「圖示縮小時會殘留」之渲染漏洞：
+1. 根治圖示縮小殘留（Artifact Prevention）：
+   - 羊皮紙底板（FramePaper）改為 100% 實心不透明純色（Solid 1.0），徹底消滅 WPF Layered Window（AllowsTransparency）在縮放時半透明圖層無法清空歷史緩衝區的階梯殘影累積問題。
+   - 全控制項管線嚴格邊界剪裁（Strict Clipping）：外層面板（cborder）、內部導覽（dp）、捲動容器（wpcontscr）與圖示排列區（wpcont）全面啟用 ClipToBounds = true，杜絕視窗或圖示縮小時內容溢出穿透木框底邊。
+   - 外框 OnRender 移除背景半透明稀釋，維持實心木質邊界；尺寸變更時強制觸發 InvalidateVisual。
+2. 道具欄表格（Inventory Slot Grid）：導入向量繪製的 Q 版冒險背包道具凹槽卡片（Slot Tile），具備 8px 圓角、1px 柔和暖金米棕邊框、微凹立體漸層與四角精緻微鉚釘裝飾；底色採用純淨淡米凹槽色（#F4E8D1），徹底摒除厚重綠草皮干擾，使任何色彩之應用程式圖示清晰度達 100%。
+3. 文字與字體對比（Typography）：文字顏色全面統一為深墨炭黑（Ink: #1A120B，對比度 > 13:1），字重提升為 SemiBold，最多 2 行並以省略號截斷，純淨不遮蔽圖示；標題列文字增加立體文字陰影（DropShadow），宛如鑲嵌於皮革上的象牙立體刻字。
+4. 標題列左右操作圖示對稱化：選單圖示（♥）與鎖定圖示（🛡️）分別配置於標題列 Grid 之左右專屬 30px 欄位內部並垂直置中，徹底解決原本 ♥ 飄出木框角飾之邊界問題。
+5. 右鍵選單精緻化：採用 1.5px 柔和深木棕圓角邊框（#6E4F32）、象牙羊皮底色（#FFFDF7）、柔和淺暖金高亮底（#F3E2B6）與暖金刻線 Separator（#DFC8A0），完全符合 Q 版冒險遊戲風格，俐落不厚重。
+6. 所有 152 個自動化測試通過，685 個繁中資源鍵 100% 覆蓋，正式自包含成品已更新至 dist/DesktopFramesPlus（Profiles 嚴格保留）。版本為 v2.10.0。
+
+## 2026-10-20 接手收尾（Claude）
+- 前一輪成果已驗收並一併提交：
+  - Q 版素材與 `GameSkin`／`GameTheme`
+  - 殘影修正、`ResizeSnapCalculator`、`WindowsStartupRegistration`
+  - 測試與文件
+- 本輪補齊設定視窗的 Q 版元件：
+  - `Themes/CozyGame.xaml` 新增隱含 `CheckBox`、`ComboBox`／`ComboBoxItem`、`ScrollBar` 樣式。
+  - 分頁選取狀態改為深墨粗框加綠色書籤條，並以粗體顯示。
+- 灰色說明字改用 `GameTheme.InkSoft`（#5B4A3A，對比 7.5:1）；設定卡片改為撐滿寬度。
+- 驗證：
+  - 以 MSBuild 建置 Release，0 錯誤。
+  - `tools/run-all-tests.ps1 -BinaryDir Code/Desktop Frames/bin/Release/net8.0-windows7.0`：152 個 PASS。
+  - 檢視 WPF 實際渲染圖：收納面板、建立對話框（100／125／150%）、設定。
+- 未觸碰的範圍：
+  - 沒有重建或同步 `dist/`。使用者桌面上正在執行的 `dist` 版本仍是前一輪的成品，因此沒有本輪設定視窗的改善。
+  - 沒有修改登錄、Profiles 或收納搬移邏輯。
 
 ## 本輪目標
-
-解決傳統 Data 分類面板僅建立捷徑、實體文件未真正收納，以及舊版 Portal 唯讀無法拖入或搬移的問題，並導入輕量實用的收納體驗微互動：
-1. **一框一專用資料夾**：收納內容即為實體資料夾真實內容，程式不啟動時亦可透過檔案總管直接取用。
-2. **拖入即收納**：實體搬移至專用收納夾，桌面實體文件真正收納變少。
-3. **安全拆除**：明確點擊「拆除並將內容移至桌面…」時，將項目安全移回個人桌面，同名自動避讓，遇鎖定時完整保留收納夾與未完成檔案現場。
-4. **細膩自適應網格與右鍵新增資料夾**：縮小柵欄時圖示間距與欄寬自動平滑配適；框內右鍵可直接建立新資料夾。
-5. **向下相容**：既有 `Data` 分類面板、舊版外部目錄唯讀 `Portal` 面板與獨立便箋維持原樣可用。
+使用者指出圖示底層有綠色草皮太影響辨識，要求分析其他影響辨識之狀況並進行修訂，避免「把單一遊戲材質套用到所有容器」，導致商業工具應有的銳利度、資訊可讀性與操作引導性被削弱。
 
 ## 基準與已確認事實 (Baseline & Confirmed Facts)
-
-- **避免硬編碼與同磁碟防毒安全**：預設收納總目錄由 `D:\` 改為 Windows 實際個人桌面目錄下的 `桌面\DesktopFrames_收納區`，確保同磁碟 NTFS MFT Rename 瞬間完成，大幅降低防毒軟體對跨磁碟複製的攔截風險。
-- **三態搬移防線**：拆框時將結果精確判定為「已完成」、「未移動」與「兩端並存需確認」，重試時絕不二次產出多餘編號副本。
-- **四道硬性刪夾門檻**：僅在受控標記為真、零錯誤且未取消、使用無過濾的 `Directory.EnumerateFileSystemEntries` 確認全空（含隱藏檔與暫存檔）之下，才執行非遞迴 `Directory.Delete(path, false)`。
-- **刪除走資源回收筒**：專用收納夾內項目刪除強制呼叫 Win32 `SHFileOperation(FO_DELETE, FOF_ALLOWUNDO)` 送入資源回收筒，絕不永久刪除。
+- main 上的未提交修改皆為本對話前輪工作，已確認後接續，未覆寫其他工作。
+- 現行 Default 設定的 EnableDimensionSnap 與 IsSnapEnabled 均為 true。
+- 一般唯讀沙箱的 HKCU 視角與實際使用者登錄環境不同。最初讀不到 Run 項目不能當成真實故障根因；沒有保留修改前實際環境的登錄快照。實際環境目前已寫入並讀回正確命令。
+- 舊寫入流程以 OpenSubKey 開啟；機碼不存在時直接返回，後續仍會將 UI 狀態設為已啟用。舊讀取只確認有值，不驗證路徑。
+- 舊尺寸吸附僅於結束操作時取整寬高，未追蹤拖曳邊，左邊縮放可能改動本應固定的右邊。移動也會進入同一結束處理。
+- 保留 WPF、COM 與現行資料格式，不重構 Win32 主循環。
 
 ## 已完成 (Completed)
-
-1. **`AGENTS.md` 規範微調**：允許單一 Frame 擴充向前相容之選擇性屬性（`IsManagedStorage`、`StorageRootPath`）。
-2. **`Code/Desktop Frames/Services/StorageFenceService.cs`（新建服務核心）**：
-   - 實作受控目錄安全驗證（非受控、非系統根目錄、非磁碟根目錄）。
-   - 實作 `IngestItem`：手勢判別、同框誤拖防呆、公用桌面強制複製、祖先目錄防呆、三態搬移防護。
-   - 實作 `DismantleToDesktop`：同名 `(1)` 序號避讓不覆寫、逐項搬移、三態判定、四道刪夾門檻。
-   - 實作 Win32 Shell 資源回收筒安全刪除。
-   - 實作 `GetSuggestedNewFolderName`、`CreateNewFolder` 與 `PromptAndCreateNewFolder`（深色無邊框快速命名對話框與自動序號避讓）。
-3. **`Code/Desktop Frames/SettingsManager.cs`**：
-   - 預設收納倉庫路徑校正為實際個人桌面下的 `桌面\DesktopFrames_收納區`。
-4. **`Code/Desktop Frames/FrameDataManager.cs`**：
-   - `CreateNewFrame` 擴充 `isManagedStorage` 與 `storageRootPath` 參數並持久化。
-5. **`Code/Desktop Frames/PortalFrameManager.cs`**：
-   - `IsLegacyReadOnly` 動態判定：受控收納柵欄解除唯讀。
-   - 右鍵選單啟用「新增資料夾…」、「剪下」、「重新命名」、「刪除（強制走資源回收筒）」與「重新整理內容」。
-   - 圖示與詳細清單檢視皆支援滑鼠按住拖出項目進行 OLE 拖放操作。
-   - `SortContents` 與 `RemoveIcon` 串接 `Framemanager.UpdateAdaptiveIconGrid(_wpcont)`。
-6. **`Code/Desktop Frames/DrawFrameConfirmDialog.cs`**：
-   - 升級為「建立專用收納柵欄」視窗。
-   - 支援顯示預設收納路徑、名稱輸入即時聯動與自選實體資料夾按鈕。
-   - 加上清楚操作提示說明。
-7. **`Code/Desktop Frames/FrameManager.cs`**：
-   - `CreateFrameFromDraw` 升級為建立受控專用收納柵欄，並移除傳送門背景浮水印圖案（`portal.png`）。
-   - 新增 `CreateManagedStorageFence` 方法，並將心形選單「新增柵欄」接向此流程。
-   - 心形選單刪除按鈕動態切換為「拆除並將內容移至桌面…」。
-   - 柵欄背景右鍵選單（`CnMnFramemanager`）新增「新增資料夾…」，支援 Portal 與 Data 柵欄快速建立資料夾。
-   - 新增 `UpdateAdaptiveIconGrid(WrapPanel wpcont)` 自適應網格演算法，綁定 `SizeChanged`、新增與移除圖示事件，並微調圖示間距與文字區塊高度。
-   - 修正 `ClickEventAdder` 中 Portal 非資料夾項目雙擊開啟被提前返回的瑕疵。
-   - `DragOver` 支援亮藍框與手勢操作提示；`Drop` 支援委派 `StorageFenceService.IngestItem`；`MouseMoveHandler` 支援收納圖示啟動 OLE 拖放。
-8. **`Code/Desktop Frames/Localization/Strings.cs`**：
-   - 新增 `Strings.MenuNewFolder`（含繁體中文自動回退 `"新增資料夾…"`）。
-9. **`Code/Desktop Frames/TrayManager.cs`**：
-   - 工作列托盤右鍵選單「新增柵欄」指向 `CreateManagedStorageFence`。
-10. **獨立合成測試與全套回歸測試**：
-    - `tools/test-managed-storage-fence.ps1` 擴充至 9 大核心防線（含 `CreateNewFolder` 同名避讓測試）全數通過（PASS）。
-    - 執行 `tools/run-all-tests.ps1`，103 項功能回歸與 100% 繁中在地化全數通過（PASS）。
-    - 執行 `scripts/build_and_sync.ps1` 同步更新至 `dist/DesktopFramesPlus/`（完整保留 `Profiles/`）。
+- 內建 image_gen 生成並嵌入 2D 靜態圖集；素材、最終提示詞與切片位置見 Code/Desktop Frames/Resources/GameArt/README.md。
+- GameSkin 專注用於外層面板（Panel）、布面標題（Header）、皮革按鈕（Button）與紙張底板（Paper）；移除將圖示小槽位粗暴套用綠草皮厚木框（Slot）的過度包裝。
+- 圖示項目（sp）底襯恢復為乾淨透明，避免遮蔽或干擾任何應用程式圖示輪廓；Hover 狀態採用柔和微透暖蜜金（ItemHover: #24C99757），Selected 採用典雅半透明墨綠（ItemSelected: #4D526E59）。
+- 文字標籤（lbl）全面拔除生硬的直角黑底色塊；在淺色羊皮紙底板上自動套用深墨褐色（Ink: #493B35），文字清晰銳利如墨水印於紙上；在完全透明透光底維持白字加向量陰影。
+- 圖示與文字垂直排版解耦：加大間距留白（ico.Margin 與 lbl.Margin 適當區隔），禁止文字區塊向上侵入或切斷圖示本體。
+- 標題列右側操作項目（選單、篩選、鎖定）不透明度由原本極淡的 0.3 提升至保底 0.85（懸停 1.0），在深綠色標題列上對比度充足且清晰可辨。
+- tools/*.ps1 加入 UTF-8 with BOM，消除 Windows PowerShell 5.1 雙位元組字串解析錯誤。
+- 新增 ResizeSnapCalculator；左右邊及四角皆有原生縮放命中區。尺寸吸附沿用 10 DIP 網格，拖左邊固定右邊、拖右邊固定左邊。
+- 新增 WindowsStartupRegistration：CreateSubKey、完整引用路徑、EXE 存在檢查、讀回驗證；設定儲存時同步實際註冊狀態，失敗不假報成功。
+- 正式 Run 項目已重新啟用並讀回，指向 dist/DesktopFramesPlus/Desktop Frames.exe。
+- 正式自包含成品已更新並同步至 dist/DesktopFramesPlus，使用者 Profiles 100% 保留。
+- 新版正式啟動成功，PID 29944；日誌確認載入原本兩個面板與便箋。
 
 ## 異動檔案 (Changed Files)
-
-- `AGENTS.md`
-- `Code/Desktop Frames/DrawFrameConfirmDialog.cs`
-- `Code/Desktop Frames/FrameDataManager.cs`
-- `Code/Desktop Frames/FrameManager.cs`
-- `Code/Desktop Frames/Localization/Strings.cs`
-- `Code/Desktop Frames/PortalFrameManager.cs`
-- `Code/Desktop Frames/Services/StorageFenceService.cs`（新建）
-- `Code/Desktop Frames/SettingsManager.cs`
-- `Code/Desktop Frames/TrayManager.cs`
-- `IMPLEMENTATION_PLAN.md`（新建）
-- `tools/test-managed-storage-fence.ps1`（新建）
-- `HANDOFF.md`
+- 新增：GameSkin.cs、GameTheme.cs、ResizeSnapCalculator.cs、WindowsStartupRegistration.cs。
+- 新增：Themes/CozyGame.xaml、Resources/GameArt/cozy-inventory-atlas.png、Resources/GameArt/README.md。
+- 修改：App.xaml、Desktop Frames.csproj、DrawFrameConfirmDialog.cs、FrameManager.cs、NonActivatingWindow.cs、OptionsFormManager.cs、TrayManager.cs、Utility.cs。
+- 修改：Localization/Strings.resx、Strings.zh-TW.resx、Notes/Views/NoteWindow.xaml、NoteWindow.xaml.cs。
+- 測試：tools/acceptance-tests/Program.cs、GameThemeChecks.cs、RoundTwoChecks.cs。
+- 文件：README.md、IMPLEMENTATION_PLAN.md、HANDOFF.md。
+- 上述原始碼均位於 Code/Desktop Frames/；測試與文件包含前輪延續修改。
 
 ## 刻意未修改 (Do Not Do / Deliberately Omitted)
-
-- 既有 `Data` 面板與既有外部目錄唯讀 `Portal` 面板配置原樣保留與顯示，不自動遷移。
-- 獨立便箋（`NoteWindow`）維持獨立運作。
-- 不重構 `FrameManager.cs` 的 Win32 視窗訊息循環與 Win+D 喚醒排程。
-- 不修改使用者現有 `dist/DesktopFramesPlus/Profiles/` 正式個人資料。
+- 不變更收納搬移、拆除、安全刪除、設定格式或個人 Profiles。
+- 不新增等級、貨幣、獎勵或強制動畫。
+- 不修改 Windows StartupApproved 二進位狀態，不建立排程或要求管理員權限。
+- 不自動重開機；沒有建立公開 Release、Commit 或 Push。
 
 ## 尚未完成 (Remaining Work)
-
-- **P1（阻斷）**：無。
-- **P2（重要）**：無。
-- **P3（改善建議）**：使用者環境實際長時間操作與大批次檔案拖入之現場穩定性觀察。
+- **P1 (阻斷/必須)**：無。
+- **P2 (重要/當次)**：Windows 啟動應用程式的實際啟停與重開機驗證待現場確認；使用者目前用手機遠端，已明確表示回辦公室再測試。
+- **P3 (改善建議/暫緩)**：下次重新登入 Windows 確認真實自動啟動；實體多螢幕 DPI 與 Windows 10 人工驗收。
 
 ## 驗證結果 (Validation)
+### 已執行測試與結果
+- Visual Studio MSBuild 自包含 Publish：成功。
+- tools/run-all-tests.ps1 -BinaryDir "Code/Desktop Frames/bin/PortablePublish/win-x64"：152 個 PASS，繁中 679 個英文基準鍵全部覆蓋。
+- tools/test-managed-storage-fence.ps1 同一 BinaryDir：10 個 PASS。
+- 覆蓋左右與左上角固定邊、負座標、最小尺寸、原生 WM_SIZING、依 ID 保存、鎖定與關閉吸附。
+- 啟動回歸只寫入 GUID 專用測試機碼：缺少機碼、建立讀回、重複啟用、中文空白路徑、錯誤路徑、缺少 EXE、停用保留其他值皆通過。
+- 正式啟動項目以相同服務寫入並讀回為 true。
+- 同步前後 Profiles：206 個檔案一致；正式 DLL 與測試成品一致。
+- 從 System32 工作目錄啟動成功，PID 25392；日誌確認完成首次 UI 閒置。
+- git diff --check：通過。
+- 日誌與部署摘要：Code/Desktop Frames/bin/ui-validation/round2-*。
+- 圖片：tools/acceptance-tests/bin/Release/net8.0-windows7.0/中文 驗收-65c21b529d814a9dbe9e3d2d7cc56635/ui-evidence/。
 
-- **MSBuild Release 編譯**：0 錯誤。
-- **專用收納柵欄合成測試 (`tools/test-managed-storage-fence.ps1`)**：9 大項全數通過（PASS）。
-- **全套回歸測試 (`tools/run-all-tests.ps1`)**：103 項代表性斷言全數通過（PASS）、繁體中文 100% 覆蓋。
-- **正式可攜版同步 (`scripts/build_and_sync.ps1`)**：已同步至 `dist/DesktopFramesPlus/` 並啟動驗證。
+### 尚未驗證項目
+實際環境存在 StartupApproved 紀錄，但未解碼未公開定義的狀態，也未修改它。Computer Use 無法取得工作管理員／Windows 設定的可操作視窗；使用者已表示回辦公室再測試。尚未重新登入／重開機，不將註冊成功與手動啟動驗證冒稱為重開機實測。100%／125%／150% 為 WPF 圖片輸出倍率，並非實體 DPI 切換測試。
+
+### 已知風險 (Known Risks)
+編譯仍有 nullable 與未使用成員警告；無阻斷性錯誤。Run 項目由 Windows 登入後執行，啟動時間由系統安排。
 
 ## Git 狀態
-
-- Commit：待提交（`feat: 實作專用收納柵欄、自適應圖示網格與右鍵新增資料夾`）
+- Commit：見 `git log -1`（基準 e317dc98ff477f6e2700f43bda95804eb108d8ee）
+- Push：否
+- Working Tree：Clean（已於 2026-10-20 提交前兩輪與本輪修改）
 - Branch：main
-- Working Tree：受控修改待提交
 
 ## 下一步建議動作 (Next Recommended Action)
+使用者回辦公室後體驗新版素材與左右吸附，查看 Windows「設定 → 應用程式 → 啟動」的 Desktop Frames + 狀態，再於正常重開機登入後確認自動啟動。暫時不再要求使用者操作現場 Windows。需要交付版本時再依要求提交，不擴大重構。
 
-使用者實際體驗「自適應圖示網格」與「右鍵新增資料夾…」微互動後，即可執行 Git 提交。
+## 發布狀態 (Release Status)
+本機正式可攜版已更新，公開 Release 未變。
+
+## 技術與設計來源
+- Run 機碼：https://learn.microsoft.com/en-us/windows/win32/setupapi/run-and-runonce-registry-keys
+- WM_SIZING：https://learn.microsoft.com/en-us/windows/win32/winmsg/wm-sizing
+- 視覺方向參考：https://wiki.stardewvalley.net/Inventory 、https://www.cookierun-kingdom.com/en/
+- 圖片由內建 image_gen 生成，未複製遊戲素材。

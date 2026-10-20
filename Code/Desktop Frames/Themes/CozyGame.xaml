@@ -1,0 +1,298 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:local="clr-namespace:Desktop_Frames">
+    <!-- Q 版 2D 收納介面：高對比色彩與精緻遊戲互動狀態集中於此。 -->
+    <SolidColorBrush x:Key="GamePaper" Color="#FAF1DE"/>
+    <SolidColorBrush x:Key="GameInk" Color="#1A120B"/>
+    <SolidColorBrush x:Key="GameOutline" Color="#6E4F32"/>
+    <SolidColorBrush x:Key="GameAccent" Color="#2E5338"/>
+    <SolidColorBrush x:Key="GameHoney" Color="#E5B24E"/>
+    <Style TargetType="{x:Type Separator}">
+        <Setter Property="Background" Value="#DFC8A0"/>
+        <Setter Property="Height" Value="1"/>
+        <Setter Property="Margin" Value="6,3"/>
+    </Style>
+    <Style TargetType="{x:Type Button}">
+        <Setter Property="Foreground" Value="{StaticResource GameInk}"/>
+        <Setter Property="Background" Value="{StaticResource GamePaper}"/>
+        <Setter Property="BorderBrush" Value="{StaticResource GameOutline}"/>
+        <Setter Property="BorderThickness" Value="2"/>
+        <Setter Property="Padding" Value="8,3"/>
+        <Setter Property="MinHeight" Value="28"/>
+        <Setter Property="FontFamily" Value="Segoe UI, Microsoft JhengHei UI"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type Button}">
+                    <Grid Margin="0,0,0,3">
+                        <Border Background="{StaticResource GameOutline}" CornerRadius="9" Margin="0,3,0,-3"/>
+                        <local:GameSkin x:Name="Face" Skin="Button" Background="{TemplateBinding Background}"
+                                BorderBrush="{StaticResource GameOutline}" BorderThickness="2" CornerRadius="9">
+                            <Grid>
+                                <Border x:Name="Highlight" Background="White" Opacity="0" CornerRadius="7" IsHitTestVisible="False"/>
+                                <ContentPresenter TextElement.Foreground="{StaticResource GameInk}" Margin="{TemplateBinding Padding}" HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                                  VerticalAlignment="Center" RecognizesAccessKey="True"/>
+                            </Grid>
+                        </local:GameSkin>
+                        <!-- 選取狀態：深墨粗外框 + 左側綠色書籤條，皮革紋理上也能一眼辨識目前分頁。 -->
+                        <Border x:Name="SelectedMark" BorderBrush="{StaticResource GameInk}" BorderThickness="3" CornerRadius="9" IsHitTestVisible="False" Visibility="Collapsed"/>
+                        <Border x:Name="SelectedBar" Background="{StaticResource GameAccent}" Width="6" CornerRadius="3" HorizontalAlignment="Left" Margin="7,7,0,7" IsHitTestVisible="False" Visibility="Collapsed"/>
+                        <Border x:Name="FocusRing" BorderBrush="{StaticResource GameAccent}" BorderThickness="2"
+                                CornerRadius="11" Margin="-3" Visibility="Collapsed" IsHitTestVisible="False"/>
+                    </Grid>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="local:GameTheme.IsSelected" Value="True">
+                            <Setter TargetName="SelectedMark" Property="Visibility" Value="Visible"/>
+                            <Setter TargetName="SelectedBar" Property="Visibility" Value="Visible"/>
+                            <Setter Property="FontWeight" Value="Bold"/>
+                        </Trigger>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Highlight" Property="Opacity" Value="0.16"/>
+                        </Trigger>
+                        <Trigger Property="IsKeyboardFocused" Value="True">
+                            <Setter TargetName="FocusRing" Property="Visibility" Value="Visible"/>
+                        </Trigger>
+                        <Trigger Property="IsDefaulted" Value="True">
+                            <Setter TargetName="FocusRing" Property="Visibility" Value="Visible"/>
+                        </Trigger>
+                        <Trigger Property="IsPressed" Value="True">
+                            <Setter TargetName="Face" Property="RenderTransform">
+                                <Setter.Value><TranslateTransform Y="2"/></Setter.Value>
+                            </Setter>
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Opacity" Value="0.45"/>
+                            <Setter Property="Cursor" Value="Arrow"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+    <Style TargetType="{x:Type TextBox}">
+        <Setter Property="Background" Value="#FFFBF2"/>
+        <Setter Property="Foreground" Value="{StaticResource GameInk}"/>
+        <Setter Property="BorderBrush" Value="{StaticResource GameOutline}"/>
+        <Setter Property="BorderThickness" Value="2"/>
+        <Setter Property="SelectionBrush" Value="#9DC8AC"/>
+        <Setter Property="CaretBrush" Value="{StaticResource GameInk}"/>
+        <Style.Triggers>
+            <Trigger Property="IsKeyboardFocused" Value="True">
+                <Setter Property="BorderBrush" Value="{StaticResource GameAccent}"/>
+            </Trigger>
+        </Style.Triggers>
+    </Style>
+    <Style x:Key="GameContextMenu" TargetType="{x:Type ContextMenu}">
+        <!-- 保留系統 MenuItem 範本，維持子選單、勾選與鍵盤操作。 -->
+        <Style.Resources>
+            <SolidColorBrush x:Key="{x:Static SystemColors.MenuBrushKey}" Color="#FFFDF7"/>
+            <SolidColorBrush x:Key="{x:Static SystemColors.MenuTextBrushKey}" Color="#1A120B"/>
+            <SolidColorBrush x:Key="{x:Static SystemColors.HighlightBrushKey}" Color="#F3E2B6"/>
+            <SolidColorBrush x:Key="{x:Static SystemColors.HighlightTextBrushKey}" Color="#1A120B"/>
+            <Style TargetType="{x:Type MenuItem}">
+                <Setter Property="Foreground" Value="#1A120B"/>
+                <Setter Property="Background" Value="Transparent"/>
+                <Setter Property="Padding" Value="10,6"/>
+                <Setter Property="FontFamily" Value="Segoe UI, Microsoft JhengHei UI"/>
+                <Setter Property="FontWeight" Value="Medium"/>
+                <Setter Property="FontSize" Value="12"/>
+                <Style.Triggers>
+                    <Trigger Property="IsHighlighted" Value="True"><Setter Property="Background" Value="#F3E2B6"/></Trigger>
+                    <Trigger Property="IsEnabled" Value="False"><Setter Property="Foreground" Value="#9E9488"/></Trigger>
+                </Style.Triggers>
+            </Style>
+        </Style.Resources>
+        <Setter Property="Background" Value="#FFFDF7"/>
+        <Setter Property="Foreground" Value="#1A120B"/>
+        <Setter Property="BorderBrush" Value="{StaticResource GameOutline}"/>
+        <Setter Property="BorderThickness" Value="1.5"/>
+        <Setter Property="Padding" Value="4"/>
+        <Setter Property="FontFamily" Value="Segoe UI, Microsoft JhengHei UI"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type ContextMenu}">
+                    <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="1.5" CornerRadius="8" Padding="4">
+                        <Border.Effect>
+                            <DropShadowEffect Color="#2A1B12" BlurRadius="12" ShadowDepth="3" Opacity="0.22"/>
+                        </Border.Effect>
+                        <ScrollViewer CanContentScroll="True" VerticalScrollBarVisibility="Auto">
+                            <ItemsPresenter KeyboardNavigation.DirectionalNavigation="Cycle"/>
+                        </ScrollViewer>
+                    </Border>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+    <Style TargetType="{x:Type ContextMenu}" BasedOn="{StaticResource GameContextMenu}"/>
+    <!-- 勾選框：圓角墨框方塊，勾選後為森林綠底白色勾號。 -->
+    <Style TargetType="{x:Type CheckBox}">
+        <Setter Property="Foreground" Value="{StaticResource GameInk}"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type CheckBox}">
+                    <StackPanel Orientation="Horizontal" Background="Transparent">
+                        <Border x:Name="Box" Width="20" Height="20" CornerRadius="6" Background="#FFFBF2"
+                                BorderBrush="{StaticResource GameOutline}" BorderThickness="2,2,2,3" VerticalAlignment="Center">
+                            <Path x:Name="Check" Data="M2.5,7.5 L6,11 L12.5,3" Stroke="White" StrokeThickness="2.6"
+                                  StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round"
+                                  HorizontalAlignment="Center" VerticalAlignment="Center" Visibility="Collapsed"/>
+                        </Border>
+                        <ContentPresenter Margin="8,0,0,0" VerticalAlignment="Center" RecognizesAccessKey="True"/>
+                    </StackPanel>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Box" Property="Background" Value="#F3E2B6"/>
+                        </Trigger>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="Box" Property="Background" Value="{StaticResource GameAccent}"/>
+                            <Setter TargetName="Box" Property="BorderBrush" Value="{StaticResource GameInk}"/>
+                            <Setter TargetName="Check" Property="Visibility" Value="Visible"/>
+                        </Trigger>
+                        <Trigger Property="IsKeyboardFocused" Value="True">
+                            <Setter TargetName="Box" Property="BorderBrush" Value="{StaticResource GameAccent}"/>
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Opacity" Value="0.5"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- 下拉選單：羊皮紙底墨框，右側蜂蜜色下拉鈕。 -->
+    <Style TargetType="{x:Type ComboBoxItem}">
+        <Setter Property="Foreground" Value="{StaticResource GameInk}"/>
+        <Setter Property="Padding" Value="8,4"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type ComboBoxItem}">
+                    <Border x:Name="Bd" Background="Transparent" CornerRadius="5" Padding="{TemplateBinding Padding}" Margin="0,1">
+                        <ContentPresenter VerticalAlignment="Center"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsHighlighted" Value="True"><Setter TargetName="Bd" Property="Background" Value="#F3E2B6"/></Trigger>
+                        <Trigger Property="IsSelected" Value="True"><Setter TargetName="Bd" Property="Background" Value="#DCEBDD"/></Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+    <Style TargetType="{x:Type ComboBox}">
+        <Setter Property="Foreground" Value="{StaticResource GameInk}"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="MinHeight" Value="26"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type ComboBox}">
+                    <Grid>
+                        <ToggleButton x:Name="Toggle" Focusable="False" ClickMode="Press"
+                                      IsChecked="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}">
+                            <ToggleButton.Template>
+                                <ControlTemplate TargetType="{x:Type ToggleButton}">
+                                    <Border x:Name="Bd" Background="#FFFBF2" BorderBrush="{StaticResource GameOutline}" BorderThickness="2" CornerRadius="7">
+                                        <Border HorizontalAlignment="Right" Width="22" Background="{StaticResource GameHoney}"
+                                                BorderBrush="{StaticResource GameOutline}" BorderThickness="2,0,0,0" CornerRadius="0,5,5,0">
+                                            <Path Data="M0,0 L8,0 L4,5 Z" Fill="{StaticResource GameInk}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                        </Border>
+                                    </Border>
+                                    <ControlTemplate.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Bd" Property="Background" Value="#FFFFFF"/></Trigger>
+                                        <Trigger Property="IsChecked" Value="True"><Setter TargetName="Bd" Property="BorderBrush" Value="{StaticResource GameAccent}"/></Trigger>
+                                    </ControlTemplate.Triggers>
+                                </ControlTemplate>
+                            </ToggleButton.Template>
+                        </ToggleButton>
+                        <ContentPresenter IsHitTestVisible="False" Content="{TemplateBinding SelectionBoxItem}"
+                                          ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
+                                          ContentTemplateSelector="{TemplateBinding ItemTemplateSelector}"
+                                          Margin="8,0,28,0" VerticalAlignment="Center" HorizontalAlignment="Left"/>
+                        <Popup x:Name="PART_Popup" Placement="Bottom" IsOpen="{TemplateBinding IsDropDownOpen}"
+                               AllowsTransparency="True" Focusable="False" PopupAnimation="Slide">
+                            <Border Background="#FFFDF7" BorderBrush="{StaticResource GameOutline}" BorderThickness="2" CornerRadius="7" Padding="3" Margin="0,3,0,0"
+                                    MinWidth="{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}}" MaxHeight="{TemplateBinding MaxDropDownHeight}">
+                                <ScrollViewer><ItemsPresenter KeyboardNavigation.DirectionalNavigation="Contained"/></ScrollViewer>
+                            </Border>
+                        </Popup>
+                    </Grid>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value="0.5"/></Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- 捲軸：木色圓角條，取代系統灰色捲軸。 -->
+    <Style x:Key="GameScrollPage" TargetType="{x:Type RepeatButton}">
+        <Setter Property="Focusable" Value="False"/>
+        <Setter Property="IsTabStop" Value="False"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type RepeatButton}"><Border Background="Transparent"/></ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+    <Style x:Key="GameScrollThumb" TargetType="{x:Type Thumb}">
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type Thumb}">
+                    <Border x:Name="Bar" Background="#B98A5A" BorderBrush="{StaticResource GameOutline}" BorderThickness="1.5" CornerRadius="5"/>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Bar" Property="Background" Value="{StaticResource GameHoney}"/></Trigger>
+                        <Trigger Property="IsDragging" Value="True"><Setter TargetName="Bar" Property="Background" Value="#D49A2E"/></Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+    <Style TargetType="{x:Type ScrollBar}">
+        <Setter Property="Width" Value="11"/>
+        <Setter Property="MinWidth" Value="11"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type ScrollBar}">
+                    <Border Background="#33B98A5A" CornerRadius="5">
+                        <Track x:Name="PART_Track" IsDirectionReversed="True">
+                            <Track.DecreaseRepeatButton><RepeatButton Command="ScrollBar.PageUpCommand" Style="{StaticResource GameScrollPage}"/></Track.DecreaseRepeatButton>
+                            <Track.IncreaseRepeatButton><RepeatButton Command="ScrollBar.PageDownCommand" Style="{StaticResource GameScrollPage}"/></Track.IncreaseRepeatButton>
+                            <Track.Thumb><Thumb Style="{StaticResource GameScrollThumb}" MinHeight="24"/></Track.Thumb>
+                        </Track>
+                    </Border>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+        <Style.Triggers>
+            <Trigger Property="Orientation" Value="Horizontal">
+                <Setter Property="Width" Value="Auto"/>
+                <Setter Property="MinWidth" Value="0"/>
+                <Setter Property="Height" Value="11"/>
+                <Setter Property="MinHeight" Value="11"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="{x:Type ScrollBar}">
+                            <Border Background="#33B98A5A" CornerRadius="5">
+                                <Track x:Name="PART_Track">
+                                    <Track.DecreaseRepeatButton><RepeatButton Command="ScrollBar.PageLeftCommand" Style="{StaticResource GameScrollPage}"/></Track.DecreaseRepeatButton>
+                                    <Track.IncreaseRepeatButton><RepeatButton Command="ScrollBar.PageRightCommand" Style="{StaticResource GameScrollPage}"/></Track.IncreaseRepeatButton>
+                                    <Track.Thumb><Thumb Style="{StaticResource GameScrollThumb}" MinWidth="24"/></Track.Thumb>
+                                </Track>
+                            </Border>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Trigger>
+        </Style.Triggers>
+    </Style>
+
+    <Style TargetType="{x:Type ToolTip}">
+        <Setter Property="Background" Value="{StaticResource GamePaper}"/>
+        <Setter Property="Foreground" Value="{StaticResource GameInk}"/>
+        <Setter Property="BorderBrush" Value="{StaticResource GameOutline}"/>
+        <Setter Property="BorderThickness" Value="2"/>
+        <Setter Property="Padding" Value="10,6"/>
+    </Style>
+</ResourceDictionary>

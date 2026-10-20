@@ -16,6 +16,10 @@ public class NonActivatingWindow : Window
     private const int WS_EX_NOACTIVATE = 0x08000000;
     private const int WS_EX_TOOLWINDOW = 0x00000080;
     private bool _focusPreventionEnabled = true;
+    public ResizeEdge ActiveResizeEdge { get; private set; } = ResizeEdge.None;
+    [StructLayout(LayoutKind.Sequential)]
+    private struct NativeRect { public int Left, Top, Right, Bottom; }
+    [DllImport("user32.dll")] private static extern bool GetWindowRect(IntPtr hwnd, out NativeRect rect);
 
     // --- Idle Fade-Out Fields ---
     private System.Windows.Threading.DispatcherTimer _idleTimer;
@@ -40,13 +44,43 @@ public class NonActivatingWindow : Window
         const int WM_ENTERSIZEMOVE = 0x0231; // Resizing starts
         const int WM_EXITSIZEMOVE = 0x0232;  // Resizing ends
 
+        if (msg == 0x0084 && ResizeMode != ResizeMode.NoResize && ResizeMode != ResizeMode.CanMinimize && GetWindowRect(hwnd, out var bounds))
+        {
+            long position = lParam.ToInt64();
+            var dpi = System.Windows.Media.VisualTreeHelper.GetDpi(this);
+            var point = new Point(((short)(position & 0xffff) - bounds.Left) / dpi.DpiScaleX,
+                ((short)((position >> 16) & 0xffff) - bounds.Top) / dpi.DpiScaleY);
+            int hit = ResizeSnapCalculator.HitTest(point, new Size((bounds.Right - bounds.Left) / dpi.DpiScaleX, (bounds.Bottom - bounds.Top) / dpi.DpiScaleY));
+            if (hit != 0) { handled = true; return new IntPtr(hit); }
+        }
+        if (msg == 0x0214 && ResizeMode != ResizeMode.NoResize)
+        {
+            ActiveResizeEdge = (ResizeEdge)wParam.ToInt32();
+            if (SettingsManager.EnableDimensionSnap && ActiveResizeEdge >= ResizeEdge.Left && ActiveResizeEdge <= ResizeEdge.BottomRight)
+            {
+                var proposed = Marshal.PtrToStructure<NativeRect>(lParam);
+                var dpi = System.Windows.Media.VisualTreeHelper.GetDpi(this);
+                var snapped = ResizeSnapCalculator.Calculate(new Rect(proposed.Left / dpi.DpiScaleX, proposed.Top / dpi.DpiScaleY,
+                    (proposed.Right - proposed.Left) / dpi.DpiScaleX, (proposed.Bottom - proposed.Top) / dpi.DpiScaleY),
+                    ActiveResizeEdge, MinWidth, MinHeight, MaxWidth, MaxHeight);
+                proposed.Left = (int)Math.Round(snapped.Left * dpi.DpiScaleX);
+                proposed.Top = (int)Math.Round(snapped.Top * dpi.DpiScaleY);
+                proposed.Right = (int)Math.Round(snapped.Right * dpi.DpiScaleX);
+                proposed.Bottom = (int)Math.Round(snapped.Bottom * dpi.DpiScaleY);
+                Marshal.StructureToPtr(proposed, lParam, false);
+                handled = true;
+                return new IntPtr(1);
+            }
+        }
         if (msg == WM_ENTERSIZEMOVE)
         {
+            ActiveResizeEdge = ResizeEdge.None;
             Framemanager.OnResizingStarted(this);
         }
         else if (msg == WM_EXITSIZEMOVE)
         {
             Framemanager.OnResizingEnded(this);
+            ActiveResizeEdge = ResizeEdge.None;
         }
 
         // Handle existing focus prevention

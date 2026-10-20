@@ -20,21 +20,21 @@ namespace Desktop_Frames
 
         public DrawFrameConfirmDialog(Rect rect, string defaultTitle)
         {
-            Title = Strings.Get("DlgCreateStorageFenceTitle", "建立專用收納柵欄");
+            Title = Strings.Get("DlgCreateStorageFenceTitle");
             Width = 480;
-            Height = 360;
+            Height = 444;
             WindowStartupLocation = WindowStartupLocation.CenterScreen;
             ResizeMode = ResizeMode.NoResize;
             WindowStyle = WindowStyle.None;
             AllowsTransparency = true;
             Background = Brushes.Transparent;
 
-            Border mainBorder = new Border
+            Border mainBorder = new GameSkin
             {
-                Background = Brushes.White,
-                BorderBrush = new SolidColorBrush(Color.FromRgb(218, 220, 224)),
+                Background = GameTheme.Paper,
+                BorderBrush = GameTheme.Outline,
                 BorderThickness = new Thickness(1),
-                CornerRadius = new CornerRadius(0),
+                CornerRadius = new CornerRadius(16),
                 Margin = new Thickness(8),
                 Effect = new DropShadowEffect
                 {
@@ -46,17 +46,22 @@ namespace Desktop_Frames
                 }
             };
 
+            GameTheme.StyleDialog(mainBorder);
+            FontFamily = new FontFamily("Segoe UI, Microsoft JhengHei UI");
+            Foreground = GameTheme.Ink;
             Grid rootGrid = new Grid();
             rootGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto }); // Header
             rootGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) }); // Body
             rootGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto }); // Footer
 
             // --- HEADER ---
-            Border header = new Border
+            Border header = new GameSkin
             {
-                Background = GetAccentBrush(),
+                Skin = GameSkinKind.Header,
+                Background = GameTheme.Accent,
                 Padding = new Thickness(15),
-                Height = 50
+                Height = 56,
+                CornerRadius = new CornerRadius(12, 12, 0, 0)
             };
             Grid headerGrid = new Grid();
             headerGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
@@ -64,16 +69,27 @@ namespace Desktop_Frames
 
             TextBlock titleBlock = new TextBlock
             {
-                Text = Strings.Get("DlgCreateStorageFenceTitle", "建立專用收納柵欄"),
+                Text = Strings.Get("DlgCreateStorageFenceTitle"),
                 FontSize = 16,
                 FontWeight = FontWeights.Bold,
                 Foreground = Brushes.White,
-                VerticalAlignment = VerticalAlignment.Center
+                VerticalAlignment = VerticalAlignment.Center,
+                Effect = new DropShadowEffect
+                {
+                    Color = Color.FromRgb(11, 35, 20),
+                    BlurRadius = 2.5,
+                    ShadowDepth = 1.2,
+                    Direction = 270,
+                    Opacity = 0.85
+                }
             };
 
             Button closeBtn = new Button
             {
                 Content = "✕",
+                Width = 32,
+                Height = 30,
+                Padding = new Thickness(0),
                 Background = Brushes.Transparent,
                 BorderThickness = new Thickness(0),
                 Foreground = Brushes.White,
@@ -83,7 +99,10 @@ namespace Desktop_Frames
             };
             closeBtn.Click += (s, e) => Close();
 
-            headerGrid.Children.Add(titleBlock);
+            var titleStack = new StackPanel { Orientation = Orientation.Horizontal };
+            titleStack.Children.Add(GameTheme.StorageBadge());
+            titleStack.Children.Add(titleBlock);
+            headerGrid.Children.Add(titleStack);
             headerGrid.Children.Add(closeBtn);
             Grid.SetColumn(closeBtn, 1);
             header.Child = headerGrid;
@@ -109,7 +128,7 @@ namespace Desktop_Frames
                 Height = 30,
                 VerticalContentAlignment = VerticalAlignment.Center,
                 Padding = new Thickness(6, 0, 6, 0),
-                BorderBrush = new SolidColorBrush(Color.FromRgb(218, 220, 224))
+                BorderBrush = GameTheme.Outline
             };
             _txtTitle.SelectAll();
 
@@ -117,7 +136,7 @@ namespace Desktop_Frames
             {
                 Text = Strings.Get("LblFrameSize", (int)rect.Width, (int)rect.Height),
                 FontSize = 12,
-                Foreground = Brushes.Gray,
+                Foreground = GameTheme.Ink,
                 Margin = new Thickness(0, 3, 0, 0)
             };
 
@@ -147,7 +166,7 @@ namespace Desktop_Frames
                 Height = 30,
                 VerticalContentAlignment = VerticalAlignment.Center,
                 Padding = new Thickness(6, 0, 6, 0),
-                BorderBrush = new SolidColorBrush(Color.FromRgb(218, 220, 224))
+                BorderBrush = GameTheme.Outline
             };
             _txtPath.TextChanged += (s, e) => { _isCustomPath = true; };
 
@@ -168,8 +187,8 @@ namespace Desktop_Frames
                 Height = 30,
                 Margin = new Thickness(6, 0, 0, 0),
                 Cursor = System.Windows.Input.Cursors.Hand,
-                Background = Brushes.White,
-                BorderBrush = new SolidColorBrush(Color.FromRgb(218, 220, 224))
+                Background = GameTheme.Paper,
+                BorderBrush = GameTheme.Outline
             };
             btnBrowse.Click += (s, e) =>
             {
@@ -198,8 +217,8 @@ namespace Desktop_Frames
             TextBlock safeHint = new TextBlock
             {
                 Text = "📥 拖入項目將實體搬入專用資料夾，框內自動即時同步\n🧹 拆除柵欄時內容將安全移至個人桌面，絕不覆寫原檔",
-                FontSize = 11,
-                Foreground = new SolidColorBrush(Color.FromRgb(34, 139, 34)),
+                FontSize = 12,
+                Foreground = GameTheme.Accent,
                 TextWrapping = TextWrapping.Wrap,
                 Margin = new Thickness(0, 4, 0, 0),
                 LineHeight = 16
@@ -211,8 +230,8 @@ namespace Desktop_Frames
             Border footer = new Border
             {
                 Padding = new Thickness(16),
-                Background = new SolidColorBrush(Color.FromRgb(248, 249, 250)),
-                BorderBrush = new SolidColorBrush(Color.FromRgb(218, 220, 224)),
+                Background = GameTheme.Paper,
+                BorderBrush = GameTheme.Outline,
                 BorderThickness = new Thickness(0, 1, 0, 0)
             };
 
@@ -225,12 +244,13 @@ namespace Desktop_Frames
             Button btnCancel = new Button
             {
                 Content = Strings.BtnCancel,
+                IsCancel = true,
                 Width = 85,
                 Height = 32,
                 Margin = new Thickness(0, 0, 10, 0),
                 Cursor = System.Windows.Input.Cursors.Hand,
-                Background = Brushes.White,
-                BorderBrush = new SolidColorBrush(Color.FromRgb(218, 220, 224)),
+                Background = GameTheme.Paper,
+                BorderBrush = GameTheme.Outline,
                 BorderThickness = new Thickness(1)
             };
             btnCancel.Click += (s, e) => Close();
@@ -238,9 +258,10 @@ namespace Desktop_Frames
             Button btnCreate = new Button
             {
                 Content = Strings.BtnCreate,
+                IsDefault = true,
                 Width = 85,
                 Height = 32,
-                Background = GetAccentBrush(),
+                Background = GameTheme.Accent,
                 Foreground = Brushes.White,
                 BorderThickness = new Thickness(0),
                 FontWeight = FontWeights.Bold,

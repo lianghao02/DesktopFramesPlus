@@ -1,4 +1,4 @@
-param(
+﻿param(
     [switch]$Rebuild,
     [switch]$ValidateOnly
 )
@@ -10,10 +10,21 @@ $projectRoot = Split-Path -Parent $PSScriptRoot
 $exePath = Join-Path $projectRoot "dist\DesktopFramesPlus\Desktop Frames.exe"
 $codeDir = Join-Path $projectRoot "Code\Desktop Frames"
 
-# 檢查若目前已有執行中的 Desktop Frames，提示或重啟
-$running = Get-Process | Where-Object { $_.ProcessName -eq "Desktop Frames" }
+# 檢查若目前已有執行中的 Desktop Frames，安全關閉以利重啟或重新建置
+$running = Get-Process -Name "Desktop Frames" -ErrorAction SilentlyContinue
 if ($running) {
-    Write-Host "[DesktopFramesPlus] 偵測到已有 Desktop Frames 程序正在執行 (PID: $($running.Id -join ', '))。" -ForegroundColor Yellow
+    Write-Host "[DesktopFramesPlus] 偵測到已有 Desktop Frames 程序正在執行 (PID: $($running.Id -join ', '))，正在安全結束以重新啟動..." -ForegroundColor Yellow
+    foreach ($p in $running) {
+        try {
+            $null = $p.CloseMainWindow()
+            if (-not $p.WaitForExit(1500)) {
+                Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue
+            }
+        } catch {
+            Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue
+        }
+    }
+    Start-Sleep -Milliseconds 400
 }
 
 $needBuild = $Rebuild -or (-not (Test-Path $exePath))
@@ -36,7 +47,6 @@ if ($ValidateOnly) {
 }
 
 if ($needBuild) {
-    if ($running) { throw '請先正常結束 Desktop Frames 再建置；不會關閉正在使用的程式或覆寫其配置。' }
     Write-Host "[DesktopFramesPlus] 正在執行可攜版建置並同步至 dist\DesktopFramesPlus (Profiles 100% 保留)..." -ForegroundColor Cyan
     $buildScript = Join-Path $projectRoot "scripts\build_and_sync.ps1"
     & powershell -NoProfile -ExecutionPolicy Bypass -File $buildScript
@@ -45,7 +55,15 @@ if ($needBuild) {
 
 if (Test-Path $exePath) {
     Write-Host "[DesktopFramesPlus] 正在以最新正式版本啟動: $exePath" -ForegroundColor Green
-    Start-Process -FilePath $exePath -WorkingDirectory (Split-Path -Parent $exePath)
+    $psi = New-Object System.Diagnostics.ProcessStartInfo
+    $psi.FileName = $exePath
+    $psi.WorkingDirectory = (Split-Path -Parent $exePath)
+    $psi.UseShellExecute = $true
+    $proc = [System.Diagnostics.Process]::Start($psi)
+    Start-Sleep -Milliseconds 800
+    if ($proc -and -not $proc.HasExited) {
+        Write-Host "[DesktopFramesPlus] 啟動成功，進程已在背景運行 (PID: $($proc.Id))。" -ForegroundColor Green
+    }
 } else {
     Write-Error "無法啟動：執行檔不存在: $exePath"
     exit 1

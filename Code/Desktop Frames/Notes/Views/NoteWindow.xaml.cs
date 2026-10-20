@@ -56,7 +56,7 @@ namespace Desktop_Frames.Notes.Views
             Item.Color = colorKey;
             var palette = NoteColors.GetPalette(colorKey);
 
-            MainBorder.BorderBrush = palette.BorderBrush;
+            MainBorder.BorderBrush = GameTheme.Outline;
             HeaderBorder.Background = palette.HeaderBrush;
             ContentTextBox.Background = palette.BodyBrush;
             Background = palette.BodyBrush;

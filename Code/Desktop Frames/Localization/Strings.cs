@@ -109,6 +109,8 @@ namespace Desktop_Frames.Localization
         public static string Get(string key, params object[] args)
         {
             string format = Get(key);
+            if (format == key && args.Length == 1 && args[0] is string fallback && !format.Contains("{0}"))
+                return fallback;
             try
             {
                 return string.Format(Culture, format, args);

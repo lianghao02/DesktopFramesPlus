@@ -1055,123 +1055,11 @@ namespace Desktop_Frames
 
         public static Style GetThemedContextMenuStyle(dynamic frame)
         {
-            try
-            {
-                // Safely extract the ID without dynamic binding crashes
-                string targetId = null;
-                try
-                {
-                    if (frame is Newtonsoft.Json.Linq.JObject jObj) targetId = jObj["Id"]?.ToString();
-                    else targetId = frame.Id?.ToString();
-                }
-                catch { }
-
-                // Fetch live data safely, avoiding FirstOrDefault cross-contamination
-                dynamic liveFrame = frame;
-                if (!string.IsNullOrEmpty(targetId))
-                {
-                    foreach (dynamic f in FrameDataManager.FrameData)
-                    {
-                        string fId = null;
-                        try { fId = (f is Newtonsoft.Json.Linq.JObject jf) ? jf["Id"]?.ToString() : f.Id?.ToString(); } catch { }
-
-                        if (fId == targetId)
-                        {
-                            liveFrame = f;
-                            break;
-                        }
-                    }
-                }
-
-                // 1. Determine Background Color safely
-                string frameColorName = null;
-                try
-                {
-                    if (liveFrame is Newtonsoft.Json.Linq.JObject jf) frameColorName = jf["CustomColor"]?.ToString();
-                    else frameColorName = liveFrame.CustomColor?.ToString();
-                }
-                catch { }
-
-                if (string.IsNullOrEmpty(frameColorName)) frameColorName = SettingsManager.SelectedColor;
-
-                System.Windows.Media.Color bgColor = System.Windows.Media.Colors.Gray;
-                try
-                {
-                    var drawingColor = Utility.GetColorFromName(frameColorName);
-                    bgColor = System.Windows.Media.Color.FromArgb(255, drawingColor.R, drawingColor.G, drawingColor.B);
-                }
-                catch { }
-
-                // 2. Determine Foreground Color (Luminance check)
-                double luminance = (0.299 * bgColor.R + 0.587 * bgColor.G + 0.114 * bgColor.B) / 255.0;
-                System.Windows.Media.Color fgColor = luminance > 0.5 ? System.Windows.Media.Colors.Black : System.Windows.Media.Colors.White;
-
-                string bgHex = $"#{bgColor.A:X2}{bgColor.R:X2}{bgColor.G:X2}{bgColor.B:X2}";
-                string fgHex = $"#{fgColor.A:X2}{fgColor.R:X2}{fgColor.G:X2}{fgColor.B:X2}";
-
-                // 3. Generate XAML Style using the universal banner
-                string xamlStyle = $@"
-                <Style xmlns='http://schemas.microsoft.com/winfx/2006/xaml/presentation' 
-                       xmlns:x='http://schemas.microsoft.com/winfx/2006/xaml' 
-                       TargetType='ContextMenu'>
-                    <Style.Resources>
-                        <SolidColorBrush x:Key='{{x:Static SystemColors.MenuBrushKey}}' Color='{bgHex}'/>
-                        <SolidColorBrush x:Key='{{x:Static SystemColors.ControlBrushKey}}' Color='{bgHex}'/>
-                        <SolidColorBrush x:Key='{{x:Static SystemColors.WindowBrushKey}}' Color='{bgHex}'/>
-                        <SolidColorBrush x:Key='{{x:Static SystemColors.MenuTextBrushKey}}' Color='{fgHex}'/>
-                        <SolidColorBrush x:Key='{{x:Static SystemColors.ControlTextBrushKey}}' Color='{fgHex}'/>
-         <Style TargetType='MenuItem'>
-                            <Setter Property='Background' Value='{bgHex}'/>
-                            <Setter Property='Foreground' Value='{fgHex}'/>
-                            <Setter Property='BorderThickness' Value='0'/>
-                            <Setter Property='BorderBrush' Value='Transparent'/>
-                        </Style>
-                    </Style.Resources>
-                    <Setter Property='Background' Value='{bgHex}'/>
-                    <Setter Property='Foreground' Value='{fgHex}'/>
-                    <Setter Property='Template'>
-                        <Setter.Value>
-                            <ControlTemplate TargetType='ContextMenu'>
-                                <Border Background='{{TemplateBinding Background}}' BorderBrush='#555555' BorderThickness='1' Padding='1'>
-                                    <Grid>
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width='30'/>
-                                            <ColumnDefinition Width='*'/>
-                                        </Grid.ColumnDefinitions>
-                                        
-                                    <Border Grid.Column='0' Background='#151515'>
-                                            <Image Source='pack://application:,,,/Resources/DesktopFramesVertical.png' Stretch='Uniform' VerticalAlignment='Top' Margin='0,5,0,0'/>
-                                        </Border>
-                                        
-                                        <ScrollViewer Grid.Column='1' Margin='2,0,0,0' VerticalScrollBarVisibility='Hidden'>
-                                            <ItemsPresenter KeyboardNavigation.DirectionalNavigation='Cycle'/>
-                                        </ScrollViewer>
-                                    </Grid>
-                                </Border>
-                            </ControlTemplate>
-                        </Setter.Value>
-                    </Setter>
-                </Style>";
-
-                return (Style)System.Windows.Markup.XamlReader.Parse(xamlStyle);
-            }
-            catch (Exception ex)
-            {
-                LogManager.Log(LogManager.LogLevel.Error, LogManager.LogCategory.UI, $"Failed to parse themed ContextMenu style: {ex.Message}");
-                return null;
-            }
+            return GameTheme.ContextMenuStyle;
         }
 
 
-
-
-
-
-
-
-        /// <summary>
-        /// 統一安全刪除面板：依據 GUID 徹底刪除、安全歸還所屬動物回桌面、清理所有內部集合與托盤追蹤
-        /// </summary>
+        /// <summary>安全移除面板配置，保留既有資料防線。</summary>
         public static void DeleteFrameWithConfirmation(dynamic frame, Window parentWindow = null)
         {
             if (frame == null) return;
@@ -2821,6 +2709,7 @@ namespace Desktop_Frames
                 else if (itemsType == "Data" && win != null)
                 {
                     RefreshFrameUsingFormApproach(win, liveFrame);
+                    win.InvalidateVisual();
                 }
             }
             catch (Exception ex)
@@ -4074,7 +3963,7 @@ namespace Desktop_Frames
                     return;
                 }
             }
-            DockPanel dp = new DockPanel();
+            DockPanel dp = new DockPanel { ClipToBounds = true };
             // Get frame border color and thickness from frame data
             System.Windows.Media.Brush borderBrush = null;
             double borderThickness = 0;
@@ -4103,8 +3992,9 @@ namespace Desktop_Frames
                 borderBrush = null;
                 borderThickness = 0;
             }
-            Border cborder = new Border
+            Border cborder = new GameSkin
             {
+                Skin = GameSkinKind.Panel,
                 Background = new SolidColorBrush(System.Windows.Media.Color.FromArgb(100, 0, 0, 0)),
                 // --- 現代磨砂 Dock 風格：預設 14px 柔和圓角；直角模式維持 0px ---
                 CornerRadius = SettingsManager.FramesWithNoRoundCorners ? new CornerRadius(0) : new CornerRadius(14),
@@ -4112,6 +4002,16 @@ namespace Desktop_Frames
                 BorderThickness = new Thickness(borderThickness > 0 ? borderThickness : 1), // 預設 1px 細膩邊界
                 Child = dp
             };
+            cborder.BorderBrush = string.IsNullOrEmpty(GetSafeProperty(frame, "FrameBorderColor")) ? GameTheme.Outline : borderBrush;
+            cborder.BorderThickness = new Thickness(0);
+            cborder.Padding = new Thickness(16, 8, 16, 12);
+            cborder.ClipToBounds = true;
+            cborder.SizeChanged += (sender, args) =>
+            {
+                cborder.Padding = cborder.ActualHeight < 60 ? new Thickness(8, 1, 8, 0) : new Thickness(16, 8, 16, 12);
+                cborder.InvalidateVisual();
+            };
+            cborder.SnapsToDevicePixels = true;
             // Add Double Click Handler
             cborder.MouseLeftButtonDown += (s, e) =>
             {
@@ -4150,14 +4050,21 @@ namespace Desktop_Frames
 
                 Name = "FrameMenuIcon", // New! Name
                 Text = MenuSymbol,
-                FontSize = 22,
+                FontSize = 16,
                 Foreground = System.Windows.Media.Brushes.White, // Match title and icon text color
-                Margin = new Thickness(5, -3, 0, 0), // Position top-left, aligned with title
+                Margin = new Thickness(8, 0, 0, 0), // Position neatly inside banner left column
                 HorizontalAlignment = HorizontalAlignment.Left,
-                VerticalAlignment = VerticalAlignment.Top,
+                VerticalAlignment = VerticalAlignment.Center,
                 Cursor = Cursors.Hand,
-                Opacity = (double)SettingsManager.MenuTintValue / 100 // 0.3 // Lower tint by default
-
+                Opacity = Math.Max(0.85, (double)SettingsManager.MenuTintValue / 100),
+                Effect = new DropShadowEffect
+                {
+                    Color = System.Windows.Media.Color.FromRgb(11, 35, 20),
+                    BlurRadius = 2,
+                    ShadowDepth = 1,
+                    Direction = 270,
+                    Opacity = 0.75
+                }
             };
   
             _heartTextBlocks[frame] = heart;
@@ -4174,7 +4081,7 @@ namespace Desktop_Frames
 
             heart.MouseLeave += (s, e) =>
             {
-                double targetOpacity = (double)SettingsManager.MenuTintValue / 100;
+                double targetOpacity = Math.Max(0.85, (double)SettingsManager.MenuTintValue / 100);
 
                 DoubleAnimation fadeBack = new DoubleAnimation
                 {
@@ -4186,10 +4093,6 @@ namespace Desktop_Frames
 
                 heart.BeginAnimation(UIElement.OpacityProperty, fadeBack);
             };
-
-
-            dp.Children.Add(heart);
-            Panel.SetZIndex(heart, 100); // Ensure heart is above titleGrid to receive clicks
 
             // Store heart TextBlock reference for this frame
             _heartTextBlocks[frame] = heart;
@@ -4266,14 +4169,22 @@ namespace Desktop_Frames
                 //     Text = "🔓",
                 Name = "FrameLockIcon", // New! Name
                 Text = LockSymbol,//"🛡️",
-                                FontSize = 14,
+                FontSize = 14,
                 Foreground = frame.IsLocked?.ToString().ToLower() == "true" ? System.Windows.Media.Brushes.Red : System.Windows.Media.Brushes.White,
-                Margin = new Thickness(0, 3, 2, 0), // Adjusted for top-right positioning
+                Margin = new Thickness(0, 0, 8, 0), // Adjusted for top-right positioning neatly inside banner
                 HorizontalAlignment = HorizontalAlignment.Right,
-                VerticalAlignment = VerticalAlignment.Top,
+                VerticalAlignment = VerticalAlignment.Center,
                 Cursor = Cursors.Hand,
                 ToolTip = frame.IsLocked?.ToString().ToLower() == "true" ? "Frame is locked (click to unlock)" : "Frame is unlocked (click to lock)",
-                Opacity = (double)SettingsManager.MenuTintValue / 100 // 0.3 // Lower tint by default
+                Opacity = Math.Max(0.85, (double)SettingsManager.MenuTintValue / 100),
+                Effect = new DropShadowEffect
+                {
+                    Color = System.Windows.Media.Color.FromRgb(11, 35, 20),
+                    BlurRadius = 2,
+                    ShadowDepth = 1,
+                    Direction = 270,
+                    Opacity = 0.75
+                }
             };
 
   
@@ -4287,7 +4198,7 @@ namespace Desktop_Frames
 
             lockIcon.MouseLeave += (s, e) =>
             {
-                double targetOpacity = (double)SettingsManager.MenuTintValue / 100;
+                double targetOpacity = Math.Max(0.85, (double)SettingsManager.MenuTintValue / 100);
 
                 DoubleAnimation fadeBack = new DoubleAnimation
                 {
@@ -4354,12 +4265,17 @@ namespace Desktop_Frames
             // Create a Grid for the titlebar - move here to ensure it is created before mouse handler
             Grid titleGrid = new Grid
             {
-                Background = new SolidColorBrush(System.Windows.Media.Color.FromArgb(20, 0, 0, 0))
+                Background = GameTheme.Accent
             };
-            titleGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(0, GridUnitType.Pixel) }); // Col 0: Spacer
+            var headerSkin = new GameSkin { Skin = GameSkinKind.Header, IsHitTestVisible = false };
+            Grid.SetColumnSpan(headerSkin, 4);
+            titleGrid.Children.Add(headerSkin);
+            titleGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(30, GridUnitType.Pixel) }); // Col 0: Menu Icon
             titleGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) }); // Col 1: Title
             titleGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });                      // Col 2: Filter Icon (Auto width)
             titleGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(30, GridUnitType.Pixel) }); // Col 3: Lock Icon
+            Grid.SetColumn(heart, 0);
+            titleGrid.Children.Add(heart);
                                                                                                                       // End of ctrl+click handler
             ContextMenu CnMnFramemanager = new ContextMenu();
 
@@ -5262,8 +5178,18 @@ namespace Desktop_Frames
                 HorizontalContentAlignment = HorizontalAlignment.Center,
                 HorizontalAlignment = HorizontalAlignment.Stretch,
                 Cursor = Cursors.SizeAll,
-                FontWeight = isBoldTitle ? FontWeights.Bold : FontWeights.Normal,
-                FontSize = titleFontSize // Apply custom title text size
+                FontWeight = isBoldTitle ? FontWeights.Bold : FontWeights.SemiBold,
+                FontSize = titleFontSize, // Apply custom title text size
+                Background = System.Windows.Media.Brushes.Transparent,
+                FontFamily = new System.Windows.Media.FontFamily("Segoe UI, Microsoft JhengHei UI"),
+                Effect = new DropShadowEffect
+                {
+                    Color = System.Windows.Media.Color.FromRgb(11, 35, 20),
+                    BlurRadius = 2.5,
+                    ShadowDepth = 1.2,
+                    Direction = 270,
+                    Opacity = 0.85
+                }
             };
             Grid.SetColumn(titlelabel, 1);
             titleGrid.Children.Add(titlelabel);
@@ -5806,7 +5732,7 @@ namespace Desktop_Frames
                     Cursor = Cursors.Hand,
                     Margin = new Thickness(0, 0, 5, 0),
                     ToolTip = Strings.TooltipFilterFiles,
-                    Opacity = hasInitialFilter ? 1.0 : ((double)SettingsManager.MenuTintValue / 100)
+                    Opacity = hasInitialFilter ? 1.0 : Math.Max(0.85, (double)SettingsManager.MenuTintValue / 100)
                 };
 
                 filterIcon.MouseEnter += (s, e) =>
@@ -5820,7 +5746,7 @@ namespace Desktop_Frames
                     // Skip fade out if a filter is actively applied
                     if (filterIcon.Foreground != System.Windows.Media.Brushes.Orange)
                     {
-                        double targetOpacity = (double)SettingsManager.MenuTintValue / 100;
+                        double targetOpacity = Math.Max(0.85, (double)SettingsManager.MenuTintValue / 100);
                         DoubleAnimation fadeBack = new DoubleAnimation
                         {
                             From = 1.0,
@@ -6631,7 +6557,8 @@ namespace Desktop_Frames
                 ItemHeight = double.NaN,
                 HorizontalAlignment = HorizontalAlignment.Stretch,
                 VerticalAlignment = VerticalAlignment.Top,
-                Margin = new Thickness(6, 4, 6, 6)
+                Margin = new Thickness(6, 4, 6, 6),
+                ClipToBounds = true
             };
 
             // CRITICAL: Tag the panel with the frame ID so AddIcon can find settings
@@ -6643,15 +6570,19 @@ namespace Desktop_Frames
             {
                 Content = wpcont,
                 VerticalScrollBarVisibility = SettingsManager.DisableFrameScrollbars ? ScrollBarVisibility.Hidden : ScrollBarVisibility.Auto,
+                HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
+                ClipToBounds = true
             };
 
             wpcont.SizeChanged += (s, e) =>
             {
                 if (e.WidthChanged) UpdateAdaptiveIconGrid(wpcont);
+                wpcont.InvalidateVisual();
             };
             wpcontscr.SizeChanged += (s, e) =>
             {
                 if (e.WidthChanged) UpdateAdaptiveIconGrid(wpcont);
+                wpcont.InvalidateVisual();
             };
             wpcontscr.PreviewMouseWheel += (s, e) =>
             {
@@ -7615,7 +7546,7 @@ namespace Desktop_Frames
 
             if (SettingsManager.EnableDimensionSnap)
             {
-                win.SizeChanged += UpdateSizeFeedback;
+                // 尺寸提示僅在使用者實際拖曳邊界期間訂閱。
             }
 
 
@@ -7987,6 +7918,18 @@ namespace Desktop_Frames
             {
                 ico.Effect = Utility.CreateIconEffect(SettingsManager.IconVisibilityEffect);
             }
+            else
+            {
+                // 環境微陰影：保護淺色與細線條圖示在羊皮紙底板上的清晰輪廓，避免邊界融底
+                ico.Effect = new DropShadowEffect
+                {
+                    Color = Colors.Black,
+                    BlurRadius = 3,
+                    ShadowDepth = 1,
+                    Direction = 270,
+                    Opacity = 0.22
+                };
+            }
             // --- NEW: Intercept Internal Blank Spacer ---
             if (filePath != null && filePath.StartsWith("INTERNAL_BLANK_"))
             {
@@ -8080,8 +8023,9 @@ namespace Desktop_Frames
             if (displayName.Length > SettingsManager.MaxDisplayNameLength)
                 displayName = displayName.Substring(0, SettingsManager.MaxDisplayNameLength) + "...";
 
-            System.Windows.Media.Brush textBrush = System.Windows.Media.Brushes.White;
-            if (!string.IsNullOrEmpty(textColorName))
+            // 預設字體顏色：淺色羊皮紙底板採用深墨炭黑 Ink，確保高對比銳利度與可讀性；透明透光底則維持白字
+            System.Windows.Media.Brush textBrush = SettingsManager.TintValue > 0 ? GameTheme.Ink : System.Windows.Media.Brushes.White;
+            if (!string.IsNullOrEmpty(textColorName) && textColorName != "Default")
             {
                 try { textBrush = new SolidColorBrush(Utility.GetColorFromName(textColorName)); } catch { }
             }
@@ -8094,31 +8038,38 @@ namespace Desktop_Frames
                 TextAlignment = TextAlignment.Center,
                 HorizontalAlignment = HorizontalAlignment.Center,
                 Foreground = textBrush,
-                MaxWidth = baseCellWidth - 2.0,
+                FontFamily = new System.Windows.Media.FontFamily("Segoe UI, Microsoft JhengHei UI"),
+                FontWeight = FontWeights.SemiBold,
+                FontSize = 11.5,
+                MaxWidth = baseCellWidth - 4.0,
                 MaxHeight = 34, // 精確限制最多 2 行（行高 16px * 2 + 2px 容差），超過自動在第 2 行末端顯示省略號（...）
                 LineHeight = 16,
                 LineStackingStrategy = LineStackingStrategy.BlockLineHeight,
+                Margin = new Thickness(3, 2, 3, 4),
                 Padding = new Thickness(2, 0, 2, 0),
-                Opacity = targetIconOpacity
+                Background = System.Windows.Media.Brushes.Transparent,
+                Opacity = 1.0 // 文字永遠維持 100% 實心，絕不打折以確保最高銳利度與可讀性
             };
 
-            // 拔除 DropShadowEffect 點陣渲染負擔（大幅瘦身記憶體）；未停用陰影時提供純向量微黑半透明底色確保各色桌布易讀性
-            if (!disableShadow)
+            // 保持文字底板乾淨透明，絕不使用覆蓋圖示的矩形遮罩塊
+            if (SettingsManager.TintValue == 0 && !disableShadow)
             {
-                lbl.Background = new SolidColorBrush(System.Windows.Media.Color.FromArgb(40, 0, 0, 0));
+                lbl.Effect = new DropShadowEffect { Color = Colors.Black, BlurRadius = 3, ShadowDepth = 1, Opacity = 0.65 };
             }
 
             sp.Children.Add(lbl);
-            sp.Background = System.Windows.Media.Brushes.Transparent;
+            var itemTile = GameTheme.ItemTile();
+            sp.SetValue(GameTheme.ItemBackgroundProperty, itemTile);
+            sp.Background = itemTile;
             sp.MouseEnter += (s, e) =>
             {
                 if (_currentlySelectedIconPanel != sp)
-                    sp.Background = new SolidColorBrush(System.Windows.Media.Color.FromArgb(32, 255, 255, 255));
+                    sp.Background = GameTheme.ItemHoverBrush;
             };
             sp.MouseLeave += (s, e) =>
             {
                 if (_currentlySelectedIconPanel != sp)
-                    sp.Background = System.Windows.Media.Brushes.Transparent;
+                    sp.Background = itemTile;
             };
             sp.Tag = new { FilePath = filePath, IsFolder = isFolder, Arguments = (string)(iconDict.ContainsKey("Arguments") ? iconDict["Arguments"] : null) };
             sp.ToolTip = new ToolTip { Content = originalDisplayName + "\nLoading target..." };
@@ -9493,7 +9444,7 @@ namespace Desktop_Frames
         {
             DeselectIcon();
             _currentlySelectedIconPanel = sp;
-            sp.Background = new SolidColorBrush(System.Windows.Media.Color.FromArgb(90, 0, 120, 215));
+            sp.Background = GameTheme.ItemSelectedBrush;
 
             try
             {
@@ -9524,7 +9475,7 @@ namespace Desktop_Frames
                 }
                 catch { }
 
-                _currentlySelectedIconPanel.Background = System.Windows.Media.Brushes.Transparent;
+                _currentlySelectedIconPanel.Background = GameTheme.GetItemBackground(_currentlySelectedIconPanel);
                 _currentlySelectedIconPanel = null;
             }
         }
@@ -10781,6 +10732,7 @@ namespace Desktop_Frames
         {
             if (SettingsManager.EnableDimensionSnap)
             {
+                frame.SizeChanged -= UpdateSizeFeedback;
                 frame.SizeChanged += UpdateSizeFeedback;
                 ShowSizeFeedback(frame.Width, frame.Height, frame);
             }
@@ -10788,32 +10740,24 @@ namespace Desktop_Frames
 
         public static void OnResizingEnded(NonActivatingWindow frame)
         {
-            if (SettingsManager.EnableDimensionSnap)
+            frame.SizeChanged -= UpdateSizeFeedback;
+            if (!SettingsManager.EnableDimensionSnap || frame.ActiveResizeEdge == ResizeEdge.None) return;
+            var snapped = ResizeSnapCalculator.Calculate(new Rect(frame.Left, frame.Top, frame.Width, frame.Height),
+                frame.ActiveResizeEdge, frame.MinWidth, frame.MinHeight, frame.MaxWidth, frame.MaxHeight);
+            frame.Left = snapped.Left;
+            frame.Top = snapped.Top;
+            frame.Width = snapped.Width;
+            frame.Height = snapped.Height;
+            string id = frame.Tag?.ToString();
+            dynamic data = GetFrameData().FirstOrDefault(f => f.Id?.ToString() == id);
+            if (data != null)
             {
-                frame.SizeChanged -= UpdateSizeFeedback;
-
-                double snappedWidth = Math.Round(frame.Width / 10.0) * 10;
-                double snappedHeight = Math.Round(frame.Height / 10.0) * 10;
-
-                frame.Width = snappedWidth;
-                frame.Height = snappedHeight;
-
-                dynamic FrameData = GetFrameData().FirstOrDefault(f => f.Title == frame.Title);
-                if (FrameData != null)
-                {
-                    FrameData.Width = snappedWidth;
-                    FrameData.Height = snappedHeight;
-                    FrameDataManager.SaveFrameData();
-                }
-
-                // Show one last time. The unified timer in ShowSizeFeedback will clean it up automatically.
-                ShowSizeFeedback(snappedWidth, snappedHeight, frame);
+                data.X = snapped.Left; data.Y = snapped.Top;
+                data.Width = snapped.Width; data.Height = snapped.Height;
+                FrameDataManager.SaveFrameData();
             }
+            ShowSizeFeedback(snapped.Width, snapped.Height, frame);
         }
-
-
-
-
 
         // --- HELPER: Efficient Dead Shortcut Check using Cached States ---
         private static bool HasDeadShortcuts(dynamic frame)

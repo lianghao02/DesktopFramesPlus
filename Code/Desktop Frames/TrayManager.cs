@@ -651,7 +651,7 @@ namespace Desktop_Frames
                     LogManager.Log(LogManager.LogLevel.Debug, LogManager.LogCategory.General, "TrayManager: Legacy 'Frames' shortcut removed.");
                 }
 
-                IsStartWithWindows = enable;
+                IsStartWithWindows = WindowsStartupRegistration.IsEnabled();
                 LogManager.Log(LogManager.LogLevel.Info, LogManager.LogCategory.Settings, $"Start with Windows set to: {enable}");
             }
             catch (Exception ex)
@@ -696,43 +696,12 @@ namespace Desktop_Frames
         // 3. Helper to write/delete the Registry Key
         private void SetRegistryStartup(bool enable)
         {
-            using (RegistryKey key = Registry.CurrentUser.OpenSubKey(RUN_KEY_PATH, true))
-            {
-                if (key == null) return;
-
-                if (enable)
-                {
-                    // We wrap the path in quotes to be safe against spaces in path
-                    string exePath = Process.GetCurrentProcess().MainModule.FileName;
-                    key.SetValue(APP_NAME, $"\"{exePath}\"");
-                }
-                else
-                {
-                    // If disabling, remove the value
-                    key.DeleteValue(APP_NAME, false);
-                }
-            }
+            WindowsStartupRegistration.SetEnabled(enable);
         }
 
-        // 4. Status Checker (Replaces IsInStartupFolder)
         private bool CheckIfStartWithWindowsEnabled()
         {
-            // First, check if the Registry Key exists
-            using (RegistryKey key = Registry.CurrentUser.OpenSubKey(RUN_KEY_PATH, false))
-            {
-                if (key != null && key.GetValue(APP_NAME) != null)
-                {
-                    return true;
-                }
-            }
-
-            // ====================================================================
-            // [LEGACY "FENCES" MIGRATION - DO NOT REMOVE]
-            // Retained to safely scrub older installations of trademarked terms.
-            // ====================================================================
-            // Fallback: Check if the old shortcut exists (in case migration hasn't run yet)
-            string startupPath = Environment.GetFolderPath(Environment.SpecialFolder.Startup);
-            return File.Exists(Path.Combine(startupPath, "Desktop Fences.lnk"));
+            return WindowsStartupRegistration.IsEnabled();
         }
         // --- NEW METHODS END ---
 

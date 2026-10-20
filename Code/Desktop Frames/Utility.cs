@@ -223,7 +223,7 @@ namespace Desktop_Frames
 
             // Use TintValue from SettingsManager to determine if tint is applied
             frameControl.Background = SettingsManager.TintValue > 0
-                ? new SolidColorBrush(finalColor) { Opacity = SettingsManager.TintValue / 100.0 }
+                ? GameTheme.FramePaper(finalColor, SettingsManager.TintValue / 100.0)
                 : Brushes.Transparent;
 
             // TABS FEATURE: Refresh tab colors when frame color changes

@@ -21,6 +21,7 @@ internal static class Program
         typeof(Application).GetField("_resourceAssembly", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic)!
             .SetValue(null, typeof(ProfileManager).Assembly);
         var app = new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
+        app.Resources.MergedDictionaries.Add(GameTheme.Resources);
         app.Startup += async (_, _) =>
         {
             try { await Run(args.Single()); app.Shutdown(0); }
@@ -82,6 +83,7 @@ internal static class Program
         Check(panel != null && panel.IsVisible && new WindowInteropHelper(panel).Handle != IntPtr.Zero, "正式 Data 面板建立原生視窗");
         string orderBefore = string.Join("|", ((JArray)loaded!.Items).Select(i => i["Filename"] + ":" + i["DisplayOrder"]));
         Check(panel!.Left == 120 && panel.Top == 150 && panel.Width == 400 && panel.Height == 300, "重建視窗位置與尺寸一致");
+        GameThemeChecks.Run(panel!);
         panel!.Close();
         FrameDataManager.LoadFrameData(checker);
         loaded = FrameDataManager.FindFrameById(id);
@@ -98,6 +100,8 @@ internal static class Program
         note.Item.Content = "代表性便箋\n繁體中文與第二行";
         note.ApplyColor("green");
         note.ApplyFontSize(18);
+        ((System.Windows.Controls.TextBox)note.FindName("ContentTextBox")).Text = note.Item.Content;
+        GameThemeChecks.Render(note, "便箋");
         NoteManager.Instance.HideAllNotes();
         Check(!note.IsVisible, "便箋隱藏");
         NoteManager.Instance.ShowAllNotes();
@@ -115,6 +119,7 @@ internal static class Program
         Check(corrupt.SequenceEqual(File.ReadAllBytes(notesPath)) && Directory.GetFiles(Path.GetDirectoryName(notesPath)!, "notes.json.corrupt.*").Length > 0, "損毀便箋備份且不被空清單覆寫");
         Check(hash.SequenceEqual(SHA256.HashData(File.ReadAllBytes(source))), "驗收完成後來源雜湊不變");
         StartupSafetyChecks(checker);
+        RoundTwoChecks.Run(checker);
     }
 
     private static void StartupSafetyChecks(TargetChecker checker)

@@ -2054,4 +2054,6 @@
   <data name="MsgConfigurationProtected" xml:space="preserve">
     <value>面板或選項設定讀取失敗，已保護原始檔案，禁止覆寫。部分面板可能不會顯示，變更也可能無法保存。請還原有效設定或排除存取問題，再重新啟動程式。</value>
   </data>
+  <data name="DlgCreateStorageFenceTitle" xml:space="preserve"><value>建立專用收納柵欄</value></data>
+  <data name="MenuRefreshContents" xml:space="preserve"><value>重新整理內容</value></data>
 </root>

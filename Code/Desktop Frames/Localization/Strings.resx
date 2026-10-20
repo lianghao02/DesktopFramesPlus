@@ -2041,4 +2041,6 @@ This cannot be undone.</value>
   <data name="MsgConfigurationProtected" xml:space="preserve">
     <value>A panel or options configuration could not be read. The original file has been protected from overwriting. Some panels may not appear and changes may not be saved. Restore a valid configuration or resolve the access problem, then restart the application.</value>
   </data>
+  <data name="DlgCreateStorageFenceTitle" xml:space="preserve"><value>Create storage frame</value></data>
+  <data name="MenuRefreshContents" xml:space="preserve"><value>Refresh contents</value></data>
 </root>

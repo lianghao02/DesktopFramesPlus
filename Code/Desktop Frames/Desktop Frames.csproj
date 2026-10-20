@@ -15,6 +15,7 @@
 	</PropertyGroup>
 
 	<ItemGroup>
+        <Resource Include="Resources\GameArt\cozy-inventory-atlas.png" />
 		<None Remove="file-WhiteX.png" />
 		<None Remove="fileX.png" />
 		<None Remove="folder-White.png" />

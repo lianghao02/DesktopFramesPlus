@@ -14,6 +14,8 @@
   <img width="150" height="150" alt="Desktop Frames Logo" src="https://github.com/user-attachments/assets/a88f7771-8ae8-4be8-86dc-4e8aabfa5a77" />
 </p>
 
+介面採用 **Q 版 2D 遊戲收納素材**：木框、布面標題、皮革按鈕、紙張紋理、收納格與收納箱標誌，素材嵌入程式並以九宮格伸縮。左右邊皆可縮放及尺寸吸附，拖曳時保留另一側位置。既有收納資料與設定格式維持相容；勾選「隨 Windows 啟動」並儲存後，會驗證登入啟動註冊。[素材與生成紀錄](Code/Desktop%20Frames/Resources/GameArt/README.md)。
+
 ---
 
 ## 📌 關於此分支與來源引註 (About This Fork & Upstream Attribution)
