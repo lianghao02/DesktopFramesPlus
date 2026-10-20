@@ -320,7 +320,7 @@ namespace Desktop_Frames
             try
             {
                 // Generate appropriate frame name if title is not specified
-                string defaultPortalTitle = Localization.Strings.DefaultPortalFrameTitle ?? "收納柵欄";
+                string defaultPortalTitle = Localization.Strings.DefaultPortalFrameTitle ?? "收納面板";
                 string frameName = !string.IsNullOrWhiteSpace(title) ? title :
                     ((itemsType != "Portal") ? CoreUtilities.GenerateRandomName() : defaultPortalTitle);
 

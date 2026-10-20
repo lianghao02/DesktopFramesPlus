@@ -902,7 +902,7 @@
     <value>複製路徑</value>
   </data>
   <data name="MenuCustomize" xml:space="preserve">
-    <value>自訂…</value>
+    <value>自訂外觀…</value>
   </data>
   <data name="MenuCutItem" xml:space="preserve">
     <value>剪下項目</value>
@@ -947,22 +947,22 @@
     <value>移動…</value>
   </data>
   <data name="MenuConvertToPortal" xml:space="preserve">
-    <value>轉換為資料夾收納柵欄（實體收納至資料夾）…</value>
+    <value>轉換為收納面板（檔案實際放進資料夾）…</value>
   </data>
   <data name="DefaultPortalFrameTitle" xml:space="preserve">
-    <value>收納柵欄</value>
+    <value>收納面板</value>
   </data>
   <data name="MenuNameAfterPath" xml:space="preserve">
-    <value>以目標路徑命名此柵欄</value>
+    <value>以目標路徑命名此面板</value>
   </data>
   <data name="MenuNewFrame" xml:space="preserve">
-    <value>新增分類面板</value>
+    <value>新增收納面板</value>
   </data>
   <data name="MenuNewNoteFrame" xml:space="preserve">
-    <value>新增桌面便箋柵欄（便利貼備忘）</value>
+    <value>新增桌面便箋（便利貼備忘）</value>
   </data>
   <data name="MenuNewPortalFrame" xml:space="preserve">
-    <value>新增資料夾收納柵欄（實體檔案收納至資料夾）…</value>
+    <value>新增收納面板（檔案實際放進資料夾）…</value>
   </data>
   <data name="MenuNoPluginsAvailable" xml:space="preserve">
     <value>（此級別沒有可用外掛）</value>
@@ -971,7 +971,7 @@
     <value>開啟面板所在資料夾</value>
   </data>
   <data name="MenuOpenTargetFolder" xml:space="preserve">
-    <value>開啟實體收納資料夾</value>
+    <value>開啟收納資料夾</value>
   </data>
   <data name="MenuOpenWith" xml:space="preserve">
     <value>開啟方式…</value>
@@ -995,7 +995,7 @@
     <value>重新命名項目</value>
   </data>
   <data name="MenuRenameFrame" xml:space="preserve">
-    <value>重新命名框架</value>
+    <value>重新命名面板</value>
   </data>
   <data name="MenuResetColumns" xml:space="preserve">
     <value>重置列</value>
@@ -1405,7 +1405,7 @@
     <value>Desktop Frames + - 選項</value>
   </data>
   <data name="OptNewFrameContextMenu" xml:space="preserve">
-    <value>在桌面右鍵選單中顯示「新增柵欄」</value>
+    <value>在桌面右鍵選單中顯示「新增收納面板」</value>
   </data>
   <data name="OptNoteWatermark" xml:space="preserve">
     <value>啟用便箋面板浮水印（即將推出）</value>
@@ -1951,8 +1951,8 @@
   <data name="MsgTemplateExported" xml:space="preserve">
     <value>語言模板已成功匯出！</value>
   </data>
-<data name="MsgProfileInitializationError" xml:space="preserve"><value>設定檔初始化錯誤：{0}</value></data><data name="DlgStartupError" xml:space="preserve"><value>啟動錯誤</value></data><data name="MsgCriticalStartupError" xml:space="preserve"><value>嚴重啟動錯誤：{0}</value></data><data name="MsgShowAboutFailed" xml:space="preserve"><value>無法顯示「關於」視窗：{0}</value></data><data name="LogCategoryBackgroundValidation" xml:space="preserve"><value>背景驗證</value></data><data name="LogCategoryGeneral" xml:space="preserve"><value>一般</value></data><data name="LogCategorySettings" xml:space="preserve"><value>設定</value></data><data name="LogCategoryFrameUpdate" xml:space="preserve"><value>面板更新</value></data><data name="LogCategoryFrameCreation" xml:space="preserve"><value>面板建立</value></data><data name="DefaultFrameTitle" xml:space="preserve"><value>新增框架 — 將快捷方式拖放到這裡</value></data><data name="DefaultTipsTitle" xml:space="preserve"><value>Desktop Frames + 啟動提示</value></data><data name="LogCategoryImportExport" xml:space="preserve"><value>匯入與匯出</value></data><data name="LogCategoryUI" xml:space="preserve"><value>使用者介面</value></data><data name="DefaultTipsContent" xml:space="preserve"><value>歡迎使用 DESKTOP FRAMES +&#xD;&#xA;---------------------------&#xD;&#xA;• 收合／展開：按兩下框架標題列。&#xD;&#xA;• 重新命名：Ctrl + 按一下標題列（按 Enter 儲存）。&#xD;&#xA;• 搜尋（SpotSearch）：按 Ctrl + &#96;（波浪符號）即可立即尋找任何圖示。&#xD;&#xA;• 選項：按一下左上角的「♥」選單圖示。&#xD;&#xA;• 重新排列圖示：Ctrl + 拖曳圖示至新位置。&#xD;&#xA;• 快顯功能表：在圖示或框架上按滑鼠右鍵，查看更多選項。&#xD;&#xA;&#xD;&#xA;提示：Ctrl + 按一下或 Ctrl + 按滑鼠右鍵，可顯示更多選項。&#xD;&#xA;&#xD;&#xA;試著自訂這個框架吧！在標題列上按滑鼠右鍵 → 自訂…</value></data><data name="LogCategoryIconHandling" xml:space="preserve"><value>圖示處理</value></data>  <data name="MenuDrawFrame" xml:space="preserve">
-    <value>框選新增分類面板…</value>
+<data name="MsgProfileInitializationError" xml:space="preserve"><value>設定檔初始化錯誤：{0}</value></data><data name="DlgStartupError" xml:space="preserve"><value>啟動錯誤</value></data><data name="MsgCriticalStartupError" xml:space="preserve"><value>嚴重啟動錯誤：{0}</value></data><data name="MsgShowAboutFailed" xml:space="preserve"><value>無法顯示「關於」視窗：{0}</value></data><data name="LogCategoryBackgroundValidation" xml:space="preserve"><value>背景驗證</value></data><data name="LogCategoryGeneral" xml:space="preserve"><value>一般</value></data><data name="LogCategorySettings" xml:space="preserve"><value>設定</value></data><data name="LogCategoryFrameUpdate" xml:space="preserve"><value>面板更新</value></data><data name="LogCategoryFrameCreation" xml:space="preserve"><value>面板建立</value></data><data name="DefaultFrameTitle" xml:space="preserve"><value>新面板 — 把檔案拖到這裡</value></data><data name="DefaultTipsTitle" xml:space="preserve"><value>Desktop Frames + 啟動提示</value></data><data name="LogCategoryImportExport" xml:space="preserve"><value>匯入與匯出</value></data><data name="LogCategoryUI" xml:space="preserve"><value>使用者介面</value></data><data name="DefaultTipsContent" xml:space="preserve"><value>歡迎使用 DESKTOP FRAMES +&#xD;&#xA;---------------------------&#xD;&#xA;• 收合／展開：按兩下面板標題列。&#xD;&#xA;• 重新命名：Ctrl + 按一下標題列（按 Enter 儲存）。&#xD;&#xA;• 搜尋（SpotSearch）：按 Ctrl + &#96;（波浪符號）即可立即尋找任何圖示。&#xD;&#xA;• 設定：按一下左上角的「♥」選單圖示。&#xD;&#xA;• 拖入檔案：直接拖入是「搬移」，按住 Ctrl 是「複製」，按住 Alt 是「建立捷徑」。&#xD;&#xA;• 重新排列圖示：Ctrl + 拖曳圖示至新位置。&#xD;&#xA;• 更多功能：在圖示或面板上按滑鼠右鍵。&#xD;&#xA;&#xD;&#xA;提示：Ctrl + 按一下或 Ctrl + 按滑鼠右鍵，可顯示更多選項。&#xD;&#xA;&#xD;&#xA;想改外觀？在標題列上按滑鼠右鍵 → 自訂外觀…</value></data><data name="LogCategoryIconHandling" xml:space="preserve"><value>圖示處理</value></data>  <data name="MenuDrawFrame" xml:space="preserve">
+    <value>框選新增收納面板…</value>
   </data>
   <data name="DrawFrameHint" xml:space="preserve">
     <value>拖曳滑鼠以框選建立面板（按 Esc 取消）</value>
@@ -1993,17 +1993,17 @@
   <data name="MsgFrameAlreadyContainsItem" xml:space="preserve">
     <value>此分區已有相同項目，因此未移動任何項目。</value>
   </data>
-  <data name="FarmNew" xml:space="preserve"><value>新增農場柵欄</value></data>
-  <data name="FarmName" xml:space="preserve"><value>農場柵欄 {0}</value></data>
+  <data name="FarmNew" xml:space="preserve"><value>新增面板（舊版）</value></data>
+  <data name="FarmName" xml:space="preserve"><value>面板 {0}</value></data>
   <data name="FarmRename" xml:space="preserve"><value>重新命名</value></data>
-  <data name="FarmCancel" xml:space="preserve"><value>取消柵欄（圖示保留在桌面）</value></data>
-  <data name="FarmNameLabel" xml:space="preserve"><value>柵欄名稱</value></data>
+  <data name="FarmCancel" xml:space="preserve"><value>取消（圖示保留在桌面）</value></data>
+  <data name="FarmNameLabel" xml:space="preserve"><value>面板名稱</value></data>
   <data name="FarmSave" xml:space="preserve"><value>儲存</value></data>
-  <data name="FarmLoadFailed" xml:space="preserve"><value>農場柵欄設定讀取失敗，已保護原設定不被覆寫。</value></data>
-  <data name="FarmOperationFailed" xml:space="preserve"><value>農場柵欄操作未完成；原圖示仍留在桌面。請查看診斷記錄。</value></data>
-  <data name="FarmSaveFailed" xml:space="preserve"><value>農場柵欄設定無法儲存。請檢查資料夾寫入權限。</value></data>
-  <data name="FarmNoSpace" xml:space="preserve"><value>可用格子不足，已取消本次操作並保留原位置與歸屬。請移開柵欄或增加可用空間。</value></data>
-  <data name="FarmOverlap" xml:space="preserve"><value>既有柵欄重疊，已暫停排列與歸屬變更。請先手動移開重疊外框；原圖示與歸屬保留。</value></data>
+  <data name="FarmLoadFailed" xml:space="preserve"><value>舊版面板設定讀取失敗，已保護原設定不被覆寫。</value></data>
+  <data name="FarmOperationFailed" xml:space="preserve"><value>面板操作未完成；原圖示仍留在桌面。請查看診斷記錄。</value></data>
+  <data name="FarmSaveFailed" xml:space="preserve"><value>面板設定無法儲存。請檢查資料夾寫入權限。</value></data>
+  <data name="FarmNoSpace" xml:space="preserve"><value>可用格子不足，已取消本次操作並保留原位置與歸屬。請移開面板或增加可用空間。</value></data>
+  <data name="FarmOverlap" xml:space="preserve"><value>既有面板重疊，已暫停排列與歸屬變更。請先手動移開重疊的外框；原圖示與歸屬保留。</value></data>
   <data name="FarmRestoreFailed" xml:space="preserve"><value>Explorer 拒絕位置回復，已停止儲存以保護原歸屬。請關閉自動排列／對齊格線並檢查桌面位置。</value></data>
   <data name="NativePanelAdopt" xml:space="preserve"><value>此面板接管桌面原圖示</value></data>
   <data name="NativePanelNeedsEmpty" xml:space="preserve"><value>此面板已有捷徑或分頁資料，已保留原內容。請使用空面板接管桌面原圖示。</value></data>
@@ -2048,12 +2048,14 @@
   <data name="SecSmartDesktopRules" xml:space="preserve">
     <value>分類規則與執行</value>
   </data>
-  <data name="DlgPortalUnavailable" xml:space="preserve"><value>Portal 資料夾無法使用</value></data>
-  <data name="MsgPortalUnavailable" xml:space="preserve"><value>下列 Portal 資料夾無法存取：&#10;{0}&#10;面板資料已保留，資料夾恢復後下次啟動會自動出現。</value></data>
-  <data name="MsgPortalReadOnly" xml:space="preserve"><value>舊 Portal 已停止新增收納，僅供瀏覽。請改用分類面板加入項目，或使用檔案總管管理實體檔案。</value></data>
+  <data name="DlgPortalUnavailable" xml:space="preserve"><value>舊版資料夾面板無法使用</value></data>
+  <data name="MsgPortalUnavailable" xml:space="preserve"><value>下列資料夾無法存取：&#10;{0}&#10;面板資料已保留，資料夾恢復後下次啟動會自動出現。</value></data>
+  <data name="MsgPortalReadOnly" xml:space="preserve"><value>舊版資料夾面板已停止新增檔案，只能瀏覽。請改用收納面板，或用檔案總管管理實體檔案。</value></data>
   <data name="MsgConfigurationProtected" xml:space="preserve">
     <value>面板或選項設定讀取失敗，已保護原始檔案，禁止覆寫。部分面板可能不會顯示，變更也可能無法保存。請還原有效設定或排除存取問題，再重新啟動程式。</value>
   </data>
-  <data name="DlgCreateStorageFenceTitle" xml:space="preserve"><value>建立專用收納柵欄</value></data>
+  <data name="DlgCreateStorageFenceTitle" xml:space="preserve"><value>建立收納面板</value></data>
   <data name="MenuRefreshContents" xml:space="preserve"><value>重新整理內容</value></data>
+  <data name="MenuMore" xml:space="preserve"><value>更多</value></data>
+  <data name="SecAdvancedGroup" xml:space="preserve"><value>進階（少用）</value></data>
 </root>

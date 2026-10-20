@@ -22,6 +22,12 @@
 5. 右鍵選單精緻化：採用 1.5px 柔和深木棕圓角邊框（#6E4F32）、象牙羊皮底色（#FFFDF7）、柔和淺暖金高亮底（#F3E2B6）與暖金刻線 Separator（#DFC8A0），完全符合 Q 版冒險遊戲風格，俐落不厚重。
 6. 所有 152 個自動化測試通過，685 個繁中資源鍵 100% 覆蓋，正式自包含成品已更新至 dist/DesktopFramesPlus（Profiles 嚴格保留）。版本為 v2.10.0。
 
+## 2026-10-21 選單、設定與用詞整理（Claude，未建置）
+- 範圍：resx 用詞（`Strings.zh-TW.resx`，新增 `MenuMore`、`SecAdvancedGroup`）、`FrameManager.cs`（♥ 選單與面板右鍵選單加「更多」）、`OptionsFormManager.cs`（`AddAdvancedSection`：提示聲音、自動隱藏／淡出收進預設收合的 Expander）。
+- **尚未編譯、尚未測試、尚未打包**（使用者指示等通知再建置）。下一步：用 Visual Studio MSBuild 建置，執行 `tools/run-all-tests.ps1 -BinaryDir` 與 `tools/verify-localization.ps1`，再開啟設定視窗與兩個選單目視確認。
+- 注意：`FrameManager.cs` 有 `using Color = System.Drawing.Color` 別名，新增的紅字用 `System.Windows.Media.Color`。
+- 未做：設定頁籤合併（便箋、快捷鍵併入情境）、自訂外觀對話框精簡；有需要再評估。
+
 ## 2026-10-20 接手收尾（Claude）
 - 前一輪成果已驗收並一併提交：
   - Q 版素材與 `GameSkin`／`GameTheme`

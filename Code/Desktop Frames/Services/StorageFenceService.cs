@@ -130,7 +130,7 @@ namespace Desktop_Frames.Services
 
             if (!IsManagedStorage(frame))
             {
-                reason = "此面板非受控專用收納柵欄。";
+                reason = "這個面板不是收納面板。";
                 return false;
             }
 

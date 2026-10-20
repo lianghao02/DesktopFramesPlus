@@ -194,7 +194,7 @@ namespace Desktop_Frames
             {
                 using (var dlg = new System.Windows.Forms.FolderBrowserDialog())
                 {
-                    dlg.Description = "選擇收納柵欄實體資料夾";
+                    dlg.Description = "選擇收納面板的資料夾";
                     dlg.SelectedPath = Directory.Exists(_txtPath.Text) ? _txtPath.Text : SettingsManager.DefaultPortalStorageRoot;
                     if (dlg.ShowDialog() == System.Windows.Forms.DialogResult.OK)
                     {
@@ -216,7 +216,7 @@ namespace Desktop_Frames
             // 3. Safe hint
             TextBlock safeHint = new TextBlock
             {
-                Text = "📥 拖入項目將實體搬入專用資料夾，框內自動即時同步\n🧹 拆除柵欄時內容將安全移至個人桌面，絕不覆寫原檔",
+                Text = "📥 拖入檔案會搬進這個收納資料夾（按住 Ctrl 複製、Alt 建立捷徑）\n🧹 拆除面板時，內容會移回個人桌面，不會覆蓋同名檔案",
                 FontSize = 12,
                 Foreground = GameTheme.Accent,
                 TextWrapping = TextWrapping.Wrap,

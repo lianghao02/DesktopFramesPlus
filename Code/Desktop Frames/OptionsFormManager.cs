@@ -647,6 +647,31 @@ namespace Desktop_Frames
             return list;
         }
 
+        /// <summary>
+        /// 少用設定收進預設收合的「進階（少用）」區。內容仍在同一個分頁的控制項樹中，
+        /// SaveOptions 以 FindDescendants 讀取時（Expander 為 ContentControl）不受影響。
+        /// </summary>
+        private static void AddAdvancedSection(StackPanel parent, StackPanel inner)
+        {
+            var expander = new Expander
+            {
+                Header = new TextBlock
+                {
+                    Text = Strings.Get("SecAdvancedGroup", "進階（少用）"),
+                    FontFamily = new FontFamily("Segoe UI"),
+                    FontSize = 14,
+                    FontWeight = FontWeights.Bold,
+                    Foreground = GameTheme.Ink
+                },
+                IsExpanded = false,
+                Content = inner,
+                Margin = new Thickness(8, 0, 8, 14),
+                MaxWidth = 780,
+                HorizontalAlignment = HorizontalAlignment.Stretch
+            };
+            parent.Children.Add(expander);
+        }
+
         private static void CreateGeneralTab()
         {
             TabItem t = new TabItem();
@@ -679,7 +704,8 @@ namespace Desktop_Frames
             CreateCheckBox(cardInteractions, Strings.OptDimensionSnap, "EnableDimensionSnap", SettingsManager.EnableDimensionSnap);
 
             // 4. 提示聲音
-            var cardSounds = CreateGroupCard(c, "提示聲音", _userAccentColor, "通知與操作提示音效設定");
+            var advGeneral = new StackPanel();
+            var cardSounds = CreateGroupCard(advGeneral, "提示聲音", _userAccentColor, "通知與操作提示音效設定");
             CheckBox cbSounds = CreateCheckBoxReturn(cardSounds, Strings.OptEnableSounds, "EnableSounds", SettingsManager.EnableSounds);
             Grid soundGrid = new Grid { Margin = new Thickness(26, 2, 0, 6) };
             soundGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(140) });
@@ -708,6 +734,8 @@ namespace Desktop_Frames
             cardSounds.Children.Add(soundGrid);
             soundGrid.IsEnabled = cbSounds.IsChecked == true;
             cbSounds.Click += (s, e) => soundGrid.IsEnabled = cbSounds.IsChecked == true;
+
+            AddAdvancedSection(c, advGeneral);
 
             t.Content = new ScrollViewer { Content = c, VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
             _tabControl.Items.Add(t);
@@ -787,7 +815,8 @@ namespace Desktop_Frames
             });
 
             // 3. 自動隱藏與閒置效果
-            var cardAutoHide = CreateGroupCard(c, Strings.SecAutoHideFrames, ColorStyle);
+            var advStyle = new StackPanel();
+            var cardAutoHide = CreateGroupCard(advStyle, Strings.SecAutoHideFrames, ColorStyle);
             var cbAutoHide = CreateCheckBoxReturn(cardAutoHide, Strings.OptAutoHideFrames, "AutoHideFrames", SettingsManager.AutoHideFrames);
             var slAutoHide = CreateSliderControl(cardAutoHide, Strings.SldAutoHideTime, "AutoHideTimeSlider", SettingsManager.AutoHideTime, 300);
             slAutoHide.IsEnabled = cbAutoHide.IsChecked == true;
@@ -837,6 +866,8 @@ namespace Desktop_Frames
             iconGrid.Children.Add(menuIconPanel);
             iconGrid.Children.Add(lockIconPanel);
             cardIcons.Children.Add(iconGrid);
+
+            AddAdvancedSection(c, advStyle);
 
             t.Content = new ScrollViewer { Content = c, VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
             _tabControl.Items.Add(t);

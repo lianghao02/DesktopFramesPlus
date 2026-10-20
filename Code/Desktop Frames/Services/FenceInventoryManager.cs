@@ -545,7 +545,7 @@ namespace Desktop_Frames.Services
                     {
                         failureReason = "此圖示位於系統「公用桌面」(Public Desktop)，Windows 預設限制一般權限搬移。\n\n" +
                                         "建議解決方式（請擇一）：\n" +
-                                        "1. 手動將該圖示「剪下」並貼到「個人桌面」（Windows 會提示一次提權），之後即可正常拖入柵欄。\n" +
+                                        "1. 手動將該圖示「剪下」並貼到「個人桌面」（Windows 會提示一次提權），之後即可正常拖入面板。\n" +
                                         "2. 以系統管理員身分開啟 PowerShell 執行一次性目錄授權：\n" +
                                         "   icacls \"C:\\Users\\Public\\Desktop\" /grant \"$($env:USERNAME):(OI)(CI)M\"\n" +
                                         "   授權後本程式便能直接無痛收納公用桌面圖示。\n\n" +

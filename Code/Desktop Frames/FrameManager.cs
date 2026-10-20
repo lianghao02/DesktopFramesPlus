@@ -1066,7 +1066,7 @@ namespace Desktop_Frames
 
             if (Desktop_Frames.Services.StorageFenceService.IsManagedStorage(frame))
             {
-                string frameTitle = frame.Title?.ToString() ?? "收納柵欄";
+                string frameTitle = frame.Title?.ToString() ?? "收納面板";
                 string folderPath = frame.Path?.ToString() ?? string.Empty;
                 int itemCount = 0;
                 try
@@ -1078,8 +1078,8 @@ namespace Desktop_Frames
                 }
                 catch { }
 
-                string confirmMsg = $"確定要拆除收納柵欄「{frameTitle}」並將內含的 {itemCount} 個項目移至桌面嗎？\n\n（若桌面已有同名項目將自動加上編號，不會覆寫原檔；若有項目因開啟中或系統攔截無法移動，將安全保留柵欄與未完成檔案現場）";
-                if (!MessageBoxesManager.ShowCustomYesNoMessageBox(confirmMsg, "拆除收納柵欄"))
+                string confirmMsg = $"要拆除收納面板「{frameTitle}」，並把裡面的 {itemCount} 個項目移回桌面嗎？\n\n（若桌面已有同名項目將自動加上編號，不會覆寫原檔；若有項目因開啟中或系統攔截無法移動，將安全保留柵欄與未完成檔案現場）";
+                if (!MessageBoxesManager.ShowCustomYesNoMessageBox(confirmMsg, "拆除收納面板"))
                 {
                     return;
                 }
@@ -1089,7 +1089,7 @@ namespace Desktop_Frames
                 {
                     DeleteFrameConfiguration(frame, parentWindow);
                     Services.FenceInventoryManager.RefreshDesktopShell();
-                    MessageBoxesManager.ShowOKOnlyMessageBoxForm($"已成功拆除收納柵欄，共將 {report.CompletedCount} 個項目移至桌面。", "拆除完成");
+                    MessageBoxesManager.ShowOKOnlyMessageBoxForm($"已拆除收納面板，{report.CompletedCount} 個項目已移回桌面。", "拆除完成");
                 }
                 else
                 {
@@ -1108,7 +1108,7 @@ namespace Desktop_Frames
                         errDetails += "\n" + string.Join("\n", issues);
                     }
 
-                    string alertMsg = $"收納柵欄未能完全清空，已停止拆除並完整保留現場：\n\n{errDetails}\n\n已移至桌面：{report.CompletedCount} 項\n未完成/需確認：{report.FailedCount + report.ConflictCount} 項\n\n請關閉可能開啟中的檔案或解除鎖定後，再執行一次拆除。";
+                    string alertMsg = $"收納面板沒有完全清空，已停止拆除，原本的內容都保留：\n\n{errDetails}\n\n已移至桌面：{report.CompletedCount} 項\n未完成/需確認：{report.FailedCount + report.ConflictCount} 項\n\n請關閉可能開啟中的檔案或解除鎖定後，再執行一次拆除。";
                     MessageBoxesManager.ShowOKOnlyMessageBoxForm(alertMsg, "拆除未完成（現場已保留）");
                 }
                 return;
@@ -1257,23 +1257,8 @@ namespace Desktop_Frames
             };
             layoutsSubMenu.Items.Add(manageLayoutsItem);
 
-            menu.Items.Add(layoutsSubMenu);
-            menu.Items.Add(new Separator());
-
-            // About item
-            var aboutItem = new MenuItem { Header = Strings.MenuAbout };
-            aboutItem.Click += (s, e) => AboutFormManager.ShowAboutForm();
-            menu.Items.Add(aboutItem);
-
-            // Options item
-            var optionsItem = new MenuItem { Header = Strings.MenuOptions };
-            optionsItem.Click += (s, e) => OptionsFormManager.ShowOptionsForm();
-            menu.Items.Add(optionsItem);
-
-            // Separator
-            menu.Items.Add(new Separator());
-
-            // New frame items - 建立專用收納柵欄與獨立便箋
+            // ♥ 選單：最常用的在第一層，少用功能收進「更多」，拆除面板放在「離開」上方並標紅。
+            // 1. 新增
             var newFrameItem = new MenuItem { Header = Strings.MenuNewFrame };
             newFrameItem.Click += (s, e) =>
             {
@@ -1295,8 +1280,16 @@ namespace Desktop_Frames
 
             menu.Items.Add(new Separator());
 
-            // --- REORDERED: Tabs Option First ---
-            // TABS FEATURE (Native Checkbox Logic)
+            // 2. 設定與桌面版面
+            var optionsItem = new MenuItem { Header = Strings.MenuOptions };
+            optionsItem.Click += (s, e) => OptionsFormManager.ShowOptionsForm();
+            menu.Items.Add(optionsItem);
+
+            menu.Items.Add(layoutsSubMenu);
+
+            // 3. 更多（少用功能）
+            var moreMenu = new MenuItem { Header = Strings.Get("MenuMore", "更多") };
+
             bool isDataFrame = frame.ItemsType?.ToString() == "Data";
             if (isDataFrame)
             {
@@ -1310,43 +1303,50 @@ namespace Desktop_Frames
                 };
 
                 enableTabsItem.Click += (s, e) => ToggleFrameTabs(frame);
-                menu.Items.Add(enableTabsItem);
-
-                // Separator AFTER tabs to separate it from the Delete option
-                menu.Items.Add(new Separator());
+                moreMenu.Items.Add(enableTabsItem);
+                moreMenu.Items.Add(new Separator());
             }
 
-            // --- REORDERED: Delete Option Second ---
-            // Delete this frames
-            bool isManagedStorageFrame = Desktop_Frames.Services.StorageFenceService.IsManagedStorage(frame);
-            var deleteThisFrame = new MenuItem { Header = isManagedStorageFrame ? "拆除並將內容移至桌面…" : Strings.MenuDeleteThisFrame };
-            deleteThisFrame.Click += (s, e) => DeleteFrameWithConfirmation(frame);
-            menu.Items.Add(deleteThisFrame);
-
-            menu.Items.Add(new Separator());
-
-            // Export/Import Group
             var exportItem = new MenuItem { Header = Strings.MenuExportThisFrame };
             exportItem.Click += (s, e) => BackupManager.ExportFrame(frame);
-            menu.Items.Add(exportItem);
+            moreMenu.Items.Add(exportItem);
 
             var importItem = new MenuItem { Header = Strings.MenuImportFrame };
             importItem.Click += (s, e) => BackupManager.ImportFrame();
-            menu.Items.Add(importItem);
+            moreMenu.Items.Add(importItem);
 
-            // Restore frame item
+            // 只有最近刪除過面板時才有「還原」可用
             var restoreItem = new MenuItem
             {
                 Header = Strings.MenuRestoreLastDeleted,
                 Visibility = BackupManager.IsRestoreAvailable ? Visibility.Visible : Visibility.Collapsed
             };
             restoreItem.Click += (s, e) => BackupManager.RestoreLastDeletedFrame();
-            menu.Items.Add(restoreItem);
+            moreMenu.Items.Add(restoreItem);
 
-            // Separator
+            moreMenu.Items.Add(new Separator());
+
+            var aboutItem = new MenuItem { Header = Strings.MenuAbout };
+            aboutItem.Click += (s, e) => AboutFormManager.ShowAboutForm();
+            moreMenu.Items.Add(aboutItem);
+
+            menu.Items.Add(moreMenu);
+
             menu.Items.Add(new Separator());
 
-            // Exit item
+            // 4. 拆除／刪除此面板（紅字，與「離開」相鄰但中間有分隔線）
+            bool isManagedStorageFrame = Desktop_Frames.Services.StorageFenceService.IsManagedStorage(frame);
+            var deleteThisFrame = new MenuItem
+            {
+                Header = isManagedStorageFrame ? "拆除此面板並將內容移回桌面…" : Strings.MenuDeleteThisFrame,
+                Foreground = new SolidColorBrush(System.Windows.Media.Color.FromRgb(0xB9, 0x1C, 0x1C))
+            };
+            deleteThisFrame.Click += (s, e) => DeleteFrameWithConfirmation(frame);
+            menu.Items.Add(deleteThisFrame);
+
+            menu.Items.Add(new Separator());
+
+            // 5. 離開
             var exitItem = new MenuItem { Header = Strings.MenuExit };
             exitItem.Click += (s, e) => System.Windows.Application.Current.Shutdown();
             menu.Items.Add(exitItem);
@@ -3582,7 +3582,7 @@ namespace Desktop_Frames
             catch (Exception ex)
             {
                 LogManager.Log(LogManager.LogLevel.Error, LogManager.LogCategory.UI, $"CreateFrameFromDraw failed: {ex}");
-                MessageBox.Show($"建立框架失敗：{ex.Message}", Strings.DlgError, MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show($"建立面板失敗：{ex.Message}", Strings.DlgError, MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
@@ -3634,7 +3634,7 @@ namespace Desktop_Frames
             catch (Exception ex)
             {
                 LogManager.Log(LogManager.LogLevel.Error, LogManager.LogCategory.UI, $"CreateManagedStorageFence failed: {ex}");
-                MessageBox.Show($"建立專用收納柵欄失敗：{ex.Message}", Strings.DlgError, MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show($"建立收納面板失敗：{ex.Message}", Strings.DlgError, MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
@@ -4284,6 +4284,10 @@ namespace Desktop_Frames
 
             MenuItem miNewnoteFrame = new MenuItem { Header = Strings.MenuNewNoteFrame };
 
+            // 面板右鍵選單：常用項目留在第一層，少用功能收進「更多」。
+            // 注意：後面的動態項目都以「自訂外觀…」(Strings.MenuCustomize) 當定位點，該項必須維持在第一層。
+            MenuItem miMoreFrame = new MenuItem { Header = Strings.Get("MenuMore", "更多") };
+
             // --- NEW: Auto Roll Menu Item ---
             MenuItem miAutoRoll = new MenuItem { Header = Strings.MenuAutoRoll, IsCheckable = true };
             miAutoRoll.IsChecked = frame.AutoRoll?.ToString().ToLower() == "true";
@@ -4304,7 +4308,7 @@ namespace Desktop_Frames
                     }
                 }
             };
-            CnMnFramemanager.Items.Add(miAutoRoll);
+            miMoreFrame.Items.Add(miAutoRoll);
 
             // --- NEW: Always On Top Menu Item ---
             MenuItem miAlwaysOnTop = new MenuItem { Header = Strings.MenuAlwaysOnTop, IsCheckable = true };
@@ -4356,7 +4360,7 @@ namespace Desktop_Frames
             }
             //Peek behind frame
             MenuItem miPeekBehind = new MenuItem { Header = Strings.MenuPeekBehind };
-            CnMnFramemanager.Items.Add(miPeekBehind);
+            miMoreFrame.Items.Add(miPeekBehind);
             miPeekBehind.Click += (s, e) =>
             {
                 LogManager.Log(LogManager.LogLevel.Info, LogManager.LogCategory.UI, $"Initiating Peek Behind for frame '{frame.Title}'");
@@ -4475,7 +4479,8 @@ namespace Desktop_Frames
                     }
                     catch { }
                 };
-                CnMnFramemanager.Items.Add(miOpenFolder);
+                // 「開啟收納資料夾」已由後方動態項目提供（對所有 Portal 面板有效），此處不重複顯示。
+                // CnMnFramemanager.Items.Add(miOpenFolder);
 
                 // --- LIVE VIEW MODE TOGGLE ---
                 MenuItem miViewAsDetails = new MenuItem { Header = Strings.MenuViewAsDetails, IsCheckable = true };
@@ -4555,8 +4560,8 @@ namespace Desktop_Frames
                         plugin.ShowSettingsWindow(win, frame);
                     }
                 };
-                CnMnFramemanager.Items.Add(miPluginSettings);
-                CnMnFramemanager.Items.Add(new Separator());
+                miMoreFrame.Items.Add(new Separator());
+                miMoreFrame.Items.Add(miPluginSettings);
             }
             // ---------------------------------------
 
@@ -4601,10 +4606,15 @@ namespace Desktop_Frames
                 }
             };
             CnMnFramemanager.Items.Add(miCustomize);
+            CnMnFramemanager.Items.Add(miMoreFrame);
 
             // --- EXPLICIT DELETE FRAME MENU ITEM ---
             CnMnFramemanager.Items.Add(new Separator());
-            MenuItem miDeleteThisFrame = new MenuItem { Header = Strings.MenuDeleteThisFrame };
+            MenuItem miDeleteThisFrame = new MenuItem
+            {
+                Header = Desktop_Frames.Services.StorageFenceService.IsManagedStorage(frame) ? "拆除此面板並將內容移回桌面…" : Strings.MenuDeleteThisFrame,
+                Foreground = new SolidColorBrush(System.Windows.Media.Color.FromRgb(0xB9, 0x1C, 0x1C))
+            };
             miDeleteThisFrame.Click += (s, e) => DeleteFrameWithConfirmation(frame, win);
             CnMnFramemanager.Items.Add(miDeleteThisFrame);
             // CnMnFramemanager.Items.Add(new Separator());
@@ -6998,12 +7008,12 @@ namespace Desktop_Frames
                     if ((Keyboard.Modifiers & ModifierKeys.Alt) == ModifierKeys.Alt)
                     {
                         e.Effects = DragDropEffects.Link;
-                        gestureHint = "在收納柵欄建立捷徑";
+                        gestureHint = "在收納面板建立捷徑";
                     }
                     else if ((Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control)
                     {
                         e.Effects = DragDropEffects.Copy;
-                        gestureHint = "複製至收納柵欄";
+                        gestureHint = "複製到收納面板";
                     }
                     else if (isAllCommonDesktop)
                     {
@@ -7013,7 +7023,7 @@ namespace Desktop_Frames
                     else
                     {
                         e.Effects = DragDropEffects.Move;
-                        gestureHint = "搬移至收納柵欄";
+                        gestureHint = "搬進收納面板";
                     }
 
                     cborder.BorderBrush = new SolidColorBrush(System.Windows.Media.Color.FromArgb(220, 0, 150, 255));
@@ -7497,15 +7507,15 @@ namespace Desktop_Frames
                     // --- NEW: Visual Feedback for Portal Frames ---
                     if (frame.ItemsType?.ToString() == "Portal")
                     {
-                        string frameTitle = frame.Title?.ToString() ?? "收納柵欄";
+                        string frameTitle = frame.Title?.ToString() ?? "收納面板";
                         if (portalMovedCount > 0)
                         {
-                            ShowPortalToast(win, $"已將 {portalMovedCount} 個項目收納至 [{frameTitle}]");
+                            ShowPortalToast(win, $"已搬進 [{frameTitle}]：{portalMovedCount} 個項目");
                             Services.FenceInventoryManager.RefreshDesktopShell();
                         }
                         else if (portalCopiedCount > 0)
                         {
-                            ShowPortalToast(win, $"已將 {portalCopiedCount} 個項目複製至 [{frameTitle}]");
+                            ShowPortalToast(win, $"已複製到 [{frameTitle}]：{portalCopiedCount} 個項目");
                         }
                     }
 

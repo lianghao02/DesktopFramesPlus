@@ -2043,4 +2043,6 @@ This cannot be undone.</value>
   </data>
   <data name="DlgCreateStorageFenceTitle" xml:space="preserve"><value>Create storage frame</value></data>
   <data name="MenuRefreshContents" xml:space="preserve"><value>Refresh contents</value></data>
+  <data name="MenuMore" xml:space="preserve"><value>More</value></data>
+  <data name="SecAdvancedGroup" xml:space="preserve"><value>Advanced</value></data>
 </root>
