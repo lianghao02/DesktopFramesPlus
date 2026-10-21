@@ -238,66 +238,7 @@ namespace Desktop_Frames
             Grid filterBar = BuildFilterBar(ctx, titleGrid, win);
 
 
-            // --- STEP 4 FIX: Centralized Rename Logic ---
-
-            // 1. Define the Logic ONCE
-            ctx.CommitRename = () =>
-            {
-                // Only run if actually editing
-                if (titletb.Visibility != Visibility.Visible) return;
-
-                string originalTitle = frame.Title.ToString();
-                string newTitle = titletb.Text;
-                string finalTitle = InterCore.ProcessTitleChange(frame, newTitle, originalTitle);
-
-                // Update Data
-                string id = frame.Id?.ToString();
-                var liveFrame = GetFrameData().FirstOrDefault(f => f.Id?.ToString() == id);
-
-                if (liveFrame != null)
-                {
-                    if (liveFrame is Newtonsoft.Json.Linq.JObject jFrame)
-                        jFrame["Title"] = finalTitle;
-                    else
-                        liveFrame.Title = finalTitle;
-                    frame.Title = finalTitle;
-                }
-
-                // Update UI
-                ctx.TitleLabel.Content = finalTitle;
-                win.Title = finalTitle;
-                titletb.Visibility = Visibility.Collapsed;
-                ctx.TitleLabel.Visibility = Visibility.Visible;
-
-                // Save
-                FrameDataManager.SaveFrameData();
-                win.EndKeyboardInteractiveEdit();
-                LogManager.Log(LogManager.LogLevel.Debug, LogManager.LogCategory.UI, $"Rename committed: {finalTitle}");
-            };
-
-            // 2. Wire up Events to use the central logic
-            titletb.KeyDown += (sender, e) =>
-            {
-                if (e.Key == Key.Enter)
-                {
-                    ctx.CommitRename(); // Call shared logic
-                    e.Handled = true;
-                }
-                else if (e.Key == Key.Escape)
-                {
-                    // Cancel Logic
-                    titletb.Text = frame.Title.ToString();
-                    titletb.Visibility = Visibility.Collapsed;
-                    ctx.TitleLabel.Visibility = Visibility.Visible;
-                    win.EndKeyboardInteractiveEdit();
-                    e.Handled = true;
-                }
-            };
-
-            titletb.LostFocus += (sender, e) =>
-            {
-                ctx.CommitRename(); // Call shared logic
-            };
+            BindRenameEvents(ctx, win);
 
 
             //// --- STEP 4 START: Configure and Add Events ---
