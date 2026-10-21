@@ -165,7 +165,7 @@ namespace Desktop_Frames
             };
 
             // --- NEW: Declare Commit Action for robust saving ---
-            Action CommitRename = null;
+            var ctx = new FrameBuildContext { Frame = frame, TargetChecker = targetChecker, TitleTextBox = titletb };
             Label titlelabel = null;
             // ---------------------------------------------------
 
@@ -334,7 +334,7 @@ namespace Desktop_Frames
                 // FIX: Directly call CommitRename logic
                 if (titletb.IsVisible)
                 {
-                    CommitRename?.Invoke();
+                    ctx.CommitRename?.Invoke();
                     return;
                 }
 
@@ -443,7 +443,7 @@ namespace Desktop_Frames
                     // FIX: Directly call CommitRename logic
                     if (titletb.IsVisible)
                     {
-                        CommitRename?.Invoke();
+                        ctx.CommitRename?.Invoke();
                         return;
                     }
 
@@ -2213,7 +2213,7 @@ namespace Desktop_Frames
             // --- STEP 4 FIX: Centralized Rename Logic ---
 
             // 1. Define the Logic ONCE
-            CommitRename = () =>
+            ctx.CommitRename = () =>
             {
                 // Only run if actually editing
                 if (titletb.Visibility != Visibility.Visible) return;
@@ -2252,7 +2252,7 @@ namespace Desktop_Frames
             {
                 if (e.Key == Key.Enter)
                 {
-                    CommitRename(); // Call shared logic
+                    ctx.CommitRename(); // Call shared logic
                     e.Handled = true;
                 }
                 else if (e.Key == Key.Escape)
@@ -2268,7 +2268,7 @@ namespace Desktop_Frames
 
             titletb.LostFocus += (sender, e) =>
             {
-                CommitRename(); // Call shared logic
+                ctx.CommitRename(); // Call shared logic
             };
 
 
@@ -2393,7 +2393,7 @@ namespace Desktop_Frames
                 // FIX: Directly call CommitRename logic
                 if (titletb.IsVisible)
                 {
-                    CommitRename?.Invoke();
+                    ctx.CommitRename?.Invoke();
                     return;
                 }
 

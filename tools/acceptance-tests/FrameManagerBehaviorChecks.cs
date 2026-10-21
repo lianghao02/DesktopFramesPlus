@@ -45,6 +45,7 @@ internal static class FrameManagerBehaviorChecks
         await RepositionChecks(checker);
         await MenuSnapshotChecks(checker, root);
         await LockRenameTabsIconChecks(checker, root);
+        await TitleBarChecks(checker);
         await DropChecks(checker, root);
         await FitToContentChecks(checker, root);
         await ResetCustomizationChecks();
