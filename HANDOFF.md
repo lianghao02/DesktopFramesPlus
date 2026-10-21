@@ -1,5 +1,11 @@
 # HANDOFF
 
+## 2026-10-22 FrameManager 拆檔第一階段（Claude）
+- `Framemanager` 改為 `partial class`，CreateFrame 以外的 91 個方法逐字搬到 13 個 `FrameManager.*.cs`；核心檔剩 4,240 行。檔案地圖見 `docs/specs/FRAMEMANAGER_MAP.md`，規則見 `AGENTS.md`。
+- 驗證：每個提交 MSBuild 0 錯誤、220 項 + 收納面板 10 項全過；完成後整體逐行比對只差類別宣告與分檔外框；繁中 100%。詳見 `IMPLEMENTATION_PLAN.md` 驗證紀錄。
+- 還原點：`restore/2026-10-22-before-split`。
+- 下一步：第二階段拆 `CreateFrame`，需使用者同意並在實際桌面協助手動驗收。未升版、未更新本機 `dist`。
+
 ## 2026-10-22 怪現象清單處理（Claude）
 - 已修正 2 項（control 開頭檔名誤判、圖示右鍵「開啟目標所在資料夾」標籤）、移除 1 段無作用程式碼；1 項實測不是問題（保留測試）、1 項為先前誤判已撤銷、1 項維持現狀。詳見 `IMPLEMENTATION_PLAN.md`。
 - 驗證：MSBuild Release 0 錯誤；`run-all-tests.ps1` 220 項 PASS；收納面板 10 項 PASS；繁中 100%；真實桌面預設收納位置無變化。
