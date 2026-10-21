@@ -85,7 +85,7 @@
 
 啟動診斷補充：沙箱 HKCU 視角與實際使用者環境不同，不把最初讀不到 Run 項目當成故障根因。實際註冊命令已核對；Windows 啟動開關與真實重開機驗證，依使用者要求留待回辦公室後測試。
 
-## FrameManager 重構前的回歸測試網（2026-10-21 起，進行中）
+## FrameManager 重構前的回歸測試網（2026-10-21，待使用者簽核）
 
 ### 目標與驗收條件
 在拆分或重構 `FrameManager.cs` 之前，先建立「搬動程式碼若改變行為就會被抓到」的回歸測試網。
@@ -130,11 +130,11 @@
 ### 工作清單
 - [x] **Phase 0 盤點與基準**：逐區塊核對既有檢查，補完上表；記錄目前全部測試的基準結果｜`run-all-tests.ps1` 與收納面板測試全過並寫入驗證紀錄
 - [x] **Phase 1 純函式特徵化測試**：反射呼叫網址、網路路徑、特殊路徑、UNC、`GetNextDisplayOrder` 等，鎖住現有輸出（含邊界與非法輸入）｜新增檢查全過；至少 3 種改壞被抓到
-- [ ] **Phase 2 資料層**：`UpdateFrameProperty` 屬性寫入（含未知欄位保留、布林字串）、`ResetAllCustomizations`、`MigrateLegacyJson`（以虛構舊格式 `frames.json`）、損毀項目備份、`AdjustFramePositionToScreen`｜向下相容：舊設定可讀、未知欄位不遺失
-- [ ] **Phase 3 視窗層**：選單結構快照（♥、面板右鍵、圖示右鍵，含收納面板與 Data 面板兩種）、鎖定切換、收合展開、重新命名、分頁開關、自動隱藏與喚醒、圖示顯示屬性｜黃金檔建立並可重現；快照差異會使測試失敗
-- [ ] **Phase 4 拖放可行性**：評估以反射建立 `DragEventArgs` 驅動主視窗 `Drop`；可行則補三種手勢（搬移、Ctrl 複製、Alt 捷徑）在兩種面板的測試，不可行則寫入手動驗收清單｜結論與證據寫入驗證紀錄
-- [ ] **Phase 5 改壞驗證**：至少 10 種（例如鎖定狀態不寫入、選單少一項、拖放預設變複製、屬性寫入丟欄位、網址判斷放寬）｜每種至少一項檢查失敗，結果寫入驗證紀錄
-- [ ] **Phase 6 整合與出口**：納入 `run-all-tests.ps1`；更新區塊地圖的「保護網」欄位；以 `workflow_dispatch` 試跑 `tools/ci-drafts/test.yml` 確認 GitHub 執行環境能開 WPF 視窗｜全部通過；CI 試跑結果如實記錄；使用者簽核後才開「拆檔」計劃
+- [x] **Phase 2 資料層**：`UpdateFrameProperty` 屬性寫入（含未知欄位保留、布林字串）、`ResetAllCustomizations`、`MigrateLegacyJson`（以虛構舊格式 `frames.json`）、損毀項目備份、`AdjustFramePositionToScreen`｜向下相容：舊設定可讀、未知欄位不遺失
+- [x] **Phase 3 視窗層**：選單結構快照（♥、面板右鍵、圖示右鍵，含收納面板與 Data 面板兩種）、鎖定切換、收合展開、重新命名、分頁開關、自動隱藏與喚醒、圖示顯示屬性｜黃金檔建立並可重現；快照差異會使測試失敗
+- [x] **Phase 4 拖放可行性**：評估以反射建立 `DragEventArgs` 驅動主視窗 `Drop`；可行則補三種手勢（搬移、Ctrl 複製、Alt 捷徑）在兩種面板的測試，不可行則寫入手動驗收清單｜結論與證據寫入驗證紀錄
+- [x] **Phase 5 改壞驗證**：至少 10 種（例如鎖定狀態不寫入、選單少一項、拖放預設變複製、屬性寫入丟欄位、網址判斷放寬）｜每種至少一項檢查失敗，結果寫入驗證紀錄
+- [x] **Phase 6 整合與出口**：納入 `run-all-tests.ps1`；更新區塊地圖的「保護網」欄位；以 `workflow_dispatch` 試跑 `tools/ci-drafts/test.yml` 確認 GitHub 執行環境能開 WPF 視窗｜全部通過；CI 試跑結果如實記錄；使用者簽核後才開「拆檔」計劃
 
 ### 風險與因應
 - **需要桌面工作階段**：真實視窗測試在無桌面環境會失敗；Phase 6 以 CI 試跑確認，不行就維持本機執行並明講。
@@ -150,6 +150,28 @@
 - **Phase 1 結果**：新增 `tools/acceptance-tests/FrameManagerHelperChecks.cs`（21 項，以反射呼叫私有靜態方法）：`IsWebUrl`、`IsValidWebUrl`、`IsSpecialWindowsPath`、`IsUncRoot`、`IsNetworkPath`（直接路徑與捷徑內容掃描）、`ExtractUrlFromUrlFile`、`ExtractUrlFromDropData`（瀏覽器、Firefox、HTML、純文字四種格式）、`GetNextDisplayOrder`。加入後 `run-all-tests.ps1` 176 項 PASS。
 - **Phase 1 改壞驗證**：3 種改壞（`IsWebUrl` 不再認 mailto、拖入網址接受 file、排序值不加一）各自讓對應檢查失敗；`FrameManager.cs` 已以 git 還原並重新建置，全部測試恢復通過。
 - **記錄的現狀（未修正）**：`IsSpecialWindowsPath` 以 `StartsWith("control")` 判斷，`controller-說明.txt` 這類一般檔名也會被當成特殊路徑。已以「現狀」檢查鎖住，是否修正另案評估。
+- **Phase 2～4 結果**：新增 `tools/acceptance-tests/FrameManagerBehaviorChecks.cs`（42 項）與 5 份選單黃金檔（`tools/acceptance-tests/golden/`，內嵌資源，不一致時於驗收目錄輸出 `actual-*.txt`）。涵蓋：`UpdateFrameProperty` 的型別與相容規則、收合動畫中略過屬性、執行期隱藏與置頂、`MigrateLegacyJson`（缺欄位補預設、未知欄位保留、損壞分頁修復、舊版資料夾面板不改寫、重跑不改檔）、手動拉回螢幕內、Data／收納面板的 ♥ 選單與面板右鍵選單、圖示右鍵選單、鎖定切換、重新命名（Enter／Esc）、分頁開關、圖示大小、主視窗拖放（Data 建立參照、收納面板預設搬移、舊版面板介面層拒絕＋對照組）、重設自訂外觀、真實桌面隔離防護。
+- **拖放可行性結論**：以反射建立 `DragEventArgs` 可驅動主視窗真正的 `Drop` 處理；但拖放手勢讀取的是實體鍵盤狀態（`Keyboard.Modifiers`），**Ctrl 複製與 Alt 捷徑無法在介面層自動化**，維持由 `test-managed-storage-fence.ps1` 在服務層驗證，介面層列入手動清單。
+- **Phase 5 改壞驗證（累計 13 種）**：Phase 1 的 3 種全部抓到；Phase 5 的 10 種中 9 種抓到（鎖定不切換、改名不存檔、拖放預設變複製、舊版面板不擋拖放〔由既有「Portal 拒絕拖入」測試因跳出對話框而逾時失敗〕、選單少一項、展開高度預設錯、分頁主區未清空、置頂失效、手動拉回失效），1 種為**等價改動**（`IsHidden` 存成布林：`SaveFrameData` 的 `ApplyFormatConsistency` 會轉回字串，檔案內容相同，非測試漏洞）。過程中補強 2 處原本太弱的測試（手動拉回需關閉自動調整、舊版面板需檢查介面層拒絕）。每次改壞後皆以 git 還原並重新建置。
+- **Phase 6 結果**：`run-all-tests.ps1` 共 218 項 PASS（基準 155＋新增 63），收納面板 10 項 PASS；`FrameManager.cs` 全程未修改。新增手動觸發的 CI（`.github/workflows/regression.yml`，`workflow_dispatch`，推送不會自動執行），試跑結果見下一點。
+- **事故紀錄（已處理）**：Phase 3 初版測試建立收納面板時未指定路徑，程式改用真實桌面預設位置，於 `桌面\DesktopFrames_收納區` 建立 4 個空資料夾（本輪 22:05～22:08 建立，無任何檔案）。已確認全為本輪產生並以非遞迴方式刪除；測試改為一律明確指定隔離路徑，並新增「真實桌面預設收納位置前後不變」的防護檢查。
+
+### 怪現象清單（測試網完成後逐一評估修正；每項修正先改期望再修程式）
+1. `IsSpecialWindowsPath` 以 `StartsWith("control")` 判斷，`controller-說明.txt` 這類一般檔名會被當成特殊路徑，可能用錯誤方式開啟。（已有「現狀」檢查）
+2. 圖示右鍵「開啟目標所在資料夾」顯示為「開啟收納資料夾」：`MenuOpenTargetFolder` 同一個字串鍵同時用於圖示右鍵與收納面板右鍵，翻譯只符合後者（更早的翻譯即如此）。修正需新增獨立字串鍵。
+3. **疑似**：「調整至最適大小」只在面板資料為 `JObject` 時存檔；剛從檔案讀入的面板是 `DynamicFrameData`，高度可能不會保存。尚未實測驗證。
+4. `UpdateFrameProperty` 結尾以英文標題（"Customize"、"Color"、"Launch Effect"）尋找選單更新勾選，中文介面下永遠找不到，屬無作用程式碼。
+5. `MigrateLegacyJson` 例外被空的 `catch` 吞掉，遷移失敗不會留下任何紀錄。
+6. 拖入收納面板失敗時以模態對話框提示，自動化測試遇到會卡住直到逾時（屬設計取捨，記錄供參考）。
+
+### 手動驗收清單（目前無法自動化的部分）
+- 拖入時按住 Ctrl（複製）與 Alt（建立捷徑）在介面上的提示膠囊與實際結果。
+- 自動隱藏、閒置淡出與滑鼠移入喚醒；自動捲動。
+- Ctrl 覆蓋層與 Ctrl＋右鍵的進階選單（含啟用標籤頁）。
+- 空白處點擊取消選取、Delete 鍵移除選取項目。
+- 篩選列輸入與歷史紀錄。
+- 圖示右鍵各項實際執行（編輯、移動、以管理員執行、複製路徑）與雙擊開啟項目。
+- 實際滑鼠拖曳移動面板、拖曳縮放、多螢幕與高 DPI。
 
 ### 剩餘問題
 - 拖放是否能自動化，Phase 4 前不確定。

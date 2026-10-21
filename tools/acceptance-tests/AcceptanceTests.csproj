@@ -8,6 +8,10 @@
     <BinaryDir Condition="'$(BinaryDir)' == ''">../../dist/DesktopFramesPlus</BinaryDir>
   </PropertyGroup>
   <ItemGroup>
+    <!-- 選單結構黃金檔：內嵌為資源，比對失敗時於驗收目錄輸出 actual-*.txt 供人工確認 -->
+    <EmbeddedResource Include="golden\*.txt" LogicalName="golden.%(Filename).txt" />
+  </ItemGroup>
+  <ItemGroup>
     <Reference Include="Desktop Frames"><HintPath>$(BinaryDir)/Desktop Frames.dll</HintPath></Reference>
     <Reference Include="Newtonsoft.Json"><HintPath>$(BinaryDir)/Newtonsoft.Json.dll</HintPath></Reference>
   </ItemGroup>

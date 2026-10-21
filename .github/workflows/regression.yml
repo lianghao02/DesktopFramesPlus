@@ -1,0 +1,25 @@
+# 隔離回歸測試（手動觸發）。
+# 只在 Actions 頁面按「Run workflow」時執行，推送不會自動觸發；確認 GitHub Windows 環境能穩定開啟 WPF 視窗後，再評估是否改為推送時執行。
+name: 隔離回歸測試
+on: workflow_dispatch
+jobs:
+  test:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: microsoft/setup-msbuild@v2
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: 建置 Release
+        shell: pwsh
+        run: |
+          msbuild 'Code/Desktop Frames/Desktop Frames.csproj' /restore /p:Configuration=Release /v:minimal
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: 隔離驗收與代表性測試
+        shell: pwsh
+        run: ./tools/run-all-tests.ps1 -BinaryDir './Code/Desktop Frames/bin/Release/net8.0-windows7.0'
+      - name: 收納面板合成測試
+        shell: pwsh
+        run: ./tools/test-managed-storage-fence.ps1 -BinaryDir './Code/Desktop Frames/bin/Release/net8.0-windows7.0'

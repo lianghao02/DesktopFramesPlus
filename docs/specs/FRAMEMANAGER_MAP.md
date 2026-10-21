@@ -48,6 +48,11 @@
 
 注意：L7605、L7619 附近的註解有編碼損毀（亂碼），不影響執行，但閱讀時請勿誤判；有機會時另案修正編碼。
 
+## 目前的保護網（2026-10-21）
+- 自動化：`tools/run-all-tests.ps1`（218 項）＋`tools/test-managed-storage-fence.ps1`（10 項）。重構相關的特徵化測試在 `tools/acceptance-tests/FrameManagerHelperChecks.cs`（純函式）與 `FrameManagerBehaviorChecks.cs`（資料層、視窗層、拖放、選單黃金檔）。
+- 選單結構以 `tools/acceptance-tests/golden/*.txt` 比對；**刻意**修改選單時，依失敗訊息取得 `actual-*.txt`，人工確認後覆蓋黃金檔並提交。
+- 無法自動化的部分列在 `IMPLEMENTATION_PLAN.md` 的「手動驗收清單」，重構後必須人工走一遍。
+
 ## 若將來要拆分（本專案已脫離上游 fork，不再逐筆合併上游）
 1. **先補回歸測試**：拖入（搬移、複製、捷徑）、鎖定、縮放與吸附、拆除面板、分頁、重新命名；沿用 `tools/` 既有隔離驗收腳本擴充。
 2. **第一步只做 `partial class` 機械切分**（不改任何方法內容與簽名）：依上表分區搬出其餘 86 個方法。

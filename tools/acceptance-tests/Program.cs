@@ -121,6 +121,7 @@ internal static class Program
         StartupSafetyChecks(checker);
         RoundTwoChecks.Run(checker);
         FrameManagerHelperChecks.Run();
+        await FrameManagerBehaviorChecks.Run(checker);
     }
 
     private static void StartupSafetyChecks(TargetChecker checker)
