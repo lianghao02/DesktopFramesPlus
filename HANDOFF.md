@@ -22,6 +22,13 @@
 5. 右鍵選單精緻化：採用 1.5px 柔和深木棕圓角邊框（#6E4F32）、象牙羊皮底色（#FFFDF7）、柔和淺暖金高亮底（#F3E2B6）與暖金刻線 Separator（#DFC8A0），完全符合 Q 版冒險遊戲風格，俐落不厚重。
 6. 所有 152 個自動化測試通過，685 個繁中資源鍵 100% 覆蓋，正式自包含成品已更新至 dist/DesktopFramesPlus（Profiles 嚴格保留）。版本為 v2.10.0。
 
+## 2026-10-21 開機未自動啟動（Claude，未提交、未同步 dist）
+- 根因：HKCU `Run` 的「Desktop Frames +」命令正確且 EXE 存在，但 `Explorer\StartupApproved\Run` 同名值首位元組為 `03`（工作管理員／設定「啟動應用程式」停用，時間 2026-10-13 12:20）。Windows 因此略過；舊程式只檢查 Run，設定畫面仍顯示已啟用。
+- 修正：`WindowsStartupRegistration` 新增 `ApprovedKey`／`IsBlockedByWindows`；`IsEnabled` 遇停用旗標回報未啟用；`SetEnabled(true)` 解除停用（寫 `02` + 11 個 0），`SetEnabled(false)` 一併刪除殘留狀態。測試 `RoundTwoChecks.cs` 改用 GUID 隔離的 Approved 機碼並新增 3 項檢查。
+- 另替 `test-frame-item-transfer`、`test-managed-storage-fence`、`test-native-panel-integration`、`test-portable-runtime`、`verify-localization` 補 UTF-8 BOM（Windows PowerShell 5.1 原本無法解析）。
+- 驗證：MSBuild Release 0 錯誤；`test-native-panel-integration`、`test-representative-functions` 全 PASS（含新增啟動檢查）；繁中 100%。`test-frame-item-transfer.ps1` 需 PowerShell 7 載入 .NET 8 組件，本機未安裝 pwsh，**未執行**。
+- 使用者本機正式 StartupApproved 值仍為停用（未代改系統設定），dist 尚未更新。
+
 ## 2026-10-21 發布 v2.11.0-zh-TW（Claude）
 - 依使用者指示（已自行使用一輪）：升版 2.10.0 → 2.11.0（`Desktop Frames.csproj` 三個版本欄位）、更新 README／CHANGELOG、新增 `docs/releases/v2.11.0-zh-TW.md`。v2.10.0 從未公開發布，本版一併包含。
 - 驗證：自包含發布 → `run-all-tests.ps1` 152 PASS、`test-managed-storage-fence.ps1` 10 PASS、繁中 100%；`package-release.ps1 -RequireSelfContained` 打包。

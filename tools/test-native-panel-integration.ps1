@@ -1,4 +1,4 @@
-param(
+﻿param(
     [string]$BinaryDir = (Join-Path $PSScriptRoot '..\Code\Desktop Frames\bin\Release\net8.0-windows7.0')
 )
 Set-StrictMode -Version Latest

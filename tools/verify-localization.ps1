@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     驗證 Strings.resx 與 Strings.zh-TW.resx 的鍵值對照完整度。
 #>

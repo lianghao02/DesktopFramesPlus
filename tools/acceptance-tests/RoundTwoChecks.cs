@@ -86,13 +86,15 @@ internal static class RoundTwoChecks
         // 僅建立本次 GUID 專用機碼，不操作正式 Run 機碼。
         string keyPath = @"Software\DesktopFramesPlus\Regression-" + Guid.NewGuid().ToString("N");
         string exe = Environment.ProcessPath!;
+        string approvedPath = keyPath + "-Approved";
+        string name = WindowsStartupRegistration.ValueName;
         Check(WindowsStartupRegistration.RunKey == string.Join((char)92, new[] { "Software", "Microsoft", "Windows", "CurrentVersion", "Run" }), "正式啟動機碼使用 Windows 標準 Run 位置");
         try
         {
-            Check(!WindowsStartupRegistration.IsEnabled(exe, keyPath), "缺少啟動機碼時正確回報未啟用");
-            WindowsStartupRegistration.SetEnabled(true, exe, keyPath);
-            Check(WindowsStartupRegistration.IsEnabled(exe, keyPath), "啟動註冊會建立機碼且讀回一致");
-            WindowsStartupRegistration.SetEnabled(true, exe, keyPath);
+            Check(!WindowsStartupRegistration.IsEnabled(exe, keyPath, name, approvedPath), "缺少啟動機碼時正確回報未啟用");
+            WindowsStartupRegistration.SetEnabled(true, exe, keyPath, name, approvedPath);
+            Check(WindowsStartupRegistration.IsEnabled(exe, keyPath, name, approvedPath), "啟動註冊會建立機碼且讀回一致");
+            WindowsStartupRegistration.SetEnabled(true, exe, keyPath, name, approvedPath);
             using (var key = Registry.CurrentUser.OpenSubKey(keyPath, true)!)
             {
                 Check(key.GetValueNames().Length == 1 && (string)key.GetValue(WindowsStartupRegistration.ValueName)! == ((char)34 + exe + (char)34),
@@ -100,17 +102,30 @@ internal static class RoundTwoChecks
                 key.SetValue("其他程式", "保留");
                 key.SetValue(WindowsStartupRegistration.ValueName, "不存在的舊路徑.exe");
             }
-            Check(!WindowsStartupRegistration.IsEnabled(exe, keyPath), "舊路徑或錯誤命令不會誤判為啟用");
-            WindowsStartupRegistration.SetEnabled(true, exe, keyPath);
+            Check(!WindowsStartupRegistration.IsEnabled(exe, keyPath, name, approvedPath), "舊路徑或錯誤命令不會誤判為啟用");
+            WindowsStartupRegistration.SetEnabled(true, exe, keyPath, name, approvedPath);
             bool rejected = false;
-            try { WindowsStartupRegistration.SetEnabled(true, Path.Combine(AppContext.BaseDirectory, "missing.exe"), keyPath); }
+            try { WindowsStartupRegistration.SetEnabled(true, Path.Combine(AppContext.BaseDirectory, "missing.exe"), keyPath, name, approvedPath); }
             catch (FileNotFoundException) { rejected = true; }
-            Check(rejected && WindowsStartupRegistration.IsEnabled(exe, keyPath), "不存在的 EXE 被拒絕，且保留有效註冊");
-            WindowsStartupRegistration.SetEnabled(false, exe, keyPath);
-            using var final = Registry.CurrentUser.OpenSubKey(keyPath)!;
-            Check(final.GetValue(WindowsStartupRegistration.ValueName) == null && (string)final.GetValue("其他程式")! == "保留",
+            Check(rejected && WindowsStartupRegistration.IsEnabled(exe, keyPath, name, approvedPath), "不存在的 EXE 被拒絕，且保留有效註冊");
+            WindowsStartupRegistration.SetEnabled(false, exe, keyPath, name, approvedPath);
+            using (var final = Registry.CurrentUser.OpenSubKey(keyPath)!)
+                Check(final.GetValue(WindowsStartupRegistration.ValueName) == null && (string)final.GetValue("其他程式")! == "保留",
                 "停用只移除本程式，不影響其他項目");
+            using (var approved = Registry.CurrentUser.CreateSubKey(approvedPath, true))
+                approved.SetValue(name, new byte[] { 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }, RegistryValueKind.Binary);
+            WindowsStartupRegistration.SetEnabled(false, exe, keyPath, name, approvedPath);
+            using (var approved = Registry.CurrentUser.CreateSubKey(approvedPath, true))
+            {
+                Check(approved.GetValue(name) == null, "停用時清除 Windows 啟動應用程式的殘留狀態");
+                approved.SetValue(name, new byte[] { 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }, RegistryValueKind.Binary);
+            }
+            using (var run = Registry.CurrentUser.OpenSubKey(keyPath, true)!)
+                run.SetValue(name, (char)34 + exe + (char)34);
+            Check(!WindowsStartupRegistration.IsEnabled(exe, keyPath, name, approvedPath), "Windows 啟動應用程式停用時不誤判為已啟用");
+            WindowsStartupRegistration.SetEnabled(true, exe, keyPath, name, approvedPath);
+            Check(WindowsStartupRegistration.IsEnabled(exe, keyPath, name, approvedPath), "重新啟用會解除 Windows 啟動應用程式的停用狀態");
         }
-        finally { Registry.CurrentUser.DeleteSubKeyTree(keyPath, false); }
+        finally { Registry.CurrentUser.DeleteSubKeyTree(keyPath, false); Registry.CurrentUser.DeleteSubKeyTree(approvedPath, false); }
     }
 }

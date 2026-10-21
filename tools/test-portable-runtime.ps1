@@ -1,4 +1,4 @@
-[CmdletBinding()]
+﻿[CmdletBinding()]
 param(
     [Parameter(Mandatory=$true)][string]$BinaryDir,
     [Parameter(Mandatory=$true)][string]$RunnerDir
