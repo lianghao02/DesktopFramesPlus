@@ -1262,5 +1262,47 @@ namespace Desktop_Frames
                 // ------------------------------
             };
         }
+
+        // 顯示視窗並掛上視窗訊息（限制最大化尺寸）與最大化狀態修正
+        private static void ShowWindowWithSizeHooks(NonActivatingWindow win)
+        {
+            // Make window focusable for key events during drag
+            win.Focusable = true;
+            win.Show();
+
+
+            // --- FIX START ---
+
+            // 1. Install the Message Hook (Enforces the 90% size limit)
+            win.SourceInitialized += (s, e) =>
+            {
+                var source = HwndSource.FromHwnd(new WindowInteropHelper(win).Handle);
+                source?.AddHook(WndProc);
+            };
+            // (Safety: if already initialized)
+            if (PresentationSource.FromVisual(win) is HwndSource existingSource)
+            {
+                existingSource.AddHook(WndProc);
+            }
+
+            // 2. Reactive State Fix (The "Trick")
+            // If Snap Assist sets state to Maximized, we immediately force it back to Normal.
+            // This ensures the Resize Grip (bottom-right) remains visible and functional.
+            win.StateChanged += (sender, args) =>
+            {
+                if (win.WindowState == WindowState.Maximized)
+                {
+                    // We use Dispatcher to let the OS finish its "snap" calculation first, 
+                    // then we immediately override the mode back to Normal.
+                    win.Dispatcher.BeginInvoke(new Action(() =>
+                    {
+                        win.WindowState = WindowState.Normal;
+
+                        LogManager.Log(LogManager.LogLevel.Debug, LogManager.LogCategory.UI,
+                            "Snap Assist intercepted: Reverted Maximized state to Normal to preserve controls.");
+                    }));
+                }
+            };
+        }
     }
 }
