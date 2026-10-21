@@ -3,7 +3,7 @@
 <h1 align="center">Desktop Frames +</h1>
 <p align="center"><i>像魔法般整理你的 Windows 桌面！ / Organize your desktop like magic!</i></p>
 <p align="center">
-  <img src="https://img.shields.io/badge/Maintenance-v2.9.4--zh--TW-blue?style=flat-square" alt="維護紀錄 v2.9.4；執行檔版號另行確認" />
+  <img src="https://img.shields.io/badge/Maintenance-v2.11.0--zh--TW-blue?style=flat-square" alt="維護紀錄 v2.11.0；執行檔版號另行確認" />
   <img src="https://img.shields.io/badge/.NET-8.0--windows-512bd4?style=flat-square&logo=dotnet" alt=".NET 8" />
   <img src="https://img.shields.io/badge/Language-繁體中文%20%7C%20English-blue?style=flat-square" alt="Language" />
   <img src="https://img.shields.io/badge/Platform-Windows%2010%20%2F%2011-0078d4?style=flat-square&logo=windows" alt="Windows 10/11" />
@@ -86,7 +86,7 @@
 1. 前往 **[Releases 發行頁面](https://github.com/lianghao02/DesktopFramesPlus/releases)**，依該版說明選擇完整免安裝成品；原始碼維護狀態與已發布成品可能不同。
 2. 解壓縮至任何具備使用者寫入權限的資料夾（如 `D:\Tools\DesktopFramesPlus` 或桌面，請勿放於唯讀的 `Program Files`）。
 3. 執行 `Desktop Frames.exe` 即可直接使用，首次啟動自動建立繁體中文設定環境。
-   - v2.9.4-zh-TW Windows x64 免安裝成品內含 .NET 8 Desktop Runtime，不需另外安裝 .NET、Visual Studio 或 .NET SDK。請解壓縮整個資料夾，不要只複製 EXE；不適用於 32 位元 Windows，ARM64 尚未驗證。跨電腦與 Windows 10 等限制詳見 [發布驗收報告](docs/releases/v2.9.4-zh-TW.md)。
+   - v2.11.0-zh-TW Windows x64 免安裝成品內含 .NET 8 Desktop Runtime，不需另外安裝 .NET、Visual Studio 或 .NET SDK。請解壓縮整個資料夾，不要只複製 EXE；不適用於 32 位元 Windows，ARM64 尚未驗證。跨電腦與 Windows 10 等限制詳見 [發布驗收報告](docs/releases/v2.11.0-zh-TW.md)。
 4. **升級方式**：關閉程式、備份 `Profiles/` 後依該版說明替換程式檔；不要覆蓋或清除自己的個人設定。更新後確認面板、便箋與捷徑內容。
 
 本機 Repository 的正式使用位置固定為 `dist/DesktopFramesPlus/Desktop Frames.exe`。`Code/Desktop Frames/bin/Release` 是開發輸出，`bin/PortablePublish` 與 `bin/PortablePackage` 是發布中間產物，不作為日常啟動入口。更新正式目錄時保留既有 Profiles、Shortcuts 與設定；只更新成品程式檔。

@@ -22,6 +22,12 @@
 5. 右鍵選單精緻化：採用 1.5px 柔和深木棕圓角邊框（#6E4F32）、象牙羊皮底色（#FFFDF7）、柔和淺暖金高亮底（#F3E2B6）與暖金刻線 Separator（#DFC8A0），完全符合 Q 版冒險遊戲風格，俐落不厚重。
 6. 所有 152 個自動化測試通過，685 個繁中資源鍵 100% 覆蓋，正式自包含成品已更新至 dist/DesktopFramesPlus（Profiles 嚴格保留）。版本為 v2.10.0。
 
+## 2026-10-21 發布 v2.11.0-zh-TW（Claude）
+- 依使用者指示（已自行使用一輪）：升版 2.10.0 → 2.11.0（`Desktop Frames.csproj` 三個版本欄位）、更新 README／CHANGELOG、新增 `docs/releases/v2.11.0-zh-TW.md`。v2.10.0 從未公開發布，本版一併包含。
+- 驗證：自包含發布 → `run-all-tests.ps1` 152 PASS、`test-managed-storage-fence.ps1` 10 PASS、繁中 100%；`package-release.ps1 -RequireSelfContained` 打包。
+- 為避免動到使用者的 `dist/DesktopFramesPlus`（可能有執行中程式與個人 Profiles），打包輸出在 `dist/release-v2.11.0/`；本機正式目錄尚未更新，需要時執行 `scripts/build_and_sync.ps1 -SkipBuild`（保留 Profiles）。
+- ZIP SHA256：DD77B69570FAEAFA5F4512F505E3E260BA4E4229C674BBC42EF3E6ED62BB6B74。
+
 ## 2026-10-21 選單、設定與用詞整理（Claude，未建置）
 - 範圍：resx 用詞（`Strings.zh-TW.resx`，新增 `MenuMore`、`SecAdvancedGroup`）、`FrameManager.cs`（♥ 選單與面板右鍵選單加「更多」）、`OptionsFormManager.cs`（`AddAdvancedSection`：提示聲音、自動隱藏／淡出收進預設收合的 Expander）。
 - **已驗證（2026-10-21）**：MSBuild Release 0 錯誤；`tools/run-all-tests.ps1 -BinaryDir "Code/Desktop Frames/bin/Release/net8.0-windows7.0"` 152 PASS、0 FAIL；`tools/verify-localization.ps1` 繁中 100% 覆蓋；驗收程式實際渲染設定視窗，「進階（少用）」區預設收合。**尚未打包、未覆蓋 `dist/`**；♥ 選單與面板右鍵選單的「更多」尚未在真實桌面上目視確認。
