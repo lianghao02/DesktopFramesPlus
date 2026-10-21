@@ -1824,5 +1824,292 @@ namespace Desktop_Frames
                     $"Updated frame menu - Ctrl:{isCtrlPressed}");
             };
         }
+
+        // 資料夾面板的篩選列：標題列篩選圖示、下拉選單與套用按鈕；非資料夾面板回傳 null
+        private static Grid BuildFilterBar(FrameBuildContext ctx, Grid titleGrid, NonActivatingWindow win)
+        {
+            dynamic frame = ctx.Frame;
+            // --- FILTER UI START ---
+            // Only add Filter UI for Portal Frames
+            Grid filterBar = null;
+            if (frame.ItemsType?.ToString() == "Portal")
+            {
+                // 1. The Filter Icon (Funnel)
+                // 1. The Filter Icon (Funnel)
+                string initialFilter = GetSafeProperty(frame, "FilterString");
+                bool hasInitialFilter = !string.IsNullOrWhiteSpace(initialFilter);
+
+                TextBlock filterIcon = new TextBlock
+                {
+                    Name = "FrameFilterIcon", // New! Name
+                    Text = "❖",
+                    FontSize = 18,
+                    Foreground = hasInitialFilter ? System.Windows.Media.Brushes.Orange : System.Windows.Media.Brushes.White,
+                    VerticalAlignment = VerticalAlignment.Center,
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                    Cursor = Cursors.Hand,
+                    Margin = new Thickness(0, 0, 5, 0),
+                    ToolTip = Strings.TooltipFilterFiles,
+                    Opacity = hasInitialFilter ? 1.0 : Math.Max(0.85, (double)SettingsManager.MenuTintValue / 100)
+                };
+
+                filterIcon.MouseEnter += (s, e) =>
+                {
+                    filterIcon.BeginAnimation(UIElement.OpacityProperty, null);
+                    filterIcon.Opacity = 1.0;
+                };
+
+                filterIcon.MouseLeave += (s, e) =>
+                {
+                    // Skip fade out if a filter is actively applied
+                    if (filterIcon.Foreground != System.Windows.Media.Brushes.Orange)
+                    {
+                        double targetOpacity = Math.Max(0.85, (double)SettingsManager.MenuTintValue / 100);
+                        DoubleAnimation fadeBack = new DoubleAnimation
+                        {
+                            From = 1.0,
+                            To = targetOpacity,
+                            Duration = TimeSpan.FromMilliseconds(300),
+                            BeginTime = TimeSpan.FromMilliseconds(800)
+                        };
+                        filterIcon.BeginAnimation(UIElement.OpacityProperty, fadeBack);
+                    }
+                };
+
+                Grid.SetColumn(filterIcon, 2);
+                titleGrid.Children.Add(filterIcon);
+
+
+                // 2. The Filter Bar (Stable Version)
+                filterBar = new Grid
+                {
+                    Height = 26,
+                    Background = new SolidColorBrush(System.Windows.Media.Color.FromArgb(60, 0, 0, 0)),
+                    Visibility = Visibility.Collapsed,
+                    Margin = new Thickness(0, 0, 0, 2)
+                };
+
+                filterBar.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+                filterBar.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+                ComboBox cmbFilter = new ComboBox
+                {
+                    IsEditable = true,
+                    Height = 24,
+                    StaysOpenOnEdit = true,
+                    VerticalContentAlignment = VerticalAlignment.Center,
+                    Padding = new Thickness(5, 0, 5, 0),
+                    Text = GetSafeProperty(frame, "FilterString")
+                };
+
+                // Helper: Only Repopulate when needed (prevents freeze loop)
+                Action repopulateDropdown = () =>
+                {
+                    cmbFilter.Items.Clear();
+
+                    // A. History
+                    try
+                    {
+                        string currentId = frame.Id?.ToString();
+                        var liveFrame = GetFrameData().FirstOrDefault(f => f.Id?.ToString() == currentId);
+                        if (liveFrame != null)
+                        {
+                            Newtonsoft.Json.Linq.JArray history = null;
+                            if (liveFrame is Newtonsoft.Json.Linq.JObject jFrame)
+                                history = jFrame["FilterHistory"] as Newtonsoft.Json.Linq.JArray;
+                            else
+                                history = liveFrame.GetType().GetProperty("FilterHistory")?.GetValue(liveFrame) as Newtonsoft.Json.Linq.JArray;
+
+                            if (history != null)
+                            {
+                                foreach (var item in history)
+                                {
+                                    cmbFilter.Items.Add(new ComboBoxItem
+                                    {
+                                        Content = item.ToString(),
+                                        Tag = item.ToString(),
+                                        FontWeight = FontWeights.Bold
+                                    });
+                                }
+                            }
+                        }
+                    }
+                    catch { }
+
+                    // B. Separator (if needed)
+                    if (cmbFilter.Items.Count > 0) cmbFilter.Items.Add(new Separator());
+
+                    // C. Standard Presets (From static dictionary)
+                    foreach (var kvp in _standardPresets)
+                    {
+                        cmbFilter.Items.Add(new ComboBoxItem { Content = kvp.Key, Tag = kvp.Value });
+                    }
+                };
+
+                // FIX 1: Only populate on OPEN, never during selection/typing
+                cmbFilter.DropDownOpened += (s, e) => repopulateDropdown();
+
+                // Clear Button
+                Button btnClearFilter = new Button
+                {
+                    Content = "✕",
+                    Background = System.Windows.Media.Brushes.Transparent,
+                    Foreground = System.Windows.Media.Brushes.Gray,
+                    BorderThickness = new Thickness(0),
+                    Cursor = Cursors.Hand,
+                    Width = 20,
+                    ToolTip = Strings.TooltipClearFilter
+                };
+
+                filterBar.Children.Add(cmbFilter);
+                filterBar.Children.Add(btnClearFilter);
+                Grid.SetColumn(btnClearFilter, 1);
+
+                // --- LOGIC SETUP ---
+
+                // Helper to execute/save
+                Action<string> commitFilter = (text) =>
+                {
+                    bool hasFilter = !string.IsNullOrWhiteSpace(text);
+                    filterIcon.Foreground = hasFilter ? System.Windows.Media.Brushes.Orange : System.Windows.Media.Brushes.White;
+
+                    filterIcon.BeginAnimation(UIElement.OpacityProperty, null);
+                    filterIcon.Opacity = hasFilter ? 1.0 : ((double)SettingsManager.MenuTintValue / 100);
+
+                    if (_portalFrames.ContainsKey(frame))
+                        _portalFrames[frame].ApplyFilter(text);
+
+                    UpdateFrameProperty(frame, "FilterString", text, "Updated filter");
+
+                    // Update history (logic now handles ignoring presets)
+                    UpdateFilterHistory(frame, text);
+                };
+
+                // Typing Timer
+                System.Windows.Threading.DispatcherTimer debounceTimer = new System.Windows.Threading.DispatcherTimer
+                {
+                    Interval = TimeSpan.FromMilliseconds(500)
+                };
+                debounceTimer.Tick += (s, e) =>
+                {
+                    debounceTimer.Stop();
+                    // Visual update only while typing
+                    if (_portalFrames.ContainsKey(frame)) _portalFrames[frame].ApplyFilter(cmbFilter.Text);
+
+                    bool hasFilter = !string.IsNullOrWhiteSpace(cmbFilter.Text);
+                    filterIcon.Foreground = hasFilter ? System.Windows.Media.Brushes.Orange : System.Windows.Media.Brushes.White;
+
+                    filterIcon.BeginAnimation(UIElement.OpacityProperty, null);
+                    filterIcon.Opacity = hasFilter ? 1.0 : ((double)SettingsManager.MenuTintValue / 100);
+                };
+
+                // 1. STYLE FIX (Internal TextBox)
+                cmbFilter.Loaded += (s, e) =>
+                {
+                    var textBox = (TextBox)cmbFilter.Template.FindName("PART_EditableTextBox", cmbFilter);
+                    if (textBox != null)
+                    {
+                        textBox.Background = System.Windows.Media.Brushes.Transparent;
+                        textBox.Foreground = System.Windows.Media.Brushes.White;
+                        textBox.CaretBrush = System.Windows.Media.Brushes.White;
+                        textBox.BorderThickness = new Thickness(0);
+                    }
+                };
+
+                // 2. TYPING LOGIC
+                cmbFilter.KeyUp += (s, e) =>
+                {
+                    if (e.Key == Key.Up || e.Key == Key.Down) return;
+
+                    if (e.Key == Key.Enter)
+                    {
+                        commitFilter(cmbFilter.Text); // Save history on Enter
+                        cmbFilter.IsDropDownOpen = false;
+                        filterBar.Visibility = Visibility.Collapsed;
+                        win.EndKeyboardInteractiveEdit();
+                        e.Handled = true;
+                        return;
+                    }
+                    else if (e.Key == Key.Escape)
+                    {
+                        filterBar.Visibility = Visibility.Collapsed;
+                        win.EndKeyboardInteractiveEdit();
+                        e.Handled = true;
+                        return;
+                    }
+
+                    debounceTimer.Stop();
+                    debounceTimer.Start();
+                };
+
+                // 3. SELECTION LOGIC (FIXED)
+                // We do NOT repopulate here. We just apply the value.
+                cmbFilter.SelectionChanged += (s, e) =>
+                {
+                    if (cmbFilter.SelectedItem is ComboBoxItem item && item.Tag != null)
+                    {
+                        string selectedFilter = item.Tag.ToString();
+
+                        // Break the event loop by running this later
+                        System.Windows.Application.Current.Dispatcher.BeginInvoke(new Action(() =>
+                        {
+                            cmbFilter.IsDropDownOpen = false;
+
+                            // Important: Don't set SelectedItem = null here, it causes flickering.
+                            // Just force the text and run logic.
+                            cmbFilter.Text = selectedFilter;
+
+                            debounceTimer.Stop();
+                            commitFilter(selectedFilter);
+                        }));
+                    }
+                };
+
+                // 4. CLEAR LOGIC
+                btnClearFilter.Click += (s, e) =>
+                {
+                    cmbFilter.Text = "";
+                    if (_portalFrames.ContainsKey(frame)) _portalFrames[frame].ApplyFilter("");
+                    UpdateFrameProperty(frame, "FilterString", "", "Cleared filter");
+                    filterIcon.Foreground = System.Windows.Media.Brushes.White;
+                    filterIcon.BeginAnimation(UIElement.OpacityProperty, null);
+                    filterIcon.Opacity = (double)SettingsManager.MenuTintValue / 100;
+                    filterBar.Visibility = Visibility.Collapsed;
+                    win.EndKeyboardInteractiveEdit();
+                };
+
+                // 5. TOGGLE BAR
+                filterIcon.MouseLeftButtonDown += (s, e) =>
+                {
+                    if (filterBar.Visibility == Visibility.Visible)
+                    {
+                        if (!string.IsNullOrWhiteSpace(cmbFilter.Text)) commitFilter(cmbFilter.Text); // Save on close
+                        filterBar.Visibility = Visibility.Collapsed;
+                        win.EndKeyboardInteractiveEdit();
+                    }
+                    else
+                    {
+                        filterBar.Visibility = Visibility.Visible;
+                        win.BeginKeyboardInteractiveEdit(cmbFilter);
+                    }
+                    e.Handled = true;
+                };
+
+                // Initial Apply
+                if (!string.IsNullOrEmpty(cmbFilter.Text))
+                {
+                    filterIcon.Foreground = System.Windows.Media.Brushes.Orange;
+                    filterIcon.Opacity = 1.0; // Ensure it starts fully visible if active
+
+                    win.Loaded += (s, e) =>
+                    {
+                        if (_portalFrames.ContainsKey(frame))
+                            _portalFrames[frame].ApplyFilter(cmbFilter.Text);
+                    };
+                }
+            }
+            // --- FILTER UI END ---
+            return filterBar;
+        }
     }
 }
