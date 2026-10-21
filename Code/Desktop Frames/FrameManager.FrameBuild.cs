@@ -788,5 +788,212 @@ namespace Desktop_Frames
             miDeleteThisFrame.Click += (s, e) => DeleteFrameWithConfirmation(frame, win);
             CnMnFramemanager.Items.Add(miDeleteThisFrame);
         }
+
+        // 視窗狀態：讀取隱藏設定、拉回螢幕內、載入時套用鎖定與捲起高度、隱藏選單、縮放寫檔、拖曳中按 Esc 取消、自動隱藏計時重設
+        private static void BindWindowStateEvents(FrameBuildContext ctx, NonActivatingWindow win, TextBlock lockIcon, MenuItem miHide)
+        {
+            dynamic frame = ctx.Frame;
+            // Handle both JObject and ExpandoObject access
+            string isHiddenString = "false"; // Default value
+            try
+            {
+                if (frame is JObject jFrame)
+                {
+                    // Existing Frame from JSON
+                    isHiddenString = jFrame["IsHidden"]?.ToString().ToLower() ?? "false";
+                }
+                else
+                {
+                    // New ExpandoObject Frame
+                    isHiddenString = (frame.IsHidden?.ToString() ?? "false").ToLower();
+                }
+            }
+            catch (Exception ex)
+            {
+                LogManager.Log(LogManager.LogLevel.Warn, LogManager.LogCategory.Error, $"Error reading IsHidden: {ex.Message}");
+            }
+            bool isHidden = isHiddenString == "true";
+            LogManager.Log(LogManager.LogLevel.Debug, LogManager.LogCategory.Settings, $"Frame '{frame.Title}' IsHidden state: {isHidden}");
+            // Adjust the frame position to ensure it fits within screen bounds
+            AdjustFramePositionToScreen(win);
+            win.Loaded += (s, e) =>
+            {
+                UpdateLockState(lockIcon, frame, null, saveToJson: false);
+                LogManager.Log(LogManager.LogLevel.Debug, LogManager.LogCategory.FrameCreation, $"Applied lock state for frame '{frame.Title}' on load: IsLocked={frame.IsLocked?.ToString().ToLower()}");
+                // Apply IsRolled state
+                bool isRolled = frame.IsRolled?.ToString().ToLower() == "true";
+                double targetHeight = 28; // Default for rolled-up state  //rolled height
+                if (!isRolled)
+                {
+                    double unrolledHeight = (double)frame.Height; // Default to frame.Height
+                    if (frame.UnrolledHeight != null)
+                    {
+                        if (double.TryParse(frame.UnrolledHeight.ToString(), out double parsedHeight))
+                        {
+                            if (parsedHeight > 0)
+                            {
+                                unrolledHeight = parsedHeight;
+                            }
+                            else
+                            {
+                                LogManager.Log(LogManager.LogLevel.Debug, LogManager.LogCategory.FrameCreation, $"UnrolledHeight {parsedHeight} is invalid (non-positive) for frame '{frame.Title}', using Height={unrolledHeight}");
+                            }
+                        }
+                        else
+                        {
+                            LogManager.Log(LogManager.LogLevel.Debug, LogManager.LogCategory.FrameCreation, $"Failed to parse UnrolledHeight '{frame.UnrolledHeight}' for frame '{frame.Title}', using Height={unrolledHeight}");
+                        }
+                    }
+                    else
+                    {
+                        LogManager.Log(LogManager.LogLevel.Debug, LogManager.LogCategory.FrameCreation, $"UnrolledHeight is null for frame '{frame.Title}', using Height={unrolledHeight}");
+                    }
+                    targetHeight = unrolledHeight;
+                    LogManager.Log(LogManager.LogLevel.Info, LogManager.LogCategory.FrameCreation, $"Applied rolled-down state for frame '{frame.Title}' on load: Height={targetHeight}");
+                }
+                else
+                {
+                    LogManager.Log(LogManager.LogLevel.Info, LogManager.LogCategory.FrameCreation, $"Applied rolled-up state for frame '{frame.Title}' on load: Height={targetHeight}");
+                }
+                win.Height = targetHeight;
+                // Apply WrapPanel visibility
+                var border = win.Content as Border;
+                if (border != null)
+                {
+                    var dockPanel = border.Child as DockPanel;
+                    if (dockPanel != null)
+                    {
+                        var scrollViewer = dockPanel.Children.OfType<ScrollViewer>().FirstOrDefault();
+                        if (scrollViewer != null)
+                        {
+                            var wpcont = scrollViewer.Content as WrapPanel;
+                            if (wpcont != null)
+                            {
+                                wpcont.Visibility = isRolled ? Visibility.Collapsed : Visibility.Visible;
+                                LogManager.Log(LogManager.LogLevel.Debug, LogManager.LogCategory.FrameCreation, $"Set initial WrapPanel visibility to {(isRolled ? "Collapsed" : "Visible")} for frame '{frame.Title}'");
+
+                                // --- MULTI-MONITOR INVISIBLE ICON FIX ---
+                                if (!isRolled)
+                                {
+                                    wpcont.UpdateLayout();
+                                    wpcont.InvalidateVisual();
+                                    wpcont.Opacity = 0.99;
+                                    wpcont.Dispatcher.BeginInvoke(new Action(() => { wpcont.Opacity = 1.0; }), System.Windows.Threading.DispatcherPriority.Render);
+                                }
+                            }
+                        }
+                    }
+                }
+                if (isHidden)
+                {
+                    win.Visibility = Visibility.Hidden;
+                    TrayManager.AddHiddenFrame(win);
+                    LogManager.Log(LogManager.LogLevel.Info, LogManager.LogCategory.FrameCreation, $"Hid frame '{frame.Title}' after loading at startup");
+                }
+            };
+            // Step 5
+            if (isHidden)
+            {
+                TrayManager.AddHiddenFrame(win);
+                LogManager.Log(LogManager.LogLevel.Debug, LogManager.LogCategory.FrameCreation, $"Added frame '{frame.Title}' to hidden list at startup");
+            }
+            // Hide click
+            miHide.Click += (s, e) =>
+            {
+                UpdateFrameProperty(frame, "IsHidden", "true", $"Hid frame '{frame.Title}'");
+                TrayManager.AddHiddenFrame(win);
+                LogManager.Log(LogManager.LogLevel.Debug, LogManager.LogCategory.General, $"Triggered Hide frame for '{frame.Title}'");
+            };
+            // Handle manual resize to update both Height and UnrolledHeight
+            win.SizeChanged += (s, e) =>
+            {
+                // Get current frame reference by ID to avoid stale references
+                string frameId = win.Tag?.ToString();
+                if (string.IsNullOrEmpty(frameId))
+                {
+
+                    return;
+                }
+
+                // --- ACCORDION STACK CASCADE HOOK ---
+                // Triggers on manual grip resizing AND smooth roll-up/roll-down animations
+                if (win.IsLoaded && Math.Abs(e.NewSize.Height - e.PreviousSize.Height) > 0.1)
+                {
+                    double deltaY = e.NewSize.Height - e.PreviousSize.Height;
+                    SnapManager.CascadeStack(frameId, deltaY);
+                }
+                // ------------------------------------
+
+                // Skip updates if this frame is currently in a rollup/rolldown transition
+                // --- NEW: Also skip if it is Auto-Rolled (so we don't save the rolled-up height) ---
+                if (_framesInTransition.Contains(frameId) || _autoRolledFrames.Contains(frameId))
+                {
+                    return;
+                }
+                // Find the current frame in FrameDataManager.FrameData using ID
+                // Find the current frame in FrameDataManager.FrameData using ID
+                var currentFrame = FrameDataManager.FrameData.FirstOrDefault(f => f.Id?.ToString() == frameId);
+                if (currentFrame != null)
+                {
+
+                    double newHeight = e.NewSize.Height;
+                    double newWidth = e.NewSize.Width;
+                    double oldHeight = Convert.ToDouble(currentFrame.Height?.ToString() ?? "0");
+                    double oldUnrolledHeight = Convert.ToDouble(currentFrame.UnrolledHeight?.ToString() ?? "0");
+                    bool isRolled = currentFrame.IsRolled?.ToString().ToLower() == "true";
+
+                    // Update Width and Height with the actual new values
+                    currentFrame.Width = newWidth;
+                    currentFrame.Height = newHeight;
+
+                    // Handle UnrolledHeight update
+                    if (!isRolled)
+                    {
+
+                        if (Math.Abs(newHeight - 28) > 5) // Only if height is significantly different from rolled-up height   //rolled height
+                        {
+                            double heightDifference = Math.Abs(newHeight - oldUnrolledHeight);
+                            // DebugLog("LOGIC", frameId, $"Height difference from old UnrolledHeight: {heightDifference:F1}");
+                            currentFrame.UnrolledHeight = newHeight;
+                            // DebugLog("UPDATE", frameId, $"UPDATED UnrolledHeight from {oldUnrolledHeight:F1} to {newHeight:F1}");
+                        }
+                        else
+                        {
+
+                        }
+                    }
+                    else
+                    {
+
+                    }
+                    // Save to JSON
+                    //   MessageBox.Show("Debug: SizeChanged handler called. Saving frame data.");
+                    FrameDataManager.SaveFrameData();
+                    var verifyFrame = FrameDataManager.FrameData.FirstOrDefault(f => f.Id?.ToString() == frameId);
+                    double verifyHeight = Convert.ToDouble(verifyFrame.Height?.ToString() ?? "0");
+                    double verifyUnrolled = Convert.ToDouble(verifyFrame.UnrolledHeight?.ToString() ?? "0");
+
+                }
+                else
+                {
+
+                }
+            };
+            win.KeyDown += (sender, e) =>
+            {
+                if (IconDragDropManager.IsDragging && e.Key == Key.Escape)
+                {
+                    LogManager.Log(LogManager.LogLevel.Info, LogManager.LogCategory.UI, "Escape pressed during drag, cancelling operation");
+                    IconDragDropManager.CancelDrag();
+                    e.Handled = true;
+                }
+
+
+            };
+
+            // --- NEW: Auto-Hide Interaction Hook ---
+            win.PreviewMouseDown += (s, e) => { if (SettingsManager.AutoResetHideTimer) ResetAutoHideTimer(); };
+            win.PreviewMouseWheel += (s, e) => { if (SettingsManager.AutoResetHideTimer) ResetAutoHideTimer(); };
+        }
     }
 }
