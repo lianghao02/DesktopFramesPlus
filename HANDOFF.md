@@ -26,7 +26,8 @@
 - 範圍：resx 用詞（`Strings.zh-TW.resx`，新增 `MenuMore`、`SecAdvancedGroup`）、`FrameManager.cs`（♥ 選單與面板右鍵選單加「更多」）、`OptionsFormManager.cs`（`AddAdvancedSection`：提示聲音、自動隱藏／淡出收進預設收合的 Expander）。
 - **已驗證（2026-10-21）**：MSBuild Release 0 錯誤；`tools/run-all-tests.ps1 -BinaryDir "Code/Desktop Frames/bin/Release/net8.0-windows7.0"` 152 PASS、0 FAIL；`tools/verify-localization.ps1` 繁中 100% 覆蓋；驗收程式實際渲染設定視窗，「進階（少用）」區預設收合。**尚未打包、未覆蓋 `dist/`**；♥ 選單與面板右鍵選單的「更多」尚未在真實桌面上目視確認。
 - 注意：`FrameManager.cs` 有 `using Color = System.Drawing.Color` 別名，新增的紅字用 `System.Windows.Media.Color`。
-- 未做：設定頁籤合併（便箋、快捷鍵併入情境）、自訂外觀對話框精簡；有需要再評估。
+- `CustomizeFrameFormManager.cs`：新增 `CreateAdvancedSection`，把 `_cmbCustomLaunchEffect`、`_chkDisableTextShadow`、`_chkGrayscaleIcons` 移入預設收合的 Expander（欄位與載入／儲存邏輯不變）；MSBuild 0 錯誤、152 PASS，但此視窗沒有自動化畫面檢查，尚未目視確認。
+- 未做：設定頁籤合併（便箋、快捷鍵併入情境）；有需要再評估。
 
 ## 2026-10-20 接手收尾（Claude）
 - 前一輪成果已驗收並一併提交：

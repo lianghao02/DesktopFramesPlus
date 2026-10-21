@@ -314,6 +314,7 @@ namespace Desktop_Frames
             CreateFrameSection(contentStack);
             CreateTitleSection(contentStack);
             CreateIconsSection(contentStack);
+            CreateAdvancedSection(contentStack);
 
             scrollViewer.Content = contentStack;
             parent.Children.Add(scrollViewer);
@@ -440,7 +441,6 @@ namespace Desktop_Frames
             StackPanel frameStack = new StackPanel { Orientation = Orientation.Vertical };
 
             CreateDropdownField(frameStack, Strings.LblCustomColor, _validColors, out _cmbCustomColor);
-            CreateDropdownField(frameStack, Strings.LblCustomLaunchEffect, _validEffects, out _cmbCustomLaunchEffect);
             CreateDropdownField(frameStack, Strings.LblFrameBorderColor, _validColors, out _cmbframeBorderColor);
             CreateNumericField(frameStack, Strings.LblFrameBorderThickness, 0, 5, out _nudframeBorderThickness);
 
@@ -498,11 +498,35 @@ namespace Desktop_Frames
             CreateDropdownField(iconsStack, Strings.LblIconSize, _validIconSizes, out _cmbIconSize);
             CreateNumericField(iconsStack, Strings.LblIconSpacing, 0, 20, out _nudIconSpacing);
             CreateDropdownField(iconsStack, Strings.LblTextColor, _validColors, out _cmbTextColor);
-            CreateCheckboxField(iconsStack, Strings.LblDisableTextShadow, out _chkDisableTextShadow);
-            CreateCheckboxField(iconsStack, Strings.LblGrayscaleIcons, out _chkGrayscaleIcons);
 
             iconsGroupBox.Content = iconsStack;
             parent.Children.Add(iconsGroupBox);
+        }
+
+        /// <summary>
+        /// 少用的外觀選項（啟動特效、文字陰影、灰階圖示）收進預設收合的「進階（少用）」。
+        /// 控制項仍是同一組欄位，載入、儲存與重設邏輯不受影響。
+        /// </summary>
+        private void CreateAdvancedSection(StackPanel parent)
+        {
+            StackPanel advancedStack = new StackPanel { Orientation = Orientation.Vertical, Margin = new Thickness(0, 6, 0, 0) };
+
+            CreateDropdownField(advancedStack, Strings.LblCustomLaunchEffect, _validEffects, out _cmbCustomLaunchEffect);
+            CreateCheckboxField(advancedStack, Strings.LblDisableTextShadow, out _chkDisableTextShadow);
+            CreateCheckboxField(advancedStack, Strings.LblGrayscaleIcons, out _chkGrayscaleIcons);
+
+            Expander expander = new Expander
+            {
+                Header = Strings.Get("SecAdvancedGroup", "進階（少用）"),
+                FontFamily = new FontFamily("Segoe UI"),
+                FontSize = 14,
+                FontWeight = FontWeights.Bold,
+                Foreground = new SolidColorBrush(_userAccentColor),
+                IsExpanded = false,
+                Margin = new Thickness(0, 0, 0, 10),
+                Content = advancedStack
+            };
+            parent.Children.Add(expander);
         }
 
         #region Helper Methods for Control Creation
