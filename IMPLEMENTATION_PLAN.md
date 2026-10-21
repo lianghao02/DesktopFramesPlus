@@ -153,7 +153,7 @@
 - **Phase 2～4 結果**：新增 `tools/acceptance-tests/FrameManagerBehaviorChecks.cs`（42 項）與 5 份選單黃金檔（`tools/acceptance-tests/golden/`，內嵌資源，不一致時於驗收目錄輸出 `actual-*.txt`）。涵蓋：`UpdateFrameProperty` 的型別與相容規則、收合動畫中略過屬性、執行期隱藏與置頂、`MigrateLegacyJson`（缺欄位補預設、未知欄位保留、損壞分頁修復、舊版資料夾面板不改寫、重跑不改檔）、手動拉回螢幕內、Data／收納面板的 ♥ 選單與面板右鍵選單、圖示右鍵選單、鎖定切換、重新命名（Enter／Esc）、分頁開關、圖示大小、主視窗拖放（Data 建立參照、收納面板預設搬移、舊版面板介面層拒絕＋對照組）、重設自訂外觀、真實桌面隔離防護。
 - **拖放可行性結論**：以反射建立 `DragEventArgs` 可驅動主視窗真正的 `Drop` 處理；但拖放手勢讀取的是實體鍵盤狀態（`Keyboard.Modifiers`），**Ctrl 複製與 Alt 捷徑無法在介面層自動化**，維持由 `test-managed-storage-fence.ps1` 在服務層驗證，介面層列入手動清單。
 - **Phase 5 改壞驗證（累計 13 種）**：Phase 1 的 3 種全部抓到；Phase 5 的 10 種中 9 種抓到（鎖定不切換、改名不存檔、拖放預設變複製、舊版面板不擋拖放〔由既有「Portal 拒絕拖入」測試因跳出對話框而逾時失敗〕、選單少一項、展開高度預設錯、分頁主區未清空、置頂失效、手動拉回失效），1 種為**等價改動**（`IsHidden` 存成布林：`SaveFrameData` 的 `ApplyFormatConsistency` 會轉回字串，檔案內容相同，非測試漏洞）。過程中補強 2 處原本太弱的測試（手動拉回需關閉自動調整、舊版面板需檢查介面層拒絕）。每次改壞後皆以 git 還原並重新建置。
-- **Phase 6 結果**：`run-all-tests.ps1` 共 218 項 PASS（基準 155＋新增 63），收納面板 10 項 PASS；`FrameManager.cs` 全程未修改。新增手動觸發的 CI（`.github/workflows/regression.yml`，`workflow_dispatch`，推送不會自動執行），試跑結果見下一點。
+- **Phase 6 結果**：`run-all-tests.ps1` 共 218 項 PASS（基準 155＋新增 63），收納面板 10 項 PASS；`FrameManager.cs` 全程未修改。CI 試跑（GitHub Actions，`windows-latest`，執行編號 39618249790）：Release 建置成功，但驗收在**第一批既有檢查**「文件與資料夾建立參照」即失敗（尚未執行到新增測試）。該步驟以 Windows 捷徑 COM 元件建立 `.lnk`，推測在 GitHub 執行環境不可用，屬環境限制。依計劃規則**維持本機執行**，並移除該 workflow，避免留下會失敗的入口；草稿保留於 `tools/ci-drafts/test.yml`。若日後要上 CI，需先讓建立捷徑的步驟在無互動環境可用。
 - **事故紀錄（已處理）**：Phase 3 初版測試建立收納面板時未指定路徑，程式改用真實桌面預設位置，於 `桌面\DesktopFrames_收納區` 建立 4 個空資料夾（本輪 22:05～22:08 建立，無任何檔案）。已確認全為本輪產生並以非遞迴方式刪除；測試改為一律明確指定隔離路徑，並新增「真實桌面預設收納位置前後不變」的防護檢查。
 
 ### 怪現象清單（測試網完成後逐一評估修正；每項修正先改期望再修程式）

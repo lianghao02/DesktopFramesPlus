@@ -3,7 +3,7 @@
 ## 2026-10-21 FrameManager 重構前的回歸測試網（Claude）
 - 還原點標籤：`restore/2026-10-21-before-framemanager-work`（已推送）。
 - 新增特徵化測試 63 項（純函式 21、行為 42）與 5 份選單黃金檔；`run-all-tests.ps1` 218 項全過；13 種改壞驗證 12 種抓到、1 種為等價改動。正式程式碼（含 `FrameManager.cs`）未修改。
-- 新增手動觸發 CI：`.github/workflows/regression.yml`（`workflow_dispatch`）。
+- CI 試跑：GitHub Windows 環境在既有的建立捷徑檢查即失敗（環境限制），維持本機執行；已移除 workflow，草稿在 `tools/ci-drafts/`。
 - 待使用者決定：簽核後才開「拆檔」計劃；怪現象清單 6 項的修正順序。詳見 `IMPLEMENTATION_PLAN.md`。
 - 注意：建立收納面板的測試必須明確指定 `portalPath` 與 `storageRootPath`，否則會寫到真實桌面的預設收納位置（本輪曾發生並已清除）。
 
