@@ -47,6 +47,7 @@ internal static class FrameManagerBehaviorChecks
         await LockRenameTabsIconChecks(checker, root);
         await TitleBarChecks(checker);
         await PanelMenuClickChecks(checker);
+        await WindowBehaviorChecks(checker, root);
         await DropChecks(checker, root);
         await FitToContentChecks(checker, root);
         await ResetCustomizationChecks();
@@ -148,8 +149,8 @@ internal static class FrameManagerBehaviorChecks
             throw new InvalidOperationException($"缺少黃金檔 golden/{name}.txt；實際結果已輸出到 {outFile}，人工確認後複製到 tools/acceptance-tests/golden/");
         string expected = new StreamReader(stream, Encoding.UTF8).ReadToEnd().Replace("\r\n", "\n").Trim();
         if (expected != normalized)
-            throw new InvalidOperationException($"選單結構與黃金檔不一致：{name}（實際結果見 {outFile}；若是刻意修改，確認後更新黃金檔）");
-        Console.WriteLine($"PASS：選單結構與黃金檔一致：{name}");
+            throw new InvalidOperationException($"結構與黃金檔不一致：{name}（實際結果見 {outFile}；若是刻意修改，確認後更新黃金檔）");
+        Console.WriteLine($"PASS：結構與黃金檔一致：{name}");
     }
 
     private static void CloseDialogsSoon(DispatcherTimer timer)
@@ -451,6 +452,128 @@ internal static class FrameManagerBehaviorChecks
         win.Close();
         FrameDataManager.FrameData.RemoveAll(f => f.Id?.ToString() == id);
         FrameDataManager.SaveFrameData();
+    }
+
+    // 視窗元件結構：只列到圖示區為止（不展開圖示），用來確認標題列、篩選列、分頁列、圖示區的建立順序與內容不變
+    private static string WindowTree(Window win)
+    {
+        var sb = new StringBuilder();
+        void Walk(DependencyObject node, int depth)
+        {
+            string name = node is FrameworkElement fe && !string.IsNullOrEmpty(fe.Name) ? "#" + fe.Name : "";
+            string vis = node is UIElement ui && ui.Visibility != Visibility.Visible ? " [" + ui.Visibility + "]" : "";
+            string text = node switch { TextBlock tb => " 「" + tb.Text + "」", Label lb => " 「" + lb.Content + "」", _ => "" };
+            sb.Append(new string(' ', depth * 2)).Append(node.GetType().Name).Append(name).Append(vis).Append(text).Append('\n');
+            if (node is WrapPanel) return;
+            IEnumerable<object> children = node switch
+            {
+                Window w => new object?[] { w.Content }.Where(c => c != null)!,
+                Decorator d => new object?[] { d.Child }.Where(c => c != null)!,
+                Panel p => p.Children.Cast<object>(),
+                ContentControl cc and not Label => new object?[] { cc.Content }.Where(c => c is DependencyObject)!,
+                _ => Array.Empty<object>()
+            };
+            foreach (var c in children.OfType<DependencyObject>()) Walk(c, depth + 1);
+        }
+        Walk(win, 0);
+        return sb.ToString();
+    }
+
+    private static T? Field<T>(string name) => (T?)typeof(Framemanager).GetField(name, AnyStatic)!.GetValue(null);
+
+    private static void ClickTitle(Label label, int clickCount)
+    {
+        var args = new MouseButtonEventArgs(Mouse.PrimaryDevice, Environment.TickCount, MouseButton.Left) { RoutedEvent = UIElement.MouseDownEvent, Source = label };
+        typeof(MouseButtonEventArgs).GetProperty("ClickCount")!.GetSetMethod(true)!.Invoke(args, new object[] { clickCount });
+        label.RaiseEvent(args);
+    }
+
+    // 視窗層行為（CreateFrame 拆解第三段起的保護）：載入時的捲起／展開與隱藏、縮放寫檔、自動捲起、標題雙擊與單擊、視窗元件結構
+    private static async Task WindowBehaviorChecks(TargetChecker checker, string root)
+    {
+        async Task<(string id, NonActivatingWindow win)> OpenWith(string title, Action<dynamic> setup)
+        {
+            dynamic created = FrameDataManager.CreateNewFrame(title, "Data", 320, 300, width: 380, height: 200);
+            string id = created.Id.ToString();
+            setup(Live(id));
+            FrameDataManager.SaveFrameData();
+            NonActivatingWindow w = await Open(Live(id), checker);
+            return (id, w);
+        }
+        void Remove(string id, Window w)
+        {
+            w.Close();
+            FrameDataManager.FrameData.RemoveAll(f => f.Id?.ToString() == id);
+            FrameDataManager.SaveFrameData();
+        }
+        WrapPanel IconArea(Window w) => GameThemeChecks.Children<WrapPanel>(w).First();
+
+        var (rolledId, rolledWin) = await OpenWith("載入捲起", f => { f["IsRolled"] = "true"; f["UnrolledHeight"] = 240; });
+        Check(Math.Abs(rolledWin.Height - 28) < 0.5 && IconArea(rolledWin).Visibility == Visibility.Collapsed,
+            "特徵化：已捲起的面板載入時高度 28、圖示區收合");
+        Remove(rolledId, rolledWin);
+
+        // 現狀：視窗第一次排版的 SizeChanged 會先把 UnrolledHeight 改成 Height，載入時因此以 Height 為準
+        var (openId, openWin) = await OpenWith("載入展開", f => { f["UnrolledHeight"] = 333; });
+        Check(Math.Abs(openWin.Height - 200) < 0.5 && IconArea(openWin).Visibility == Visibility.Visible && (double)Saved(openId)["UnrolledHeight"]! == 200,
+            "特徵化：未捲起的面板載入時以 Height 為準（現狀：UnrolledHeight 在首次排版時被改成 Height）");
+        openWin.Height = 360;
+        openWin.Width = 410;
+        await Task.Delay(100);
+        Check((double)Saved(openId)["Height"]! == 360 && (double)Saved(openId)["UnrolledHeight"]! == 360 && (double)Saved(openId)["Width"]! == 410,
+            "特徵化：手動改變大小時寫入寬、高與展開高度");
+
+        // 標題：雙擊捲起，再雙擊展開（單擊進入改名需讀取實體滑鼠按鍵狀態，無法模擬，列入手動驗收）
+        var label = GameThemeChecks.Children<Label>(openWin).First(l => l.Content?.ToString() == "載入展開");
+        ClickTitle(label, 2);
+        await Task.Delay(700);
+        Check(Saved(openId)["IsRolled"]?.ToString() == "true" && Math.Abs(openWin.Height - 28) < 0.5 && IconArea(openWin).Visibility == Visibility.Collapsed,
+            "特徵化：雙擊標題捲起面板並寫入狀態");
+        ClickTitle(label, 2);
+        await Task.Delay(700);
+        Check(Saved(openId)["IsRolled"]?.ToString() == "false" && Math.Abs(openWin.Height - 360) < 0.5 && IconArea(openWin).Visibility == Visibility.Visible,
+            "特徵化：再雙擊標題展開回原高度");
+        Remove(openId, openWin);
+
+        var (hiddenId, hiddenWin) = await OpenWith("載入隱藏", f => { f["IsHidden"] = "true"; });
+        // 現狀：載入時會先隱藏，但 CreateFrame 結尾的第二次 Show() 又把視窗顯示出來；面板資料仍維持 IsHidden=true（另案評估）
+        Check(hiddenWin.IsLoaded && hiddenWin.Visibility == Visibility.Visible && Saved(hiddenId)["IsHidden"]?.ToString() == "true",
+            "特徵化：設定為隱藏的面板建立後（現狀）仍為可見，設定值保持隱藏");
+        Remove(hiddenId, hiddenWin);
+
+        // 自動捲起：計時器到期且滑鼠不在面板上時捲起；滑鼠移入時展開
+        var (autoId, autoWin) = await OpenWith("自動捲起", f => { f["AutoRoll"] = "true"; });
+        var timers = Field<Dictionary<string, DispatcherTimer>>("_autoRollTimers")!;
+        var rolledSet = Field<HashSet<string>>("_autoRolledFrames")!;
+        Check(timers.TryGetValue(autoId, out var autoTimer) && autoTimer.IsEnabled, "特徵化：啟用自動捲起的面板建立後立即啟動計時器");
+        autoTimer!.Interval = TimeSpan.FromMilliseconds(50);
+        await Task.Delay(800);
+        Check(rolledSet.Contains(autoId) && Math.Abs(autoWin.Height - 28) < 0.5 && IconArea(autoWin).Visibility == Visibility.Collapsed
+            && Saved(autoId)["IsRolled"]?.ToString() != "true",
+            "特徵化：自動捲起到期後捲起，但不寫入手動捲起狀態");
+        autoWin.RaiseEvent(new MouseEventArgs(Mouse.PrimaryDevice, Environment.TickCount) { RoutedEvent = Mouse.MouseEnterEvent });
+        await Task.Delay(800);
+        Check(!rolledSet.Contains(autoId) && Math.Abs(autoWin.Height - 200) < 0.5 && IconArea(autoWin).Visibility == Visibility.Visible,
+            "特徵化：滑鼠移入自動捲起的面板時展開回展開高度");
+        autoWin.RaiseEvent(new MouseEventArgs(Mouse.PrimaryDevice, Environment.TickCount) { RoutedEvent = Mouse.MouseLeaveEvent });
+        Check(autoTimer.IsEnabled, "特徵化：滑鼠移出後重新啟動自動捲起計時器");
+        autoTimer.Stop();
+        Remove(autoId, autoWin);
+
+        // 視窗元件結構（Data 與收納面板）
+        var (treeId, treeWin) = await OpenWith("結構驗證", _ => { });
+        Golden("data-window-tree", WindowTree(treeWin));
+        Remove(treeId, treeWin);
+        string fenceDir = Path.Combine(root, "結構 收納夾");
+        Directory.CreateDirectory(fenceDir);
+        // 一律明確指定隔離目錄；未指定時程式會使用真實桌面的預設收納位置。
+        dynamic fence = FrameDataManager.CreateNewFrame("結構收納", "Portal", 340, 320, width: 380, height: 240,
+            portalPath: fenceDir, isManagedStorage: true, storageRootPath: root);
+        string fenceId = fence.Id.ToString();
+        FrameDataManager.SaveFrameData();
+        NonActivatingWindow fenceWin = await Open(Live(fenceId), checker);
+        Golden("fence-window-tree", WindowTree(fenceWin));
+        Remove(fenceId, fenceWin);
     }
 
     private static async Task LockRenameTabsIconChecks(TargetChecker checker, string root)

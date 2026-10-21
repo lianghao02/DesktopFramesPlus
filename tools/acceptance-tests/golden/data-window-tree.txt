@@ -1,0 +1,11 @@
+NonActivatingWindow
+  GameSkin
+    DockPanel
+      Grid
+        GameSkin
+        TextBlock#FrameMenuIcon 「♥」
+        Label 「結構驗證」
+        TextBox [Collapsed]
+        TextBlock#FrameLockIcon 「🛡️」
+      ScrollViewer
+        WrapPanel
