@@ -30,7 +30,7 @@ using Desktop_Frames.Plugins; // --- NEW: Plugins Support ---
 
 namespace Desktop_Frames
 {
-    public static class Framemanager
+    public static partial class Framemanager
     {
 
         // --- NEW: Centralized Presets ---
@@ -47,7 +47,6 @@ namespace Desktop_Frames
 
         // Temporary override flag for the "Screen Bound" button
         public static bool IsManualRepositioning = false;
-
 
 
         // --- WM_GETMINMAXINFO Implementation ---
@@ -110,184 +109,7 @@ namespace Desktop_Frames
         public static bool _areFramesAutoHidden = false;
         private static int _hideSequenceId = 0;
 
-        public static void InitializeAutoHideTimer()
-        {
-            if (_masterAutoHideTimer == null)
-            {
-                _masterAutoHideTimer = new DispatcherTimer();
-                _masterAutoHideTimer.Tick += (s, e) => ExecuteAutoHideSequence();
-            }
-            ResetAutoHideTimer();
-        }
 
-        public static void ResetAutoHideTimer()
-        {
-            if (_masterAutoHideTimer == null) return;
-            _masterAutoHideTimer.Stop();
-
-            if (SettingsManager.AutoHideFrames && SettingsManager.AutoHideTime > 0)
-            {
-                _masterAutoHideTimer.Interval = TimeSpan.FromSeconds(SettingsManager.AutoHideTime);
-                _masterAutoHideTimer.Start();
-            }
-        }
-
-        public static void WakeUpFrames()
-        {
-            _hideSequenceId++;
-            _areFramesAutoHidden = false;
-            ResetAutoHideTimer();
-
-            // --- NEW: Restore Native Desktop Icons if synced ---
-            // BUG FIX: Only restore them if the user hasn't enforced the permanent "Always Hide" rule!
-            if (SettingsManager.HideDesktopElementsOnAllFramesHide && !SettingsManager.HideDesktopElementsOnStart)
-            {
-                DesktopIconManager.SetDesktopIconsVisible(true);
-            }
-
-            var frames = System.Windows.Application.Current.Windows.OfType<NonActivatingWindow>().ToList();
-            foreach (var frame in frames)
-            {
-                if (frame.Visibility == Visibility.Visible && frame.Opacity >= 0.99) continue;
-
-                // --- BUG FIX: Skip Individually Hidden frames (Safe Extraction) ---
-                string frameId = frame.Tag?.ToString();
-                if (!string.IsNullOrEmpty(frameId))
-                {
-                    var currentFrame = FrameDataManager.FrameData.FirstOrDefault(f => f.Id?.ToString() == frameId);
-                    if (currentFrame != null)
-                    {
-                        bool isIndividuallyHidden = false;
-                        try
-                        {
-                            if (currentFrame is Newtonsoft.Json.Linq.JObject jFrame)
-                                isIndividuallyHidden = jFrame["IsHidden"]?.ToString().ToLower() == "true";
-                            else
-                                isIndividuallyHidden = (currentFrame.IsHidden?.ToString() ?? "false").ToLower() == "true";
-                        }
-                        catch { }
-
-                        if (isIndividuallyHidden) continue; // Leave it hidden in the tray
-                    }
-                }
-                // ------------------------------------------------------------------
-
-                // ------------------------------------------------------------------
-                // --- DWM & WPF BUFFER FLASH FIX ---
-                // 1. Wipe the slate clean of any old animations from the previous hide
-                frame.BeginAnimation(UIElement.OpacityProperty, null);
-
-                // 2. Hard-lock the base opacity to exactly 0.0
-                frame.Opacity = 0.0;
-
-                // 3. Make visible
-                frame.Visibility = Visibility.Visible;
-
-                // 4. THE MAGIC BULLET: Force WPF to synchronously flush the UI queue and render the invisible 0.0 frame right now.
-                // This overwrites the Windows DWM cache *before* the new animation is permitted to begin.
-                frame.UpdateLayout();
-
-                // 5. Begin the smooth fade-in
-                var fadeIn = new System.Windows.Media.Animation.DoubleAnimation
-                {
-                    From = 0.0,
-                    To = 1.0,
-                    Duration = TimeSpan.FromMilliseconds(250)
-                };
-
-                frame.BeginAnimation(UIElement.OpacityProperty, fadeIn);
-
-                // --- BUG FIX: Sync localized idle timers with global wake-up ---
-                frame.TriggerWakeUpIdleReset();
-            }
-
-            LogManager.Log(LogManager.LogLevel.Info, LogManager.LogCategory.UI, "Frames faded in and restored.");
-        }
-
-        private static async void ExecuteAutoHideSequence()
-        {
-            _masterAutoHideTimer.Stop();
-            if (_areFramesAutoHidden) return;
-
-            int currentSequence = ++_hideSequenceId;
-
-            bool isDialogOpen = System.Windows.Application.Current.Windows
-                .OfType<System.Windows.Window>()
-                .Any(w => w.Visibility == Visibility.Visible
-                       && !(w is NonActivatingWindow)
-                       && w.Width > 0
-                       && !string.IsNullOrWhiteSpace(w.Title));
-
-            if (isDialogOpen)
-            {
-                ResetAutoHideTimer();
-                return;
-            }
-
-            var visibleFrames = System.Windows.Application.Current.Windows.OfType<NonActivatingWindow>()
-                .Where(w => w.Visibility == Visibility.Visible)
-                .ToList();
-
-            if (visibleFrames.Count == 0) return;
-            LogManager.Log(LogManager.LogLevel.Info, LogManager.LogCategory.UI, "Auto-Hide: Executing hide sequence.");
-
-            // --- BUG FIX: Clear Held Animations ---
-            // Because the Wake-Up fade-in natively holds at 1.0, we MUST release the 
-            // animation lock before manually toggling local Opacity values. Otherwise, 
-            // the animation engine fights the flash effect, causing visual residue.
-            foreach (var win in visibleFrames)
-            {
-                win.BeginAnimation(System.Windows.UIElement.OpacityProperty, null);
-                win.Opacity = 1.0;
-            }
-
-            if (SettingsManager.HideFlashEffect)
-            {
-                for (int i = 0; i < 5; i++)
-                {
-                    foreach (var win in visibleFrames) win.Opacity = 0.3;
-                    await Task.Delay(30);
-                    if (currentSequence != _hideSequenceId) return;
-
-                    foreach (var win in visibleFrames) win.Opacity = 1.0;
-                    await Task.Delay(30);
-                    if (currentSequence != _hideSequenceId) return;
-                }
-            }
-
-            var fadeOutAnim = new System.Windows.Media.Animation.DoubleAnimation
-            {
-                From = 1.0,
-                To = 0.0,
-                Duration = new System.Windows.Duration(TimeSpan.FromMilliseconds(200))
-            };
-
-            foreach (var win in visibleFrames)
-            {
-                win.BeginAnimation(System.Windows.UIElement.OpacityProperty, fadeOutAnim);
-            }
-
-            await Task.Delay(200);
-
-            if (currentSequence != _hideSequenceId) return;
-
-            foreach (var win in visibleFrames)
-            {
-                // --- WPF 1-FRAME FLASH FIX ---
-                // Must hard-set to 0.0 BEFORE removing the animation precedence!
-                win.Opacity = 0.0;
-                win.BeginAnimation(System.Windows.UIElement.OpacityProperty, null);
-                win.Visibility = Visibility.Hidden;
-            }
-
-            _areFramesAutoHidden = true;
-
-            // --- NEW: Hide Native Desktop Icons if synced ---
-            if (SettingsManager.HideDesktopElementsOnAllFramesHide)
-            {
-                DesktopIconManager.SetDesktopIconsVisible(false);
-            }
-        }
         #endregion
 
         // Track frame currently in rollup/rolldown transition to prevent event conflicts
@@ -300,82 +122,6 @@ namespace Desktop_Frames
         private static readonly Dictionary<string, DispatcherTimer> _autoRollTimers = new Dictionary<string, DispatcherTimer>();
         // --------------------------------------
 
-        public static void RefreshScrollbarSettings()
-        {
-            var allFrames = System.Windows.Application.Current.Windows.OfType<NonActivatingWindow>();
-            foreach (var win in allFrames)
-            {
-                var border = win.Content as Border;
-                var dockPanel = border?.Child as DockPanel;
-                var scrollViewer = dockPanel?.Children.OfType<ScrollViewer>().FirstOrDefault();
-
-                if (scrollViewer != null)
-                {
-                    scrollViewer.VerticalScrollBarVisibility = SettingsManager.DisableFrameScrollbars ? ScrollBarVisibility.Hidden : ScrollBarVisibility.Auto;
-                }
-            }
-        }
-
-        public static void RefreshAllIconsTint()
-        {
-            // Calculate the target opacity exactly as we do in AddIcon
-            double targetOpacity = SettingsManager.ApplyTintToIcons ? Math.Max(0.2, SettingsManager.TintValue / 100.0) : 1.0;
-
-            var allFrames = System.Windows.Application.Current.Windows.OfType<NonActivatingWindow>();
-            foreach (var win in allFrames)
-            {
-                // --- FIX: Update Plugin Frame Opacity instantly ---
-                string frameId = win.Tag?.ToString();
-                var currentFrame = FrameDataManager.FrameData.FirstOrDefault(f => f.Id?.ToString() == frameId);
-
-                if (currentFrame != null && currentFrame.ItemsType?.ToString() == "Plugin")
-                {
-                    // CRITICAL: Release the WPF animation lock first, or the opacity change is ignored
-                    win.BeginAnimation(System.Windows.UIElement.OpacityProperty, null);
-                    win.Opacity = targetOpacity;
-                    continue; // Plugins don't use the WrapPanel, move to the next window
-                }
-                // --------------------------------------------------
-
-                var wrapPanel = FindWrapPanel(win);
-                if (wrapPanel != null)
-                {
-                    foreach (var sp in wrapPanel.Children.OfType<StackPanel>())
-                    {
-                        // 1. Update the Image (Checking direct child, then checking inside Grid for Network Icons)
-                        var img = sp.Children.OfType<System.Windows.Controls.Image>().FirstOrDefault();
-                        if (img == null)
-                        {
-                            var grid = sp.Children.OfType<Grid>().FirstOrDefault();
-                            img = grid?.Children.OfType<System.Windows.Controls.Image>().FirstOrDefault();
-                        }
-                        if (img != null) img.Opacity = targetOpacity;
-
-                        // 2. Update the TextLabel(s)
-                        foreach (var txt in sp.Children.OfType<TextBlock>())
-                        {
-                            txt.Opacity = targetOpacity;
-                        }
-                    }
-                }
-            }
-        }
-
-        public static void RefreshAutoRollSettings()
-        {
-            int autoRollDelay = 2000;
-            try { if (SettingsManager.AutoRollTime > 0) autoRollDelay = SettingsManager.AutoRollTime * 1000; } catch { }
-            foreach (var timer in _autoRollTimers.Values)
-            {
-                if (timer != null)
-                {
-                    bool wasRunning = timer.IsEnabled;
-                    timer.Stop();
-                    timer.Interval = TimeSpan.FromMilliseconds(autoRollDelay);
-                    if (wasRunning) timer.Start();
-                }
-            }
-        }
 
         public static void ReloadFrames()
         {
@@ -479,10 +225,6 @@ namespace Desktop_Frames
         }
   
 
-
-
-
-
         /// <summary>
         /// Helper to detect UNC Roots (e.g. \\Server or \\192.168.1.10).
         /// These technically aren't "Directories" in .NET, but act as Folders in Windows.
@@ -548,10 +290,6 @@ namespace Desktop_Frames
                 LogManager.Log(LogManager.LogLevel.Error, LogManager.LogCategory.UI, $"Portal Navigation Error: {ex.Message}");
             }
         }
-
-
-
-
 
 
         // PORTAL FEATURE: The UI Strip [ <  Path...  ⚓ ]
@@ -713,23 +451,6 @@ namespace Desktop_Frames
                 LogManager.Log(LogManager.LogLevel.Error, LogManager.LogCategory.UI, $"Error refreshing Nav Bar: {ex.Message}");
             }
         }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
         public static void ShowPortalToast(NonActivatingWindow win, string message)
@@ -949,7 +670,6 @@ namespace Desktop_Frames
         }
 
 
-
         private static void AdjustFramePositionToScreen(NonActivatingWindow win)
         {
             // 1. CONTROL CHECK: 
@@ -1016,8 +736,6 @@ namespace Desktop_Frames
         }
 
 
-
-
         public static void ForceRepositionallFrames()
         {
             try
@@ -1045,9 +763,6 @@ namespace Desktop_Frames
                 IsManualRepositioning = false;
             }
         }
-
-
-
 
 
         private static int _registryMonitorTickCount = 0;
@@ -1127,7 +842,6 @@ namespace Desktop_Frames
             string frameTitle = frame.Title?.ToString();
 
             // 刪除配置不匯出至桌面；使用者明確選取的匯出操作仍獨立保留。
-
 
 
             try
@@ -1355,8 +1069,6 @@ namespace Desktop_Frames
         }
 
 
-
-      
         /// <summary>
         /// Centralized method to attach the standard Context Menu to an icon.
         /// Layout: Edit/Move/Remove -> Copy -> Admin -> Path
@@ -1695,9 +1407,6 @@ namespace Desktop_Frames
         }
 
 
-
-
-
         // Updates all heart ContextMenus across all frames using stored TextBlock references
         public static void UpdateAllHeartContextMenus()
         {
@@ -1960,7 +1669,6 @@ namespace Desktop_Frames
         }
 
 
-
         /// <summary>
         /// Adds a URL shortcut to the frame from dropped URL
         /// </summary>
@@ -2081,9 +1789,6 @@ namespace Desktop_Frames
         }
 
 
-
-
-
         /// <summary>
         /// Gets the next display order for new items
         /// </summary>
@@ -2156,8 +1861,6 @@ namespace Desktop_Frames
                             $"Error removing URL shortcut: {ex.Message}");
                     }
                 };
-
-
 
 
                 iconContextMenu.Items.Add(miRemove);
@@ -2293,9 +1996,6 @@ namespace Desktop_Frames
         {
             return _portalFrames;
         }
-
-
-
 
 
         /// <summary>
@@ -2447,7 +2147,6 @@ namespace Desktop_Frames
         }
 
 
-
         // Update frame property, save to JSON, and apply runtime changes
         public static void UpdateFrameProperty(dynamic frame, string propertyName, string value, string logMessage)
         {
@@ -2475,9 +2174,6 @@ namespace Desktop_Frames
                 {
                     // Get the frame from FrameDataManager.FrameData
                     dynamic actualFrame = FrameDataManager.FrameData[index];
-
-
-
 
 
                     // Convert to dictionary safely
@@ -2703,7 +2399,6 @@ namespace Desktop_Frames
         }
 
 
-
         // TABS FEATURE: Toggle tabs with strict Data Migration and Effect Cleanup
         private static void ToggleFrameTabs(dynamic frame)
         {
@@ -2827,9 +2522,6 @@ namespace Desktop_Frames
         }
 
 
-
-
-
         // TABS FEATURE: Simplified content refresh that reuses existing infrastructure
 
         public static void RefreshFrameContentSimple(NonActivatingWindow frameWindow, dynamic frame, int tabIndex)
@@ -2921,10 +2613,6 @@ namespace Desktop_Frames
         }
 
 
-
-
-
-
         // TABS FEATURE: Remove item from current tab
         private static void RemoveItemFromTab(dynamic item, dynamic frame, int tabIndex, WrapPanel wrapPanel)
         {
@@ -2992,10 +2680,6 @@ namespace Desktop_Frames
         }
 
 
-
-
-
-
         // TABS FEATURE: Create custom button template with rounded top corners only
         private static ControlTemplate CreateTabButtonTemplate()
         {
@@ -3029,10 +2713,6 @@ namespace Desktop_Frames
 
             return template;
         }
-
-
-
-
 
 
         // Helper event handlers to avoid lambda capture issues
@@ -3357,9 +3037,6 @@ namespace Desktop_Frames
                 LogManager.Log(LogManager.LogLevel.Error, LogManager.LogCategory.General,
                     $"SingleInstance: Error in single instance check: {ex.Message}. Continuing startup.");
             }
-
-
-
 
 
             // REMOVED: Legacy path override. 
@@ -3719,8 +3396,6 @@ namespace Desktop_Frames
         }
 
 
-
-
         private static bool LoadFrameDataFromJson()
         {
             bool loaded = false;
@@ -3814,8 +3489,6 @@ namespace Desktop_Frames
                     $"Failed to create backup of corrupted JSON file: {backupEx.Message}");
             }
         }
-
-
 
 
         private static void InitializeDefaultFrame()
@@ -4057,7 +3730,6 @@ namespace Desktop_Frames
             _heartTextBlocks[frame] = heart;
 
 
-
             heart.MouseEnter += (s, e) =>
             {
                 // Remove previous animation 
@@ -4201,8 +3873,6 @@ namespace Desktop_Frames
             };
 
 
-
-
             // Set initial state without saving to JSON
             UpdateLockState(lockIcon, frame, null, saveToJson: false);
             // Lock icon click handler
@@ -4248,7 +3918,6 @@ namespace Desktop_Frames
                     });
                 }
             };
-
 
 
             // Create a Grid for the titlebar - move here to ensure it is created before mouse handler
@@ -4415,7 +4084,6 @@ namespace Desktop_Frames
             };
 
 
-
             // --- DYNAMIC MENU ITEMS ---
 
             // 1. Clear Dead Shortcuts (Initially Hidden)
@@ -4531,8 +4199,6 @@ namespace Desktop_Frames
             MenuItem miPasteItem = new MenuItem { Header = Strings.MenuPasteItem, Visibility = Visibility.Collapsed };
             miPasteItem.Click += (s, e) => CopyPasteManager.PasteItem(frame);
             CnMnFramemanager.Items.Add(miPasteItem);
-
-
 
 
             //  CnMnFramemanager.Items.Add(new Separator());
@@ -5074,11 +4740,9 @@ namespace Desktop_Frames
             };
 
 
-
             // Make window focusable for key events during drag
             win.Focusable = true;
             win.Show();
-
 
 
             // --- FIX START ---
@@ -5118,14 +4782,9 @@ namespace Desktop_Frames
             // --- FIX END ---
 
 
-
-
-
             LogManager.Log(LogManager.LogLevel.Info, LogManager.LogCategory.FrameCreation,
         $"Frame '{frame.Title}' successfully created and displayed");
   
-
-
 
             bool isBoldTitle = false;
             try
@@ -5761,8 +5420,6 @@ namespace Desktop_Frames
                 titleGrid.Children.Add(filterIcon);
 
 
-
-
                 // 2. The Filter Bar (Stable Version)
                 filterBar = new Grid
                 {
@@ -6056,7 +5713,6 @@ namespace Desktop_Frames
             };
 
 
-
             //// --- STEP 4 START: Configure and Add Events ---
             //titletb.HorizontalContentAlignment = HorizontalAlignment.Center;
             //titletb.Visibility = Visibility.Collapsed;
@@ -6151,8 +5807,6 @@ namespace Desktop_Frames
                 DockPanel.SetDock(filterBar, Dock.Top);
                 dp.Children.Add(filterBar);
             }
-
-
 
 
             // TABS FEATURE: Add TabStrip
@@ -6447,7 +6101,6 @@ namespace Desktop_Frames
             };
 
 
-
             //titletb.KeyDown += (sender, e) =>
             //{
             //    if (e.Key == Key.Enter)
@@ -6540,10 +6193,6 @@ namespace Desktop_Frames
             //    win.ShowActivated = false;
             //    LogManager.Log(LogManager.LogLevel.Debug, LogManager.LogCategory.UI, $"Rename saved via LostFocus: {finalTitle}");
             //};
-
-
-
-
 
 
             // WrapPanel wpcont = new WrapPanel();
@@ -6685,9 +6334,6 @@ namespace Desktop_Frames
                             {
                               
 
-
-
-                                
                                 double targetOpacity = Math.Max(0.2, SettingsManager.TintValue / 100.0);
                                 win.Opacity = targetOpacity;
 
@@ -6760,14 +6406,6 @@ namespace Desktop_Frames
                 // ---------------------------------
 
                 // 2. Handle Data/Portal frames
-
-
-
-
-
-
-
-
 
 
                 bool isRolled = frame.IsRolled?.ToString().ToLower() == "true";
@@ -7158,8 +6796,6 @@ namespace Desktop_Frames
                             }
 
                      
-
-
                             // --- DATA FRAME LOGIC ---
                             if (frame.ItemsType?.ToString() == "Data")
                             {
@@ -7407,10 +7043,6 @@ namespace Desktop_Frames
                             }
 
 
-
-
-
-
                             // --- PORTAL FRAME LOGIC (RESTORED) ---
                             else if (frame.ItemsType?.ToString() == "Portal")
                             {
@@ -7538,19 +7170,10 @@ namespace Desktop_Frames
             };
 
 
-      
-
-
-
-
             if (SettingsManager.EnableDimensionSnap)
             {
                 // 尺寸提示僅在使用者實際拖曳邊界期間訂閱。
             }
-
-
-
-
 
 
             win.LocationChanged += (s, e) =>
@@ -7573,15 +7196,6 @@ namespace Desktop_Frames
                     LogManager.Log(LogManager.LogLevel.Debug, LogManager.LogCategory.FrameUpdate, $"Position updated for frame '{currentFrame.Title}' to X={win.Left}, Y={win.Top}");
                 }
             };
-
-
-
-
-
-
-
-
-
 
 
             InitContent();
@@ -7659,11 +7273,6 @@ namespace Desktop_Frames
             win.Show();
 
 
-
-
-
-
-
             // Check for persistent Legendary Mode (Nikos or >:)
             string fTitle = frame.Title?.ToString() ?? "";
             if (fTitle == "Nikos" || fTitle == "Nikos Georgousis" || fTitle.Contains(">:"))
@@ -7683,11 +7292,6 @@ namespace Desktop_Frames
                     InterCore.ProcessTitleChange(frame, frame.Title.ToString(), "");
                 }), System.Windows.Threading.DispatcherPriority.Background);
             }
-
-
-
-
-
 
 
             IDictionary<string, object> frameDict = frame is IDictionary<string, object> dict ? dict : ((JObject)frame).ToObject<IDictionary<string, object>>();
@@ -8256,9 +7860,6 @@ namespace Desktop_Frames
             };
 
 
-
-
-
             // --- SAFE EXECUTION WRAPPER ---
             Action safeBackgroundExecution = () =>
             {
@@ -8485,14 +8086,6 @@ namespace Desktop_Frames
         //    ico.Source = shortcutIcon;
 
 
-
-
-
-
-
-
-
-
         //    // Apply Grayscale
         //    if (grayscale && shortcutIcon is BitmapSource bmp)
         //    {
@@ -8628,7 +8221,6 @@ namespace Desktop_Frames
         //    sp.ToolTip = new ToolTip { Content = toolTipText };
         //    wpcont.Children.Add(sp);
         //}
-
 
 
         public static void CreateNativePanel() => CreateNewFrame("", "Data");
@@ -8771,7 +8363,6 @@ namespace Desktop_Frames
         }
 
 
-
         private static void UpdateLockState(TextBlock lockIcon, dynamic frame, bool? forceState = null, bool saveToJson = true)
         {
             // Get the actual frame from FrameDataManager.FrameData using Id to ensure correct reference
@@ -8824,7 +8415,6 @@ namespace Desktop_Frames
         }
 
 
-
         // --- HELPER: Manual Icon Extraction for .url Files ---
         private static (string Path, int Index) GetUrlCustomIcon(string urlPath)
         {
@@ -8849,8 +8439,6 @@ namespace Desktop_Frames
             catch { }
             return (null, 0);
         }
-
-
 
 
         public static void EditItem(dynamic icon, dynamic frame, NonActivatingWindow win)
@@ -8917,11 +8505,6 @@ namespace Desktop_Frames
                 }
             }
         }
-
-
-
-        
-
 
 
         private static void BackupOrRestoreShortcut(string filePath, bool targetExists, bool isFolder)
@@ -9087,7 +8670,6 @@ namespace Desktop_Frames
                 return null;
             }
         }
-
 
 
         // [TARGET VALIDATION ENGINE - START]
@@ -9356,19 +8938,6 @@ namespace Desktop_Frames
         }
 
         
-
-
-
-        // Safety method to ensure no frames are stuck in transition state
-        public static void ClearAllTransitionStates()
-        {
-            if (_framesInTransition.Count > 0)
-            {
-                LogManager.Log(LogManager.LogLevel.Debug, LogManager.LogCategory.FrameUpdate, $"Clearing {_framesInTransition.Count} stuck transition states");
-                _framesInTransition.Clear();
-            }
-        }
-
         public static void UpdateOptionsAndClickEvents()
         {
 
@@ -9867,52 +9436,6 @@ namespace Desktop_Frames
         }
 
 
-        // --- NEW: Unified Manual Hide (Used by Tray Icon) ---
-        public static void ForceHideFrames()
-        {
-            _areFramesAutoHidden = true;
-
-            // --- NEW: Hide Native Desktop Icons if synced ---
-            if (SettingsManager.HideDesktopElementsOnAllFramesHide)
-            {
-                DesktopIconManager.SetDesktopIconsVisible(false);
-            }
-
-            var frames = System.Windows.Application.Current.Windows.OfType<NonActivatingWindow>().ToList();
-            foreach (var frame in frames)
-            {
-                // --- ANTI-FLICKER SAFEGUARD ---
-                // Skip frames that are already hidden or currently invisible
-                if (frame.Visibility != Visibility.Visible || frame.Opacity == 0.0) continue;
-
-                // Animate the fade out
-                var fadeOut = new System.Windows.Media.Animation.DoubleAnimation
-                {
-                    From = 1.0,
-                    To = 0.0,
-                    Duration = TimeSpan.FromMilliseconds(250)
-                };
-
-                // When the animation finishes, physically hide the window
-                fadeOut.Completed += (s, e) =>
-                {
-                    // --- DWM CACHE FIX ---
-                    // DO NOT strip the animation here! Let WPF's FillBehavior.HoldEnd keep it firmly at 0.0.
-                    // Stripping the animation here is what causes Windows DWM to snapshot the window at 1.0 opacity.
-                    frame.Visibility = Visibility.Hidden;
-                };
-
-                frame.BeginAnimation(UIElement.OpacityProperty, fadeOut);
-            }
-
-            LogManager.Log(LogManager.LogLevel.Info, LogManager.LogCategory.UI, "Frames faded out and hidden.");
-        }
-
-
-
-
-
-
         private static T FindVisualParent<T>(DependencyObject child) where T : DependencyObject
         {
             DependencyObject parent = VisualTreeHelper.GetParent(child);
@@ -10200,7 +9723,6 @@ namespace Desktop_Frames
                 }
             }
         }
-
 
 
         //// Determines if a path is a web URL
@@ -10569,7 +10091,6 @@ namespace Desktop_Frames
         }
 
 
-
         // Updates frame JSON data after icon refresh
         private static void UpdateFrameDataForIcon(string shortcutPath, string newDisplayName, NonActivatingWindow parentWindow)
         {
@@ -10635,11 +10156,6 @@ namespace Desktop_Frames
                 LogManager.Log(LogManager.LogLevel.Error, LogManager.LogCategory.UI, $"Error updating frame JSON: {ex.Message}");
             }
         }
-
-
-
-
-
 
 
         // Size feedback during resizing
@@ -10829,14 +10345,6 @@ namespace Desktop_Frames
         }
 
 
-
-
-
-
-
-
-
-
         // Add this static method inside your Framemanager class
         private static IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
         {
@@ -10871,7 +10379,6 @@ namespace Desktop_Frames
         }
 
 
-
         private static string GetSafeProperty(dynamic obj, string propName)
         {
             try
@@ -10881,7 +10388,6 @@ namespace Desktop_Frames
             }
             catch { return ""; }
         }
-
 
 
         private static void UpdateSizeFeedback(object sender, SizeChangedEventArgs e)
