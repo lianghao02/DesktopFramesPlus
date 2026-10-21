@@ -4050,9 +4050,12 @@ namespace Desktop_Frames
 
                 Name = "FrameMenuIcon", // New! Name
                 Text = MenuSymbol,
-                FontSize = 16,
+                FontSize = 18,
                 Foreground = System.Windows.Media.Brushes.White, // Match title and icon text color
-                Margin = new Thickness(8, 0, 0, 0), // Position neatly inside banner left column
+                // 透明底加內距：圖示字形本身很小，擴大可點擊範圍（左右 6、上下 3 px）
+                Background = System.Windows.Media.Brushes.Transparent,
+                Padding = new Thickness(6, 3, 6, 3),
+                Margin = new Thickness(2, 0, 0, 0), // Position neatly inside banner left column
                 HorizontalAlignment = HorizontalAlignment.Left,
                 VerticalAlignment = VerticalAlignment.Center,
                 Cursor = Cursors.Hand,

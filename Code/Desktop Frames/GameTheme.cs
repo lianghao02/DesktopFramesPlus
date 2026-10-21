@@ -38,8 +38,8 @@ namespace Desktop_Frames
             else
             {
                 lockIcon.Foreground = Brushes.White;
-                lockIcon.Background = null;
-                lockIcon.Padding = new Thickness(0);
+                lockIcon.Background = Brushes.Transparent;
+                lockIcon.Padding = new Thickness(3, 1, 3, 1);
             }
         }
 

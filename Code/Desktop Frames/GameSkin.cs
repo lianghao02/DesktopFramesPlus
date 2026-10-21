@@ -36,9 +36,13 @@ namespace Desktop_Frames
         public static Brush PaperTexture { get; } = CreatePaper();
         private static Brush CreatePaper()
         {
+            // 羊皮紙紋理依原比例以鏡射方式平鋪（0.75 倍），避免寬或高的卡片把紋理拉成扁長斑塊。
             var brush = new ImageBrush(Art(new Int32Rect(512, 464, 512, 560)))
             {
-                Stretch = Stretch.Fill, TileMode = TileMode.None
+                Stretch = Stretch.Fill,
+                TileMode = TileMode.FlipXY, // 鏡射平鋪：接縫處紋理自然連續
+                ViewportUnits = BrushMappingMode.Absolute,
+                Viewport = new Rect(0, 0, 384, 420)
             };
             brush.Freeze();
             return brush;
@@ -64,6 +68,76 @@ namespace Desktop_Frames
             return Slices[kind] = slices;
         }
 
+        private static readonly Dictionary<string, BitmapSource> PanelParts = new();
+
+        private static BitmapSource PanelPart(string key, int x, int y, int width, int height)
+        {
+            if (!PanelParts.TryGetValue(key, out var part)) PanelParts[key] = part = Art(new Int32Rect(x, y, width, height));
+            return part;
+        }
+
+        /// <summary>
+        /// 木框專用繪製。原圖的黃銅角飾約 100 px，舊的九宮格只切 72 px，角飾被切半、
+        /// 邊上的三葉草飾板又被橫向拉到數倍寬。這裡改為：
+        /// 角飾整塊等比縮小；上下邊把飾板固定在中央（等比），只拉伸左右兩段單純木紋；左右邊以針腳為單位平鋪。
+        /// </summary>
+        private static void DrawPanel(DrawingContext context, Size size)
+        {
+            const int corner = 100;           // 原圖角飾邊長
+            double c = Math.Min(Math.Round(corner * 0.34), Math.Min(size.Width, size.Height) / 2);
+            double scale = c / corner;
+            double w = size.Width, h = size.Height;
+
+            // 中央羊皮紙
+            context.DrawImage(PanelPart("center", 100, 100, 312, 264), new Rect(c, c, Math.Max(0, w - 2 * c), Math.Max(0, h - 2 * c)));
+
+            // 上下邊
+            double length = w - 2 * c;
+            if (length > 0)
+            {
+                double ornament = 132 * scale;
+                foreach (bool top in new[] { true, false })
+                {
+                    int sy = top ? 0 : 464 - corner;
+                    double dy = top ? 0 : h - c;
+                    string k = top ? "t" : "b";
+                    if (length > ornament + 24)
+                    {
+                        double side = (length - ornament) / 2;
+                        context.DrawImage(PanelPart(k + "L", 100, sy, 90, corner), new Rect(c, dy, side + 0.5, c));
+                        context.DrawImage(PanelPart(k + "O", 190, sy, 132, corner), new Rect(c + side, dy, ornament, c));
+                        context.DrawImage(PanelPart(k + "R", 322, sy, 90, corner), new Rect(c + side + ornament - 0.5, dy, side + 0.5, c));
+                    }
+                    else
+                    {
+                        context.DrawImage(PanelPart(k + "A", 100, sy, 312, corner), new Rect(c, dy, length, c));
+                    }
+                }
+            }
+
+            // 左右邊：以一個針腳週期為單位平鋪
+            double span = h - 2 * c;
+            if (span > 0)
+            {
+                double tileHeight = 52 * scale;
+                foreach (bool left in new[] { true, false })
+                {
+                    double dx = left ? 0 : w - c;
+                    var tile = PanelPart(left ? "l" : "r", left ? 0 : 512 - corner, 146, corner, 52);
+                    context.PushClip(new RectangleGeometry(new Rect(dx, c, c, span)));
+                    for (double y = c; y < h - c; y += tileHeight)
+                        context.DrawImage(tile, new Rect(dx, y, c, tileHeight + 0.5));
+                    context.Pop();
+                }
+            }
+
+            // 四個角飾
+            context.DrawImage(PanelPart("tl", 0, 0, corner, corner), new Rect(0, 0, c, c));
+            context.DrawImage(PanelPart("tr", 512 - corner, 0, corner, corner), new Rect(w - c, 0, c, c));
+            context.DrawImage(PanelPart("bl", 0, 464 - corner, corner, corner), new Rect(0, h - c, c, c));
+            context.DrawImage(PanelPart("br", 512 - corner, 464 - corner, corner, corner), new Rect(w - c, h - c, c, c));
+        }
+
         public static DrawingBrush TileBrush()
         {
             var drawing = new DrawingGroup();
@@ -80,6 +154,11 @@ namespace Desktop_Frames
             if (kind == GameSkinKind.Paper)
             {
                 context.DrawRectangle(PaperTexture, null, new Rect(size));
+                return;
+            }
+            if (kind == GameSkinKind.Panel)
+            {
+                DrawPanel(context, size);
                 return;
             }
             double desired = kind switch { GameSkinKind.Panel => 22, GameSkinKind.Header => 12, GameSkinKind.Button => 10, _ => 9 };
