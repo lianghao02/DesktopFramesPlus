@@ -1,5 +1,11 @@
 # HANDOFF
 
+## 2026-10-22 FrameManager 拆檔第二階段完成（Claude）
+- `CreateFrame` 由約 3,715 行降為約 200 行，依序呼叫 18 個建構方法，分在 `FrameManager.FrameBuild*.cs` 4 個檔案；核心 `FrameManager.cs` 971 行。建構順序與規則見 `docs/specs/FRAMEMANAGER_MAP.md`。
+- 測試 241 項＋收納面板 10 項，每個提交都全過；整體比對原有程式只改 30 行（皆為預期）；故意改壞 6/6 有效變異抓到。
+- 新發現 3 項現狀（UnrolledHeight 首次排版被覆蓋、隱藏面板建立後仍顯示、拖放無作用變數），未修改。
+- 尚未：桌面手動驗收（三段清單在 `IMPLEMENTATION_PLAN.md`，使用者另找時間）；本機 `dist` 未更新到本版；未升版。
+
 ## 2026-10-22 FrameManager 拆檔第二階段第二段（Claude）
 - 面板右鍵選單抽成 `BuildPanelContextMenu`、`BuildPanelMenuItems`；`titlelabel` 改存 `FrameBuildContext.TitleLabel`（Roslyn 依符號改寫）。先補 4 項測試，229＋10 項全過，整體比對只差預期行。
 - 使用者指示繼續，但第一段手動驗收結果未回報；兩段清單在 `IMPLEMENTATION_PLAN.md`。本機 `dist` 是第一段的版本，未含本段。
