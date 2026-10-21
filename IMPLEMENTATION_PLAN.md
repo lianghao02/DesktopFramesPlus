@@ -178,3 +178,88 @@
 - 是否啟用 CI，待 Phase 6 的試跑結果與使用者決定。
 - 拆檔本身（`partial class` 切分與 `CreateFrame` 抽取）另立計劃，不在本階段。
 
+## FrameManager.cs 拆檔（2026-10-22 起，規劃中，待使用者同意執行）
+
+### 目標與驗收條件
+把 10,900 行、單一類別的 `FrameManager.cs` 拆成依功能分區的多個檔案，並逐步拆解 3,789 行的 `CreateFrame`，讓人與 Agent 修改時只需讀相關區塊。
+1. **行為完全不變**：每一步後 MSBuild Release 0 錯誤、`run-all-tests.ps1` 220 項全過、收納面板 10 項全過、5 份選單黃金檔不變、繁中 100%。
+2. **每一步可單獨退回**：一個區塊一個提交，失敗就退回該提交，不帶著問題往下做。
+3. **設定檔與公開介面不變**：`Framemanager` 的類別名稱、命名空間、所有 public／internal 方法簽名不變（`tools/` 驗收程式以反射呼叫的私有方法名稱也不變）。
+4. 完成後更新 `docs/specs/FRAMEMANAGER_MAP.md`（改為「檔案地圖」）與 `AGENTS.md` 的對應規則。
+
+### 不做範圍
+- 不改任何邏輯、演算法、文字與設定檔格式；不順手修 Bug（發現的問題記入清單，另案處理）。
+- 不改 `NonActivatingWindow`、`FrameDataManager`、`PortalFrameManager` 等其他類別。
+- `AddIcon`（816 行）列為第三階段，本計劃先不做，視第二階段結果再決定。
+
+### 現況（以提交 960c7c1 分析）
+- 類別層級：約 25 個共用靜態欄位、2 個結構（`POINT`、`MINMAXINFO`）、1 個 Win32 宣告（`SetWindowPos`），其餘約 92 個方法。
+- `CreateFrame`：3,789 行（約占 35%），內有 57 個區域變數，其中 13 個橫跨 800 行以上（`win` 被引用 152 次、面板右鍵選單 80 次，另有 `cborder`、`dp`、`titletb`、`titlelabel`、`CommitRename`、`titleGrid`、`lockIcon`、`currentFrame`、`wpcont` 等），以及 83 個直接捕捉這些變數的事件處理器。
+- 專案檔為 SDK 格式，新增的 `.cs` 會自動編譯，不需改專案檔。
+- **名稱解析陷阱**：檔頭含 `using static System.Net.Mime.MediaTypeNames;`（會引入名為 `Application`、`Image`、`Text` 的型別）與 `using Color = System.Drawing.Color;`。每個分檔都必須**逐字複製相同的 using 區塊**，否則同一段程式在不同檔案可能解析到不同型別，編譯器不一定報錯。
+- 還原點：開工前另建標籤 `restore/2026-10-22-before-split`。
+
+### 已確認決策
+1. 分兩個階段，第一階段完全不改任何方法內容，風險最低、收益可立即驗證。
+2. 第一階段以**腳本**依方法名稱搬移，並比對「搬移前後的方法本文完全相同」（逐字比對），不手工剪貼。
+3. 第二階段才動 `CreateFrame`：先引入一個私有的 `FrameBuildContext`（建構內容物件），把橫跨全方法的共用變數收進去，再把各區段抽成私有方法；事件處理器改為讀寫內容物件的欄位，語意與原本捕捉區域變數相同。
+4. 第二階段由耦合最低的區段先做，每抽一段就建置、跑全部測試、對照手動驗收清單中相關項目。
+
+### 第一階段：`partial class` 機械分檔（不改方法內容）
+`public static class Framemanager` 改為 `public static partial class Framemanager`，依區塊地圖搬到下列檔案（皆在 `Code/Desktop Frames/`）：
+
+| 檔案 | 內容（方法） |
+|---|---|
+| `FrameManager.cs`（核心） | 共用欄位、結構、Win32 宣告、`CreateFrame`（第二階段再拆） |
+| `FrameManager.AutoHide.cs` | 自動隱藏與喚醒、捲軸與色調、自動捲動設定、收合轉場 |
+| `FrameManager.Reload.cs` | `ReloadFrames`、`ReloadSpecificFrames`、舊 Portal 導覽與提示 |
+| `FrameManager.Screen.cs` | DPI、拉回螢幕內、`ForceRepositionallFrames` |
+| `FrameManager.Delete.cs` | 刪除與拆除面板 |
+| `FrameManager.Menus.cs` | ♥ 選單、圖示右鍵、URL 項目選單、選單樣式 |
+| `FrameManager.WebLinks.cs` | 網址捷徑建立、拖入網址解析、匯出到桌面 |
+| `FrameManager.Properties.cs` | `UpdateFrameProperty`、重設外觀、圖示大小、篩選紀錄 |
+| `FrameManager.Tabs.cs` | 分頁開關、分頁按鈕、分頁內項目移除 |
+| `FrameManager.Loading.cs` | 舊格式遷移、載入建立、框選新增、收納面板建立、預設面板 |
+| `FrameManager.Icons.cs` | `UpdateAdaptiveIconGrid`、`AddIcon`、`UpdateIcon`、編輯項目、圖示刷新 |
+| `FrameManager.Launch.cs` | 點擊與開啟項目、網址與特殊路徑判斷、網路路徑判斷 |
+| `FrameManager.Selection.cs` | 鎖定狀態、選取與移除項目、捷徑清理 |
+| `FrameManager.Feedback.cs` | 縮放回饋、`WndProc`、視覺樹輔助、`GetSafeProperty`、失效捷徑檢查 |
+
+步驟：
+- [ ] 建立還原點標籤並推送｜標籤存在於遠端
+- [ ] 撰寫搬移腳本：依方法名稱取出完整本文（含上方註解與屬性）、寫入目標檔、自原檔移除；輸出「搬移前後本文逐字相同」的比對結果｜比對全部相同
+- [ ] 每個目標檔一個提交（共 13 個），每個提交都建置並跑全部測試｜每步 0 錯誤、220 項全過、黃金檔不變
+- [ ] 更新區塊地圖為檔案地圖，`AGENTS.md` 註明各分檔職責與「using 區塊必須一致」｜文件與實際檔案一致
+
+第一階段完成後 `FrameManager.cs` 預計約 4,100 行（其中 `CreateFrame` 3,789 行），其餘約 6,800 行分到 13 個檔案。
+
+### 第二階段：拆解 `CreateFrame`（保留行為的重構）
+1. 引入 `private sealed class FrameBuildContext`，欄位包含 `frame`、`checker` 與 13 個橫跨全方法的共用變數；原本的區域變數改為讀寫內容物件。只做這一步、不抽方法，先確認測試全過。
+2. 依耦合由低到高逐段抽成私有方法（每段一個提交）：
+   1. 外框與筆刷計算、標題列與 ♥／鎖頭建立
+   2. 面板右鍵選單項目建立（含「更多」子選單）
+   3. 鍵盤掛鉤與 Ctrl 覆蓋層
+   4. 自動捲動計時器
+   5. 選單開啟時的動態狀態
+   6. 篩選列
+   7. 重新命名邏輯
+   8. 圖示區（`WrapPanel`）與空白處點擊
+   9. 拖放（`DragOver`／`Drop`）
+   10. Delete 鍵與選取
+3. 每段完成：建置、220 項、黃金檔、並人工走一遍手動驗收清單中相關項目（例如抽拖放後實測 Ctrl／Alt 拖入）。
+4. 全部完成後再做一次「故意改壞」抽查（至少 5 種，針對新抽出的方法），確認測試仍能抓到。
+
+### 風險與因應
+- **名稱解析不同**：分檔 using 必須逐字相同；搬移腳本自動複製並在提交前比對。
+- **事件處理器捕捉的變數**：第二階段若把會被重新指派的區域變數留在方法內、事件處理器卻改讀內容物件，會造成不同步。每抽一段都列出該段讀寫的共用變數，全部改走內容物件。
+- **`dynamic` 不會在編譯時報錯**：拆錯的 `dynamic` 呼叫只在執行時失敗；以 220 項測試加手動清單把關。
+- **測試盲區**：Ctrl／Alt 拖入、自動隱藏、Delete 鍵等無法自動化，第二階段相關步驟後必須人工驗收；這部分需要使用者在實際桌面協助。
+- **退回**：任何一步失敗即 `git revert` 該提交；整體可回到 `restore/2026-10-22-before-split`。
+
+### 驗證紀錄
+- （尚未開始。）
+
+### 剩餘問題
+- 第二階段的人工驗收需要使用者在實際桌面操作，執行到那些步驟時會先通知。
+- `AddIcon` 是否也拆，待第二階段完成後再決定。
+
