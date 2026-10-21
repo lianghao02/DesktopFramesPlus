@@ -1,5 +1,11 @@
 # HANDOFF
 
+## 2026-10-22 FrameManager 拆檔第二階段第一段（Claude）
+- 新檔 `FrameManager.FrameBuild.cs`：`FrameBuildContext` 與自 `CreateFrame` 逐字抽出的 `BuildFrameBorder`、`BuildMenuIcon`、`BuildLockIcon`、`BuildTitleGrid`、`BuildTitleLabel`；`CreateFrame` 約少 380 行。
+- 先補 5 項特徵化測試（225 項）；每個提交建置 0 錯誤、225＋10 項全過；整體逐行比對只差預期的呼叫與外框行。
+- 新發現現狀：自訂外框顏色被主題輪廓色蓋掉、無作用（未修改）。
+- 尚未：桌面手動驗收（清單在 `IMPLEMENTATION_PLAN.md`）、更新本機 `dist`、升版。還原點 `restore/2026-10-22-before-stage2`。
+
 ## 2026-10-22 FrameManager 拆檔第一階段（Claude）
 - `Framemanager` 改為 `partial class`，CreateFrame 以外的 91 個方法逐字搬到 13 個 `FrameManager.*.cs`；核心檔剩 4,240 行。檔案地圖見 `docs/specs/FRAMEMANAGER_MAP.md`，規則見 `AGENTS.md`。
 - 驗證：每個提交 MSBuild 0 錯誤、220 項 + 收納面板 10 項全過；完成後整體逐行比對只差類別宣告與分檔外框；繁中 100%。詳見 `IMPLEMENTATION_PLAN.md` 驗證紀錄。

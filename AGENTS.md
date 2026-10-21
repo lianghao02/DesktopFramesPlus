@@ -3,7 +3,7 @@
 本專案源自 `limbo666/DesktopFramesPlus`，現已**獨立維護**（與上游分叉，不再逐筆合併），以台灣繁體中文 (zh-TW) 介面為主。上游僅作參考，見 `docs/specs/UPSTREAM_REFERENCE.md`。
 
 ## 1. 不可觸碰之核心架構與邊界
-- **`Framemanager` 已以 `partial class` 分為 14 個檔案（`FrameManager.cs` 與 `FrameManager.*.cs`）**：該模組深度依賴 Win32 視窗控制代碼（HWND）、訊息攔截（WndProc）與即時座標計算，且 `dynamic` 存取錯誤編譯器不會報錯，因此任何重構都必須先有回歸測試並通過 `tools/run-all-tests.ps1` 與 `tools/test-managed-storage-fence.ps1`。各分檔職責見 `docs/specs/FRAMEMANAGER_MAP.md`，修改前先讀該檔案地圖，只動相關檔案。
+- **`Framemanager` 已以 `partial class` 分為多個檔案（`FrameManager.cs` 與 `FrameManager.*.cs`）**：該模組深度依賴 Win32 視窗控制代碼（HWND）、訊息攔截（WndProc）與即時座標計算，且 `dynamic` 存取錯誤編譯器不會報錯，因此任何重構都必須先有回歸測試並通過 `tools/run-all-tests.ps1` 與 `tools/test-managed-storage-fence.ps1`。各分檔職責見 `docs/specs/FRAMEMANAGER_MAP.md`，修改前先讀該檔案地圖，只動相關檔案。
 - **各分檔的 `using` 區塊必須與 `FrameManager.cs` 逐字相同**（含 `using static System.Net.Mime.MediaTypeNames;` 與 `using Color = System.Drawing.Color;`），否則同一段程式可能解析到不同型別。
 - **`CreateFrame` 拆解（第二階段）需逐段進行**：依 `IMPLEMENTATION_PLAN.md` 的步驟，一段一個提交，並在實際桌面完成相關手動驗收後才繼續。
 - **維持設定檔向下相容性**：保留現有 `options.json`、`frames.json` 與 `MasterOptions.json` 基本架構。允許對單一 Frame 新增具向前相容之選擇性屬性（如專用收納柵欄之 `IsManagedStorage`、`StorageRootPath`），舊版本或未支援模組讀取時自動忽略，嚴禁破壞性修改或移除既有必要欄位。
