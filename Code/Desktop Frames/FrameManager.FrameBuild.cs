@@ -1304,5 +1304,525 @@ namespace Desktop_Frames
                 }
             };
         }
+
+        // 面板右鍵選單開啟時的動態項目：依面板類型與 Ctrl 狀態加入或顯示匯出、空白格、依路徑命名、符合內容大小、收納資料夾、圖示大小等
+        private static void BindPanelMenuOpened(FrameBuildContext ctx, ContextMenu CnMnFramemanager, NonActivatingWindow win,
+            MenuItem miClearDeadShortcuts, Separator sepClearDead, MenuItem miPasteItem)
+        {
+            dynamic frame = ctx.Frame;
+            TextBox titletb = ctx.TitleTextBox;
+            // --- DYNAMIC STATE UPDATES (ON MENU OPEN) ---
+            MenuItem miExportAllToDesktop = null;
+            MenuItem miAddSpacerMenu = null; // REPLACED: Spacer Submenu
+            Separator sepAfterSpacer = null; // NEW: Layout Separator
+            MenuItem miNameAfterPath = null; // New: For Portal Renaming
+            Separator sepNameAfterPath = null; // New: Separator for layout
+            MenuItem miFitToContent = null; // 調整至最適大小
+            MenuItem miNewFolder = null; // NEW: 在收納框內直接新增資料夾
+            MenuItem miOpenStorageFolder = null; // NEW: Portal 開啟實體收納資料夾
+            MenuItem miChangeStoragePath = null; // NEW: Portal 變更收納資料夾位置
+            MenuItem miIconSizeMenu = null;      // NEW: 快速調整圖示大小子選單
+            Separator sepPortalStorage = null;   // NEW: Portal 功能分隔線
+
+            CnMnFramemanager.Opened += (contextSender, contextArgs) =>
+            {
+                // --- LIVE THEME FIX: Main Frame Context Menu ---
+                try
+                {
+                    string id = frame.Id?.ToString();
+                    var liveFrame = GetFrameData().FirstOrDefault(f => f.Id?.ToString() == id) ?? frame;
+                    Style liveStyle = GetThemedContextMenuStyle(liveFrame);
+                    if (liveStyle != null) CnMnFramemanager.Style = liveStyle;
+                }
+                catch { }
+
+                // A. Update Paste Visibility
+                bool hasCopiedItem = CopyPasteManager.HasCopiedItem();
+                miPasteItem.Visibility = hasCopiedItem ? Visibility.Visible : Visibility.Collapsed;
+
+                // B. Update Clear Dead Shortcuts Visibility
+                if (miClearDeadShortcuts != null)
+                {
+                    bool hasDead = HasDeadShortcuts(frame);
+                    miClearDeadShortcuts.Visibility = hasDead ? Visibility.Visible : Visibility.Collapsed;
+                    if (sepClearDead != null) sepClearDead.Visibility = hasDead ? Visibility.Visible : Visibility.Collapsed;
+                }
+
+                // --- CTRL + RIGHT CLICK LOGIC ---
+                bool isCtrlPressed = (Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control;
+                bool isDataFrame = frame.ItemsType?.ToString() == "Data";
+                bool isPortalFrame = frame.ItemsType?.ToString() == "Portal";
+
+                // Clean up previous dynamic items to prevent duplicates
+                if (miExportAllToDesktop != null && CnMnFramemanager.Items.Contains(miExportAllToDesktop))
+                    CnMnFramemanager.Items.Remove(miExportAllToDesktop);
+
+                if (miAddSpacerMenu != null && CnMnFramemanager.Items.Contains(miAddSpacerMenu))
+                    CnMnFramemanager.Items.Remove(miAddSpacerMenu);
+
+                if (sepAfterSpacer != null && CnMnFramemanager.Items.Contains(sepAfterSpacer))
+                    CnMnFramemanager.Items.Remove(sepAfterSpacer);
+
+                if (miFitToContent != null && CnMnFramemanager.Items.Contains(miFitToContent))
+                    CnMnFramemanager.Items.Remove(miFitToContent);
+
+                if (miNewFolder != null && CnMnFramemanager.Items.Contains(miNewFolder))
+                    CnMnFramemanager.Items.Remove(miNewFolder);
+
+                if (miNameAfterPath != null && CnMnFramemanager.Items.Contains(miNameAfterPath))
+                    CnMnFramemanager.Items.Remove(miNameAfterPath);
+
+                if (sepNameAfterPath != null && CnMnFramemanager.Items.Contains(sepNameAfterPath))
+                    CnMnFramemanager.Items.Remove(sepNameAfterPath);
+
+                if (miOpenStorageFolder != null && CnMnFramemanager.Items.Contains(miOpenStorageFolder))
+                    CnMnFramemanager.Items.Remove(miOpenStorageFolder);
+
+                if (miChangeStoragePath != null && CnMnFramemanager.Items.Contains(miChangeStoragePath))
+                    CnMnFramemanager.Items.Remove(miChangeStoragePath);
+
+                if (miIconSizeMenu != null && CnMnFramemanager.Items.Contains(miIconSizeMenu))
+                    CnMnFramemanager.Items.Remove(miIconSizeMenu);
+
+                if (sepPortalStorage != null && CnMnFramemanager.Items.Contains(sepPortalStorage))
+                    CnMnFramemanager.Items.Remove(sepPortalStorage);
+
+                // C0. 圖示大小快速選單 (Data 與 Portal 皆可用)
+                if (isDataFrame || isPortalFrame)
+                {
+                    string id = frame.Id?.ToString();
+                    var liveFrame = GetFrameData().FirstOrDefault(f => f.Id?.ToString() == id) ?? frame;
+                    string currentIconSize = GetSafeProperty(liveFrame, "IconSize");
+                    if (string.IsNullOrEmpty(currentIconSize)) currentIconSize = "Medium";
+
+                    string menuHeader = (Strings.LblIconSize ?? "圖示大小").TrimEnd(':', '：', ' ');
+                    miIconSizeMenu = new MenuItem { Header = menuHeader };
+
+                    var sizeOptions = new (string Key, string Label)[]
+                    {
+                        ("Tiny", Strings.Get("OptTiny", "極小 (Tiny)")),
+                        ("Small", Strings.Get("OptSmall", "小 (Small)")),
+                        ("Medium", Strings.Get("OptMedium", "中 (Medium)")),
+                        ("Large", Strings.Get("OptLarge", "大 (Large)")),
+                        ("Huge", Strings.Get("OptHuge", "特大 (Huge)"))
+                    };
+
+                    foreach (var opt in sizeOptions)
+                    {
+                        string sizeKey = opt.Key;
+                        var subItem = new MenuItem
+                        {
+                            Header = opt.Label,
+                            IsCheckable = true,
+                            IsChecked = string.Equals(currentIconSize, sizeKey, StringComparison.OrdinalIgnoreCase)
+                        };
+                        subItem.Click += (s, e) => SetFrameIconSizeLive(win, liveFrame, sizeKey);
+                        miIconSizeMenu.Items.Add(subItem);
+                    }
+
+                    int sizeInsertIndex = CnMnFramemanager.Items.Count - 1;
+                    var customizeItemForSize = CnMnFramemanager.Items.OfType<MenuItem>()
+                        .FirstOrDefault(m => m.Header.ToString() == Strings.MenuCustomize);
+                    if (customizeItemForSize != null) sizeInsertIndex = CnMnFramemanager.Items.IndexOf(customizeItemForSize);
+                    CnMnFramemanager.Items.Insert(sizeInsertIndex, miIconSizeMenu);
+                }
+
+                // C. Export All (Data Frame + Ctrl 才顯示)
+                if (isCtrlPressed && isDataFrame)
+                {
+                    miExportAllToDesktop = new MenuItem { Header = Strings.MenuExportAllIcons };
+                    miExportAllToDesktop.Click += (s, e) => ExportAllIconsToDesktop(frame);
+
+                    // Insert before Customize (safe lookup)
+                    int exportInsertIndex = CnMnFramemanager.Items.Count - 1;
+                    var customizeItemForExport = CnMnFramemanager.Items.OfType<MenuItem>()
+                        .FirstOrDefault(m => m.Header.ToString() == Strings.MenuCustomize);
+                    if (customizeItemForExport != null) exportInsertIndex = CnMnFramemanager.Items.IndexOf(customizeItemForExport);
+                    CnMnFramemanager.Items.Insert(exportInsertIndex, miExportAllToDesktop);
+                }
+
+                // C2. Add Spacer Menu (Data Frame 即可，不需 Ctrl)
+                if (isDataFrame)
+                {
+                    miAddSpacerMenu = new MenuItem { Header = Strings.MenuAddSpacer };
+
+                    MenuItem miSpacerBlank = new MenuItem { Header = Strings.MenuSpacerBlank };
+                    MenuItem miSpacerDot = new MenuItem { Header = Strings.MenuSpacerDot };
+
+                    // Centralized Spacer Creation Logic
+                    Action<string> CreateSpacer = (prefix) =>
+                    {
+                        try
+                        {
+                            string id = frame.Id?.ToString();
+                            var liveFrame = GetFrameData().FirstOrDefault(f => f.Id?.ToString() == id);
+                            if (liveFrame == null) return;
+
+                            JArray items = null;
+                            bool tabsEnabled = liveFrame.TabsEnabled?.ToString().ToLower() == "true";
+                            if (tabsEnabled)
+                            {
+                                var tabs = liveFrame.Tabs as JArray ?? new JArray();
+                                int currentTab = Convert.ToInt32(liveFrame.CurrentTab?.ToString() ?? "0");
+                                if (currentTab >= 0 && currentTab < tabs.Count)
+                                {
+                                    var activeTab = tabs[currentTab] as JObject;
+                                    items = activeTab?["Items"] as JArray ?? new JArray();
+                                }
+                            }
+                            if (items == null) items = liveFrame.Items as JArray ?? new JArray();
+
+                            int nextDisplayOrder = items.Count > 0 ? items.Max(i => i["DisplayOrder"]?.Value<int>() ?? 0) + 1 : 0;
+
+                            dynamic newItem = new System.Dynamic.ExpandoObject();
+                            IDictionary<string, object> newItemDict = newItem;
+                            newItemDict["Filename"] = prefix + "_" + Guid.NewGuid().ToString();
+                            newItemDict["DisplayName"] = "";
+                            newItemDict["IsFolder"] = false;
+                            newItemDict["IsLink"] = false;
+                            newItemDict["IsNetwork"] = false;
+                            newItemDict["AlwaysRunAsAdmin"] = false;
+                            newItemDict["DisplayOrder"] = nextDisplayOrder;
+
+                            items.Add(JObject.FromObject(newItem));
+
+                            if (tabsEnabled && Convert.ToInt32(liveFrame.CurrentTab?.ToString() ?? "0") == 0)
+                                TabManager.SynchronizeTab0Content(id, "tab0", "add");
+                            else if (!tabsEnabled)
+                                TabManager.SynchronizeTab0Content(id, "main", "add");
+
+                            FrameDataManager.SaveFrameData();
+                            RefreshFrameUsingFormApproach(win, liveFrame);
+                        }
+                        catch (Exception ex)
+                        {
+                            LogManager.Log(LogManager.LogLevel.Error, LogManager.LogCategory.UI, $"Error adding spacer: {ex.Message}");
+                        }
+                    };
+
+                    miSpacerBlank.Click += (s, e) => CreateSpacer("INTERNAL_BLANK_EMPTY");
+                    miSpacerDot.Click += (s, e) => CreateSpacer("INTERNAL_BLANK_DOT");
+
+                    miAddSpacerMenu.Items.Add(miSpacerBlank);
+                    miAddSpacerMenu.Items.Add(miSpacerDot);
+
+                    sepAfterSpacer = new Separator();
+
+                    // Insert before Customize (safe lookup)
+                    int insertIndex = CnMnFramemanager.Items.Count - 1;
+                    var customizeItem = CnMnFramemanager.Items.OfType<MenuItem>()
+                        .FirstOrDefault(m => m.Header.ToString() == Strings.MenuCustomize);
+                    if (customizeItem != null) insertIndex = CnMnFramemanager.Items.IndexOf(customizeItem);
+
+                    CnMnFramemanager.Items.Insert(insertIndex, miAddSpacerMenu);
+                    CnMnFramemanager.Items.Insert(insertIndex + 1, sepAfterSpacer);
+                }
+
+                // C3. Fit to Content (Data Frame 即可)
+                if (isDataFrame)
+                {
+                    miFitToContent = new MenuItem { Header = Strings.MenuFitToContent };
+                    miFitToContent.Click += (s, e) =>
+                    {
+                        try
+                        {
+                            // 執行時期從 win 的 VisualTree 找 WrapPanel
+                            WrapPanel wp = FindVisualChild<WrapPanel>(win);
+                            if (wp == null) return;
+
+                            // 強制 WrapPanel 先完成排版，才能取得正確的 ActualWidth/Height
+                            wp.UpdateLayout();
+
+                            double totalContentHeight = 0;
+                            double rowWidth = 0;
+                            double rowHeight = 0;
+                            double availableWidth = win.Width - 20; // 預留滾動條/邊界
+
+                            foreach (UIElement child in wp.Children)
+                            {
+                                if (child.Visibility == Visibility.Collapsed) continue;
+                                child.Measure(new System.Windows.Size(double.PositiveInfinity, double.PositiveInfinity));
+                                double cw = child.DesiredSize.Width;
+                                double ch = child.DesiredSize.Height;
+
+                                if (rowWidth + cw > availableWidth && rowWidth > 0)
+                                {
+                                    totalContentHeight += rowHeight;
+                                    rowWidth = cw;
+                                    rowHeight = ch;
+                                }
+                                else
+                                {
+                                    rowWidth += cw;
+                                    rowHeight = Math.Max(rowHeight, ch);
+                                }
+                            }
+                            totalContentHeight += rowHeight; // 最後一行
+
+                            // 視窗 chrome 高度（標題列等）
+                            double chromeHeight = win.ActualHeight - (win.Content as FrameworkElement)?.ActualHeight ?? 0;
+                            if (chromeHeight <= 0) chromeHeight = 50; // 保守估計
+
+                            double targetHeight = totalContentHeight + chromeHeight + 16; // 加上 padding
+                            targetHeight = Math.Max(targetHeight, 80); // 最小高度
+
+                            // DoubleAnimation 動畫縮放
+                            var anim = new System.Windows.Media.Animation.DoubleAnimation
+                            {
+                                To = targetHeight,
+                                Duration = TimeSpan.FromMilliseconds(180),
+                                EasingFunction = new System.Windows.Media.Animation.CubicEase { EasingMode = System.Windows.Media.Animation.EasingMode.EaseOut }
+                            };
+                            win.BeginAnimation(Window.HeightProperty, anim);
+
+                            // 存檔
+                            string frameId2 = frame.Id?.ToString();
+                            var liveFrame2 = FrameDataManager.FrameData.FirstOrDefault(f => f.Id?.ToString() == frameId2);
+                            if (liveFrame2 is JObject jf2)
+                            {
+                                jf2["Height"] = targetHeight;
+                                FrameDataManager.SaveFrameData();
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            LogManager.Log(LogManager.LogLevel.Error, LogManager.LogCategory.UI, $"FitToContent error: {ex.Message}");
+                        }
+                    };
+
+                    // Insert before Customize
+                    int fitInsertIndex = CnMnFramemanager.Items.Count - 1;
+                    var customizeItemFit = CnMnFramemanager.Items.OfType<MenuItem>()
+                        .FirstOrDefault(m => m.Header.ToString() == Strings.MenuCustomize);
+                    if (customizeItemFit != null) fitInsertIndex = CnMnFramemanager.Items.IndexOf(customizeItemFit);
+
+                    miNewFolder = new MenuItem { Header = Strings.MenuNewFolder };
+                    miNewFolder.Click += (s, e) =>
+                    {
+                        try
+                        {
+                            string baseRoot = SettingsManager.DefaultPortalStorageRoot;
+                            string frameTitle = frame.Title?.ToString() ?? "收納區";
+                            var invalidChars = System.IO.Path.GetInvalidFileNameChars();
+                            string cleanTitle = new string(frameTitle.Where(c => !invalidChars.Contains(c)).ToArray()).Trim();
+                            if (string.IsNullOrWhiteSpace(cleanTitle)) cleanTitle = "收納區";
+                            string targetParentDir = System.IO.Path.Combine(baseRoot, cleanTitle);
+
+                            string created = Desktop_Frames.Services.StorageFenceService.PromptAndCreateNewFolder(targetParentDir, win);
+                            if (!string.IsNullOrEmpty(created))
+                            {
+                                string id = frame.Id?.ToString();
+                                var liveFrame = GetFrameData().FirstOrDefault(f => f.Id?.ToString() == id) ?? frame;
+                                AddItemToDataFrame(liveFrame, created);
+                                FrameDataManager.SaveFrameData();
+                                RefreshFrameUsingFormApproach(win, liveFrame);
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            LogManager.Log(LogManager.LogLevel.Error, LogManager.LogCategory.UI, $"Data frame NewFolder error: {ex.Message}");
+                        }
+                    };
+                    CnMnFramemanager.Items.Insert(fitInsertIndex, miNewFolder);
+                    CnMnFramemanager.Items.Insert(fitInsertIndex + 1, miFitToContent);
+                }
+
+                // D1. Portal Frame 操作功能（無需按 Ctrl，一般右鍵直接可用）
+                if (isPortalFrame)
+                {
+                    miNewFolder = new MenuItem { Header = Strings.MenuNewFolder };
+                    miNewFolder.Click += (s, e) =>
+                    {
+                        try
+                        {
+                            string fId = frame.Id?.ToString();
+                            var pEntry = _portalFrames.FirstOrDefault(kvp => kvp.Key?.Id?.ToString() == fId);
+                            string targetDir = pEntry.Value?.CurrentTargetFolderPath ?? frame.Path?.ToString();
+                            if (!string.IsNullOrWhiteSpace(targetDir))
+                            {
+                                string created = Desktop_Frames.Services.StorageFenceService.PromptAndCreateNewFolder(targetDir, win);
+                                if (!string.IsNullOrEmpty(created))
+                                {
+                                    pEntry.Value?.TriggerSync(immediate: true);
+                                }
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            LogManager.Log(LogManager.LogLevel.Error, LogManager.LogCategory.UI, $"Portal frame NewFolder error: {ex.Message}");
+                        }
+                    };
+
+                    miOpenStorageFolder = new MenuItem { Header = Strings.Get("MenuOpenStorageFolder", "開啟收納資料夾") };
+                    miOpenStorageFolder.Click += (s, e) =>
+                    {
+                        try
+                        {
+                            string targetPath = frame.Path?.ToString();
+                            if (!string.IsNullOrEmpty(targetPath) && Directory.Exists(targetPath))
+                            {
+                                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                                {
+                                    FileName = targetPath,
+                                    UseShellExecute = true
+                                });
+                            }
+                            else
+                            {
+                                string msg = !string.IsNullOrEmpty(targetPath)
+                                    ? string.Format(Strings.MsgTargetNotFound, targetPath)
+                                    : "找不到指定的收納資料夾。";
+                                MessageBox.Show(msg, "Desktop Frames +", MessageBoxButton.OK, MessageBoxImage.Warning);
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            LogManager.Log(LogManager.LogLevel.Error, LogManager.LogCategory.UI, $"Failed to open storage folder: {ex.Message}");
+                        }
+                    };
+
+                    miChangeStoragePath = new MenuItem { Header = Strings.MenuChangeStoragePath };
+                    miChangeStoragePath.Click += (s, e) =>
+                    {
+                        try
+                        {
+                            using (var fbd = new System.Windows.Forms.FolderBrowserDialog())
+                            {
+                                fbd.Description = Strings.MenuChangeStoragePath;
+                                fbd.UseDescriptionForTitle = true;
+                                string currentPath = frame.Path?.ToString();
+                                if (!string.IsNullOrEmpty(currentPath) && Directory.Exists(currentPath))
+                                {
+                                    fbd.SelectedPath = currentPath;
+                                }
+
+                                if (fbd.ShowDialog() == System.Windows.Forms.DialogResult.OK && !string.IsNullOrWhiteSpace(fbd.SelectedPath))
+                                {
+                                    string newPath = fbd.SelectedPath;
+                                    string id = frame.Id?.ToString();
+                                    var liveFrame = GetFrameData().FirstOrDefault(f => f.Id?.ToString() == id);
+                                    if (liveFrame != null)
+                                    {
+                                        string oldPath = GetSafeProperty(liveFrame, "Path") ?? currentPath ?? "";
+                                        string oldFolderName = "";
+                                        try { if (!string.IsNullOrEmpty(oldPath)) oldFolderName = new DirectoryInfo(oldPath).Name; } catch { }
+                                        string newFolderName = "";
+                                        try { newFolderName = new DirectoryInfo(newPath).Name; } catch { }
+
+                                        string curTitle = GetSafeProperty(liveFrame, "Title") ?? "";
+                                        bool shouldAutoRenameTitle = !string.IsNullOrEmpty(newFolderName) &&
+                                            (string.IsNullOrWhiteSpace(curTitle) ||
+                                             curTitle == "捷徑" ||
+                                             curTitle == "Shortcuts" ||
+                                             curTitle == "收納區" ||
+                                             string.Equals(curTitle, oldFolderName, StringComparison.OrdinalIgnoreCase));
+
+                                        if (liveFrame is JObject jFrame)
+                                        {
+                                            jFrame["Path"] = newPath;
+                                            if (shouldAutoRenameTitle) jFrame["Title"] = newFolderName;
+                                        }
+                                        else
+                                        {
+                                            liveFrame.Path = newPath;
+                                            if (shouldAutoRenameTitle) liveFrame.Title = newFolderName;
+                                        }
+                                        frame.Path = newPath;
+                                        if (shouldAutoRenameTitle)
+                                        {
+                                            frame.Title = newFolderName;
+                                            ctx.TitleLabel.Content = newFolderName;
+                                            win.Title = newFolderName;
+                                            titletb.Text = newFolderName;
+                                        }
+                                        if (!string.IsNullOrEmpty(id))
+                                        {
+                                            _portalNavigationStates.Remove(id);
+                                        }
+                                        FrameDataManager.SaveFrameData();
+                                        NavigatePortalFrame(liveFrame, newPath);
+                                        LogManager.Log(LogManager.LogLevel.Info, LogManager.LogCategory.UI, $"Changed portal frame storage path to: {newPath}");
+                                    }
+                                }
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            LogManager.Log(LogManager.LogLevel.Error, LogManager.LogCategory.UI, $"Failed to change storage folder: {ex.Message}");
+                        }
+                    };
+
+                    sepPortalStorage = new Separator();
+
+                    int portalInsertIndex = CnMnFramemanager.Items.Count - 1;
+                    var customizeItemPortal = CnMnFramemanager.Items.OfType<MenuItem>()
+                        .FirstOrDefault(m => m.Header.ToString() == Strings.MenuCustomize);
+                    if (customizeItemPortal != null) portalInsertIndex = CnMnFramemanager.Items.IndexOf(customizeItemPortal);
+
+                    CnMnFramemanager.Items.Insert(portalInsertIndex, miNewFolder);
+                    CnMnFramemanager.Items.Insert(portalInsertIndex + 1, miOpenStorageFolder);
+                    CnMnFramemanager.Items.Insert(portalInsertIndex + 2, miChangeStoragePath);
+                    CnMnFramemanager.Items.Insert(portalInsertIndex + 3, sepPortalStorage);
+                }
+
+                // D2. Name After Target (Portal Frame + Ctrl)
+                if (isCtrlPressed && isPortalFrame)
+                {
+                    miNameAfterPath = new MenuItem { Header = Strings.MenuNameAfterPath };
+                    miNameAfterPath.Click += (s, e) =>
+                    {
+                        // Get Base Path (Not navigation path)
+                        string targetPath = frame.Path?.ToString();
+
+                        if (!string.IsNullOrEmpty(targetPath))
+                        {
+                            // 1. Update Live Object (Global List)
+                            string id = frame.Id?.ToString();
+                            var liveFrame = GetFrameData().FirstOrDefault(f => f.Id?.ToString() == id);
+
+                            if (liveFrame != null)
+                            {
+                                if (liveFrame is JObject jFrame) jFrame["Title"] = targetPath;
+                                else liveFrame.Title = targetPath;
+
+                                frame.Title = targetPath; // Update local reference
+                            }
+
+                            // 2. Update UI
+                            ctx.TitleLabel.Content = targetPath;
+                            win.Title = targetPath;
+                            titletb.Text = targetPath; // Update hidden textbox too
+
+                            // 3. Save
+                            FrameDataManager.SaveFrameData();
+                            LogManager.Log(LogManager.LogLevel.Info, LogManager.LogCategory.UI, $"Renamed portal frame to target: {targetPath}");
+                        }
+                    };
+
+                    sepNameAfterPath = new Separator();
+
+                    // Insert before Customize
+                    int insertIndex = CnMnFramemanager.Items.Count - 1;
+                    var customizeItem = CnMnFramemanager.Items.OfType<MenuItem>()
+                        .FirstOrDefault(m => m.Header.ToString() == Strings.MenuCustomize);
+
+                    if (customizeItem != null)
+                    {
+                        insertIndex = CnMnFramemanager.Items.IndexOf(customizeItem);
+                        // Insert Order: Name -> Separator -> Customize
+                        CnMnFramemanager.Items.Insert(insertIndex, miNameAfterPath);
+                        CnMnFramemanager.Items.Insert(insertIndex + 1, sepNameAfterPath);
+                    }
+                    else
+                    {
+                        CnMnFramemanager.Items.Add(miNameAfterPath);
+                        CnMnFramemanager.Items.Add(sepNameAfterPath);
+                    }
+                }
+
+                LogManager.Log(LogManager.LogLevel.Debug, LogManager.LogCategory.UI,
+                    $"Updated frame menu - Ctrl:{isCtrlPressed}");
+            };
+        }
     }
 }
