@@ -351,6 +351,60 @@ internal static class FrameManagerBehaviorChecks
         FrameDataManager.SaveFrameData();
     }
 
+    // 標題列與外框（CreateFrame 拆解第一段的保護）：外觀取自面板設定；改名進行中點 ♥ 或鎖頭會先保存名稱
+    private static async Task TitleBarChecks(TargetChecker checker)
+    {
+        dynamic created = FrameDataManager.CreateNewFrame("標題列驗證", "Data", 280, 260, width: 380, height: 260);
+        string id = created.Id.ToString();
+        dynamic live = Live(id);
+        live["TitleTextColor"] = "Red";
+        live["TitleTextSize"] = "Large";
+        live["BoldTitleText"] = "true";
+        live["FrameBorderColor"] = "Blue";
+        live["FrameBorderThickness"] = 3;
+        FrameDataManager.SaveFrameData();
+        NonActivatingWindow win = await Open(Live(id), checker);
+
+        var label = GameThemeChecks.Children<Label>(win).First(l => l.Content?.ToString() == "標題列驗證");
+        Check(label.Foreground is SolidColorBrush { } fg && fg.Color == Utility.GetColorFromName("Red")
+            && label.FontSize == 16 && label.FontWeight == FontWeights.Bold,
+            "特徵化：標題文字的顏色、字級（Large=16）與粗體取自面板設定");
+        // 現狀：面板設定的外框顏色最後會被 Q 版主題的輪廓色蓋掉，且粗細為 0，外框顏色設定在畫面上沒有作用（另案評估）。
+        Check(win.Content is GameSkin { Skin: GameSkinKind.Panel } panel && panel.BorderBrush == GameTheme.Outline
+            && panel.BorderThickness == new Thickness(0),
+            "特徵化：外框為 Q 版面板，筆刷為主題輪廓色、粗細 0（現狀：自訂外框顏色不生效）");
+
+        var titleBox = ((Panel)VisualTreeHelper.GetParent(label)).Children.OfType<TextBox>().First();
+        var heart = GameThemeChecks.Children<TextBlock>(win).First(t => t.Name == "FrameMenuIcon");
+        var lockIcon = GameThemeChecks.Children<TextBlock>(win).First(t => t.Name == "FrameLockIcon");
+        void Click(TextBlock target) => target.RaiseEvent(new MouseButtonEventArgs(Mouse.PrimaryDevice, Environment.TickCount, MouseButton.Left)
+        { RoutedEvent = UIElement.MouseLeftButtonDownEvent, Source = target });
+
+        titleBox.Visibility = Visibility.Visible;
+        titleBox.Text = "♥ 保存的名稱";
+        Click(heart);
+        await Task.Delay(50);
+        Check(Saved(id)["Title"]?.ToString() == "♥ 保存的名稱" && label.Content?.ToString() == "♥ 保存的名稱"
+            && titleBox.Visibility != Visibility.Visible && heart.ContextMenu?.IsOpen != true,
+            "特徵化：改名進行中點 ♥ 會先保存名稱、不開選單");
+
+        titleBox.Visibility = Visibility.Visible;
+        titleBox.Text = "鎖頭保存的名稱";
+        Click(lockIcon);
+        await Task.Delay(50);
+        Check(Saved(id)["Title"]?.ToString() == "鎖頭保存的名稱" && Saved(id)["IsLocked"]?.ToString() != "true",
+            "特徵化：改名進行中點鎖頭會先保存名稱、不切換鎖定");
+
+        Click(heart);
+        await Task.Delay(50);
+        Check(heart.ContextMenu?.IsOpen == true, "特徵化：一般狀態點 ♥ 會開啟 ♥ 選單");
+        heart.ContextMenu!.IsOpen = false;
+
+        win.Close();
+        FrameDataManager.FrameData.RemoveAll(f => f.Id?.ToString() == id);
+        FrameDataManager.SaveFrameData();
+    }
+
     private static async Task LockRenameTabsIconChecks(TargetChecker checker, string root)
     {
         string source = Path.Combine(root, "互動 來源");
