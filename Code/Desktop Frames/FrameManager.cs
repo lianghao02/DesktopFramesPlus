@@ -188,62 +188,7 @@ namespace Desktop_Frames
 
             Grid titleGrid = BuildTitleGrid(heart);
                                                                                                                       // End of ctrl+click handler
-            ContextMenu CnMnFramemanager = new ContextMenu();
-
-            Style themedStyle = GetThemedContextMenuStyle(frame);
-            if (themedStyle != null) CnMnFramemanager.Style = themedStyle;
-
-            MenuItem miNewnoteFrame = new MenuItem { Header = Strings.MenuNewNoteFrame };
-
-            // 面板右鍵選單：常用項目留在第一層，少用功能收進「更多」。
-            // 注意：後面的動態項目都以「自訂外觀…」(Strings.MenuCustomize) 當定位點，該項必須維持在第一層。
-            MenuItem miMoreFrame = new MenuItem { Header = Strings.Get("MenuMore", "更多") };
-
-            // --- NEW: Auto Roll Menu Item ---
-            MenuItem miAutoRoll = new MenuItem { Header = Strings.MenuAutoRoll, IsCheckable = true };
-            miAutoRoll.IsChecked = frame.AutoRoll?.ToString().ToLower() == "true";
-            miAutoRoll.Click += (s, e) =>
-            {
-                UpdateFrameProperty(frame, "AutoRoll", miAutoRoll.IsChecked.ToString().ToLower(), $"Set Auto Roll to {miAutoRoll.IsChecked}");
-
-                // If turned off while currently auto-rolled, immediately unroll it
-                string fId = frame.Id?.ToString();
-                if (!miAutoRoll.IsChecked && !string.IsNullOrEmpty(fId) && _autoRolledFrames.Contains(fId))
-                {
-                    // Dynamically find the window since 'win' is out of scope here
-                    var targetWin = System.Windows.Application.Current.Windows.OfType<NonActivatingWindow>().FirstOrDefault(w => w.Tag?.ToString() == fId);
-                    if (targetWin != null)
-                    {
-                        var args = new System.Windows.Input.MouseEventArgs(System.Windows.Input.Mouse.PrimaryDevice, 0) { RoutedEvent = System.Windows.Input.Mouse.MouseEnterEvent };
-                        targetWin.RaiseEvent(args); // Simulate mouse enter to wake it up cleanly
-                    }
-                }
-            };
-            miMoreFrame.Items.Add(miAutoRoll);
-
-            // --- NEW: Always On Top Menu Item ---
-            MenuItem miAlwaysOnTop = new MenuItem { Header = Strings.MenuAlwaysOnTop, IsCheckable = true };
-            miAlwaysOnTop.IsChecked = frame.AlwaysOnTop?.ToString().ToLower() == "true";
-            miAlwaysOnTop.Click += (s, e) =>
-            {
-                UpdateFrameProperty(frame, "AlwaysOnTop", miAlwaysOnTop.IsChecked.ToString().ToLower(), $"Set Always on Top to {miAlwaysOnTop.IsChecked}");
-            };
-            CnMnFramemanager.Items.Add(miAlwaysOnTop);
-
-            CnMnFramemanager.Items.Add(new Separator());
-            // --------------------------------
-
-            MenuItem miHide = new MenuItem { Header = Strings.MenuHideFrame }; // New Hide Frame item
-                                                                   
-            CnMnFramemanager.Items.Add(miHide); // Add Hide Frame
-                                                // Add Note Frame specific context menu items if this is a Note Frame
-            if (frame.ItemsType?.ToString() == "Note")
-            {
-                LogManager.Log(LogManager.LogLevel.Debug, LogManager.LogCategory.FrameCreation,
-                    $"Adding Note frame context menu items for '{frame.Title}'");
-                // We'll add the TextBox reference after the window is created
-                // For now, just mark that this will need Note menu items
-            }
+            ContextMenu CnMnFramemanager = BuildPanelContextMenu(ctx, out MenuItem miMoreFrame, out MenuItem miHide);
             NonActivatingWindow win = new NonActivatingWindow
             {
                 ContextMenu = CnMnFramemanager,
