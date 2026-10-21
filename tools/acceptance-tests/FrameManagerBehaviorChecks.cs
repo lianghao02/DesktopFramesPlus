@@ -46,6 +46,7 @@ internal static class FrameManagerBehaviorChecks
         await MenuSnapshotChecks(checker, root);
         await LockRenameTabsIconChecks(checker, root);
         await TitleBarChecks(checker);
+        await PanelMenuClickChecks(checker);
         await DropChecks(checker, root);
         await FitToContentChecks(checker, root);
         await ResetCustomizationChecks();
@@ -399,6 +400,53 @@ internal static class FrameManagerBehaviorChecks
         await Task.Delay(50);
         Check(heart.ContextMenu?.IsOpen == true, "特徵化：一般狀態點 ♥ 會開啟 ♥ 選單");
         heart.ContextMenu!.IsOpen = false;
+
+        win.Close();
+        FrameDataManager.FrameData.RemoveAll(f => f.Id?.ToString() == id);
+        FrameDataManager.SaveFrameData();
+    }
+
+    // 面板右鍵選單的點擊行為（CreateFrame 拆解第二段的保護；選單結構另由黃金檔比對）
+    private static async Task PanelMenuClickChecks(TargetChecker checker)
+    {
+        string S(string key) => (string)typeof(Framemanager).Assembly.GetType("Desktop_Frames.Localization.Strings")!
+            .GetProperty(key, AnyStatic)!.GetValue(null)!;
+        MenuItem Find(ItemsControl menu, string header) =>
+            menu.Items.OfType<MenuItem>().Select(m => TextOf(m.Header).Trim() == header ? m : (m.HasItems ? FindOrNull(m, header) : null))
+                .FirstOrDefault(m => m != null) ?? throw new InvalidOperationException($"選單找不到「{header}」");
+        MenuItem? FindOrNull(ItemsControl menu, string header)
+        {
+            try { return Find(menu, header); } catch (InvalidOperationException) { return null; }
+        }
+        // 模擬使用者點擊：可勾選項目先切換勾選（WPF 實際點擊的順序），再觸發 Click
+        void Press(MenuItem item)
+        {
+            if (item.IsCheckable) item.IsChecked = !item.IsChecked;
+            item.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent, item));
+        }
+
+        dynamic created = FrameDataManager.CreateNewFrame("選單點擊驗證", "Data", 300, 280, width: 380, height: 260);
+        string id = created.Id.ToString();
+        FrameDataManager.SaveFrameData();
+        NonActivatingWindow win = await Open(Live(id), checker);
+        var menu = win.ContextMenu!;
+
+        Press(Find(menu, S("MenuAlwaysOnTop")));
+        Check(Saved(id)["AlwaysOnTop"]?.ToString() == "true", "特徵化：面板選單「永遠置頂」勾選後寫入設定");
+        Press(Find(menu, S("MenuAutoRoll")));
+        Check(Saved(id)["AutoRoll"]?.ToString() == "true", "特徵化：「更多」內的「自動捲起」勾選後寫入設定");
+
+        var label = GameThemeChecks.Children<Label>(win).First(l => l.Content?.ToString() == "選單點擊驗證");
+        var titleBox = ((Panel)VisualTreeHelper.GetParent(label)).Children.OfType<TextBox>().First();
+        Press(Find(menu, S("MenuRenameFrame")));
+        Check(titleBox.Visibility == Visibility.Visible && label.Visibility == Visibility.Collapsed && titleBox.Text == "選單點擊驗證",
+            "特徵化：面板選單「重新命名」顯示輸入框並帶入目前標題（標題文字在選單建立之後才產生）");
+        titleBox.RaiseEvent(new KeyEventArgs(Keyboard.PrimaryDevice, PresentationSource.FromVisual(titleBox)!, Environment.TickCount, System.Windows.Input.Key.Escape)
+        { RoutedEvent = Keyboard.KeyDownEvent });
+
+        Press(Find(menu, S("MenuHideFrame")));
+        await Task.Delay(50);
+        Check(Saved(id)["IsHidden"]?.ToString() == "true" && win.Visibility == Visibility.Hidden, "特徵化：面板選單「隱藏」寫入設定並隱藏視窗");
 
         win.Close();
         FrameDataManager.FrameData.RemoveAll(f => f.Id?.ToString() == id);
