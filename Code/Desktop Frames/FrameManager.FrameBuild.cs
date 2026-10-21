@@ -228,5 +228,138 @@ namespace Desktop_Frames
             };
             return heart;
         }
+
+        // 標題列右側的鎖頭：外觀、滑鼠移入移出淡入淡出、點擊切換鎖定並寫入設定
+        private static TextBlock BuildLockIcon(FrameBuildContext ctx)
+        {
+            dynamic frame = ctx.Frame;
+            TextBox titletb = ctx.TitleTextBox;
+            // Add a protection symbol in top-right corner
+
+
+            string LockSymbol = "🛡️";
+
+            if (SettingsManager.LockIcon == 0)
+            {
+                LockSymbol = "🛡️";
+            }
+            else if (SettingsManager.LockIcon == 1)
+            {
+                LockSymbol = "🔑";
+            }
+            else if (SettingsManager.LockIcon == 2)
+            {
+                LockSymbol = "🔐";
+            }
+            else if (SettingsManager.LockIcon == 3)
+            {
+                LockSymbol = "🔒";
+            }
+
+            //MessageBox.Show(SettingsManager.LockIcon +" " + LockSymbol.ToString());
+
+
+            TextBlock lockIcon = new TextBlock
+           
+            {
+
+                //     Text = "🔐",
+                //     Text = "🔑",
+                //     Text = "🔒",
+                //     Text = "🔓",
+                Name = "FrameLockIcon", // New! Name
+                Text = LockSymbol,//"🛡️",
+                FontSize = 14,
+                Foreground = frame.IsLocked?.ToString().ToLower() == "true" ? System.Windows.Media.Brushes.Red : System.Windows.Media.Brushes.White,
+                Margin = new Thickness(0, 0, 8, 0), // Adjusted for top-right positioning neatly inside banner
+                HorizontalAlignment = HorizontalAlignment.Right,
+                VerticalAlignment = VerticalAlignment.Center,
+                Cursor = Cursors.Hand,
+                ToolTip = frame.IsLocked?.ToString().ToLower() == "true" ? "Frame is locked (click to unlock)" : "Frame is unlocked (click to lock)",
+                Opacity = Math.Max(0.85, (double)SettingsManager.MenuTintValue / 100),
+                Effect = new DropShadowEffect
+                {
+                    Color = System.Windows.Media.Color.FromRgb(11, 35, 20),
+                    BlurRadius = 2,
+                    ShadowDepth = 1,
+                    Direction = 270,
+                    Opacity = 0.75
+                }
+            };
+
+  
+            GameTheme.ApplyLockIconStyle(lockIcon, frame.IsLocked?.ToString().ToLower() == "true");
+
+            lockIcon.MouseEnter += (s, e) =>
+            {
+                // Remove previous animation
+                lockIcon.BeginAnimation(UIElement.OpacityProperty, null);
+
+                lockIcon.Opacity = 1.0;
+            };
+
+            lockIcon.MouseLeave += (s, e) =>
+            {
+                double targetOpacity = Math.Max(0.85, (double)SettingsManager.MenuTintValue / 100);
+
+                DoubleAnimation fadeBack = new DoubleAnimation
+                {
+                    From = 1.0,
+                    To = targetOpacity,
+                    Duration = TimeSpan.FromMilliseconds(300),
+                    BeginTime = TimeSpan.FromMilliseconds(800)
+                };
+
+                lockIcon.BeginAnimation(UIElement.OpacityProperty, fadeBack);
+            };
+
+
+            // Set initial state without saving to JSON
+            UpdateLockState(lockIcon, frame, null, saveToJson: false);
+            // Lock icon click handler
+            lockIcon.MouseLeftButtonDown += (s, e) =>
+            {
+                if (e.ChangedButton == MouseButton.Left)
+                {
+
+                    // FIX: Directly call CommitRename logic
+                    if (titletb.IsVisible)
+                    {
+                        ctx.CommitRename?.Invoke();
+                        return;
+                    }
+
+                    // Get the NonActivatingWindow to find the frame by Id
+                    NonActivatingWindow win = FindVisualParent<NonActivatingWindow>(lockIcon);
+                    if (win == null)
+                    {
+                        LogManager.Log(LogManager.LogLevel.Warn, LogManager.LogCategory.Error, $"Could not find NonActivatingWindow for lock icon click in frame '{frame.Title}'");
+                        return;
+                    }
+                    // Find the frame in FrameDataManager.FrameData using the window's Tag (Id)
+                    string frameId = win.Tag?.ToString();
+                    if (string.IsNullOrEmpty(frameId))
+                    {
+                        LogManager.Log(LogManager.LogLevel.Warn, LogManager.LogCategory.Error, $"Frame Id is missing for window '{win.Title}'");
+                        return;
+                    }
+                    dynamic currentFrame = FrameDataManager.FrameData.FirstOrDefault(f => f.Id?.ToString() == frameId);
+                    if (currentFrame == null)
+                    {
+                        LogManager.Log(LogManager.LogLevel.Info, LogManager.LogCategory.FrameUpdate, $"Frame with Id '{frameId}' not found in FrameDataManager.FrameData");
+                        return;
+                    }
+                    // Toggle the lock state
+                    bool currentState = currentFrame.IsLocked?.ToString().ToLower() == "true";
+                    bool newState = !currentState;
+                    // Update UI and JSON on the main thread
+                    System.Windows.Application.Current.Dispatcher.Invoke(() =>
+                    {
+                        UpdateLockState(lockIcon, currentFrame, newState, saveToJson: true);
+                    });
+                }
+            };
+            return lockIcon;
+        }
     }
 }
