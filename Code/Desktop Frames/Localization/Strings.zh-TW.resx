@@ -1149,7 +1149,7 @@
 程式將重新啟動以套用變更。</value>
   </data>
   <data name="MsgHotkeysSavedRestartNeeded" xml:space="preserve">
-    <value>全域快捷鍵已儲存並套用至所有設定檔。
+    <value>全域快捷鍵已儲存並套用至所有工作區。
 
 請重新啟動 Desktop Frames + 以啟用新快捷鍵。</value>
   </data>
@@ -1652,10 +1652,10 @@
     <value>系統預設</value>
   </data>
   <data name="SecProfileManagement" xml:space="preserve">
-    <value>設定檔管理</value>
+    <value>工作區管理</value>
   </data>
   <data name="SecProfileSwitching" xml:space="preserve">
-    <value>設定檔切換</value>
+    <value>工作區切換</value>
   </data>
   <data name="SecSelections" xml:space="preserve">
     <value>選項</value>
@@ -1805,7 +1805,7 @@
     <value>將當前資料夾設為此資料夾面板的起始目錄</value>
   </data>
   <data name="TrayCreateNewProfile" xml:space="preserve">
-    <value>新增設定檔…</value>
+    <value>新增工作區…</value>
   </data>
   <data name="TrayExportDoneText" xml:space="preserve">
     <value>登錄檔值已匯出到程式資料夾。</value>
@@ -1823,10 +1823,10 @@
     <value>定位面板…（{0}）</value>
   </data>
   <data name="TrayManageProfiles" xml:space="preserve">
-    <value>管理設定檔…</value>
+    <value>管理工作區…</value>
   </data>
   <data name="TrayProfiles" xml:space="preserve">
-    <value>設定檔</value>
+    <value>工作區</value>
   </data>
   <data name="TrayReloadAllFrames" xml:space="preserve">
     <value>重新載入所有面板</value>
@@ -1951,7 +1951,7 @@
   <data name="MsgTemplateExported" xml:space="preserve">
     <value>語言模板已成功匯出！</value>
   </data>
-<data name="MsgProfileInitializationError" xml:space="preserve"><value>設定檔初始化錯誤：{0}</value></data><data name="DlgStartupError" xml:space="preserve"><value>啟動錯誤</value></data><data name="MsgCriticalStartupError" xml:space="preserve"><value>嚴重啟動錯誤：{0}</value></data><data name="MsgShowAboutFailed" xml:space="preserve"><value>無法顯示「關於」視窗：{0}</value></data><data name="LogCategoryBackgroundValidation" xml:space="preserve"><value>背景驗證</value></data><data name="LogCategoryGeneral" xml:space="preserve"><value>一般</value></data><data name="LogCategorySettings" xml:space="preserve"><value>設定</value></data><data name="LogCategoryFrameUpdate" xml:space="preserve"><value>面板更新</value></data><data name="LogCategoryFrameCreation" xml:space="preserve"><value>面板建立</value></data><data name="DefaultFrameTitle" xml:space="preserve"><value>新面板 — 把檔案拖到這裡</value></data><data name="DefaultTipsTitle" xml:space="preserve"><value>Desktop Frames + 啟動提示</value></data><data name="LogCategoryImportExport" xml:space="preserve"><value>匯入與匯出</value></data><data name="LogCategoryUI" xml:space="preserve"><value>使用者介面</value></data><data name="DefaultTipsContent" xml:space="preserve"><value>歡迎使用 DESKTOP FRAMES +&#xD;&#xA;---------------------------&#xD;&#xA;• 收合／展開：按兩下面板標題列。&#xD;&#xA;• 重新命名：Ctrl + 按一下標題列（按 Enter 儲存）。&#xD;&#xA;• 搜尋（SpotSearch）：按 Ctrl + &#96;（波浪符號）即可立即尋找任何圖示。&#xD;&#xA;• 設定：按一下左上角的「♥」選單圖示。&#xD;&#xA;• 拖入檔案：直接拖入是「搬移」，按住 Ctrl 是「複製」，按住 Alt 是「建立捷徑」。&#xD;&#xA;• 重新排列圖示：Ctrl + 拖曳圖示至新位置。&#xD;&#xA;• 更多功能：在圖示或面板上按滑鼠右鍵。&#xD;&#xA;&#xD;&#xA;提示：Ctrl + 按一下或 Ctrl + 按滑鼠右鍵，可顯示更多選項。&#xD;&#xA;&#xD;&#xA;想改外觀？在標題列上按滑鼠右鍵 → 自訂外觀…</value></data><data name="LogCategoryIconHandling" xml:space="preserve"><value>圖示處理</value></data>  <data name="MenuDrawFrame" xml:space="preserve">
+<data name="MsgProfileInitializationError" xml:space="preserve"><value>工作區初始化錯誤：{0}</value></data><data name="DlgStartupError" xml:space="preserve"><value>啟動錯誤</value></data><data name="MsgCriticalStartupError" xml:space="preserve"><value>嚴重啟動錯誤：{0}</value></data><data name="MsgShowAboutFailed" xml:space="preserve"><value>無法顯示「關於」視窗：{0}</value></data><data name="LogCategoryBackgroundValidation" xml:space="preserve"><value>背景驗證</value></data><data name="LogCategoryGeneral" xml:space="preserve"><value>一般</value></data><data name="LogCategorySettings" xml:space="preserve"><value>設定</value></data><data name="LogCategoryFrameUpdate" xml:space="preserve"><value>面板更新</value></data><data name="LogCategoryFrameCreation" xml:space="preserve"><value>面板建立</value></data><data name="DefaultFrameTitle" xml:space="preserve"><value>新面板 — 把檔案拖到這裡</value></data><data name="DefaultTipsTitle" xml:space="preserve"><value>Desktop Frames + 啟動提示</value></data><data name="LogCategoryImportExport" xml:space="preserve"><value>匯入與匯出</value></data><data name="LogCategoryUI" xml:space="preserve"><value>使用者介面</value></data><data name="DefaultTipsContent" xml:space="preserve"><value>歡迎使用 DESKTOP FRAMES +&#xD;&#xA;---------------------------&#xD;&#xA;• 收合／展開：按兩下面板標題列。&#xD;&#xA;• 重新命名：Ctrl + 按一下標題列（按 Enter 儲存）。&#xD;&#xA;• 搜尋（SpotSearch）：按 Ctrl + &#96;（波浪符號）即可立即尋找任何圖示。&#xD;&#xA;• 設定：按一下左上角的「♥」選單圖示。&#xD;&#xA;• 拖入檔案：直接拖入是「搬移」，按住 Ctrl 是「複製」，按住 Alt 是「建立捷徑」。&#xD;&#xA;• 重新排列圖示：Ctrl + 拖曳圖示至新位置。&#xD;&#xA;• 更多功能：在圖示或面板上按滑鼠右鍵。&#xD;&#xA;&#xD;&#xA;提示：Ctrl + 按一下或 Ctrl + 按滑鼠右鍵，可顯示更多選項。&#xD;&#xA;&#xD;&#xA;想改外觀？在標題列上按滑鼠右鍵 → 自訂外觀…</value></data><data name="LogCategoryIconHandling" xml:space="preserve"><value>圖示處理</value></data>  <data name="MenuDrawFrame" xml:space="preserve">
     <value>框選新增收納面板…</value>
   </data>
   <data name="DrawFrameHint" xml:space="preserve">

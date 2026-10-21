@@ -367,7 +367,7 @@ namespace Desktop_Frames
                             else try { lockedStr = FrameData.IsLocked?.ToString(); } catch { }
                             isLocked = lockedStr?.ToLower() == "true";
                         }
-                        lockIcon.Foreground = isLocked ? System.Windows.Media.Brushes.Red : System.Windows.Media.Brushes.White;
+                        GameTheme.ApplyLockIconStyle(lockIcon, isLocked);
                     }
 
                     // 5. Update Note Text Contrast (if applicable)

@@ -4188,6 +4188,8 @@ namespace Desktop_Frames
             };
 
   
+            GameTheme.ApplyLockIconStyle(lockIcon, frame.IsLocked?.ToString().ToLower() == "true");
+
             lockIcon.MouseEnter += (s, e) =>
             {
                 // Remove previous animation
@@ -8815,7 +8817,7 @@ namespace Desktop_Frames
 
             {
                 // Update lock icon
-                lockIcon.Foreground = isLocked ? System.Windows.Media.Brushes.DeepPink : System.Windows.Media.Brushes.White;
+                GameTheme.ApplyLockIconStyle(lockIcon, isLocked);
                 lockIcon.ToolTip = isLocked ? "Frame is locked (click to unlock)" : "frame is unlocked (click to lock)";
 
                 // Find the NonActivatingWindow

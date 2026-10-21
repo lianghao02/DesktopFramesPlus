@@ -23,6 +23,26 @@ namespace Desktop_Frames
         public static readonly Brush ItemHover = Brush("#2EFDB850");
         public static readonly Brush ItemSelected = Brush("#45386644");
 
+        /// <summary>
+        /// 面板標題列的鎖頭圖示。鎖定時加上奶油色底，避免彩色 Emoji 與綠色標題列對比不足（實測約 1.3:1）；
+        /// 未鎖定時維持透明底白色圖示。
+        /// </summary>
+        public static void ApplyLockIconStyle(TextBlock lockIcon, bool isLocked)
+        {
+            if (isLocked)
+            {
+                lockIcon.Foreground = Brush("#B91C1C");
+                lockIcon.Background = Brush("#FAF1DE");
+                lockIcon.Padding = new Thickness(3, 1, 3, 1);
+            }
+            else
+            {
+                lockIcon.Foreground = Brushes.White;
+                lockIcon.Background = null;
+                lockIcon.Padding = new Thickness(0);
+            }
+        }
+
         private static Brush? _slotNormal;
         private static Brush? _slotHover;
         private static Brush? _slotSelected;
