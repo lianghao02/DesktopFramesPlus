@@ -1,5 +1,9 @@
 # HANDOFF
 
+## 2026-10-22 FrameManager 拆檔第二階段第二段（Claude）
+- 面板右鍵選單抽成 `BuildPanelContextMenu`、`BuildPanelMenuItems`；`titlelabel` 改存 `FrameBuildContext.TitleLabel`（Roslyn 依符號改寫）。先補 4 項測試，229＋10 項全過，整體比對只差預期行。
+- 使用者指示繼續，但第一段手動驗收結果未回報；兩段清單在 `IMPLEMENTATION_PLAN.md`。本機 `dist` 是第一段的版本，未含本段。
+
 ## 2026-10-22 FrameManager 拆檔第二階段第一段（Claude）
 - 新檔 `FrameManager.FrameBuild.cs`：`FrameBuildContext` 與自 `CreateFrame` 逐字抽出的 `BuildFrameBorder`、`BuildMenuIcon`、`BuildLockIcon`、`BuildTitleGrid`、`BuildTitleLabel`；`CreateFrame` 約少 380 行。
 - 先補 5 項特徵化測試（225 項）；每個提交建置 0 錯誤、225＋10 項全過；整體逐行比對只差預期的呼叫與外框行。
