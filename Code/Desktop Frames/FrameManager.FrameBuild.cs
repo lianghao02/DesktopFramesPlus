@@ -995,5 +995,272 @@ namespace Desktop_Frames
             win.PreviewMouseDown += (s, e) => { if (SettingsManager.AutoResetHideTimer) ResetAutoHideTimer(); };
             win.PreviewMouseWheel += (s, e) => { if (SettingsManager.AutoResetHideTimer) ResetAutoHideTimer(); };
         }
+
+        // 滑鼠移入移出：Ctrl 圖示覆蓋層（原生鍵盤事件）、自動捲起計時器、移入展開與移出重新計時
+        private static void BindHoverAndAutoRoll(FrameBuildContext ctx, NonActivatingWindow win)
+        {
+            dynamic frame = ctx.Frame;
+            // --- NEW: Smart CTRL Overlay Engine (Event-Driven, Zero Polling) ---
+            bool isOverlayActive = false;
+
+            void ToggleOverlays(bool turnOn)
+            {
+                if (isOverlayActive == turnOn) return; // Prevent redundant drawing
+                isOverlayActive = turnOn;
+
+                var borderNode = win.Content as Border;
+                var dockNode = borderNode?.Child as DockPanel;
+                var scrollNode = dockNode?.Children.OfType<ScrollViewer>().FirstOrDefault();
+                var wpNode = scrollNode?.Content as WrapPanel;
+
+                if (wpNode == null) return;
+
+                foreach (StackPanel itemPanel in wpNode.Children.OfType<StackPanel>())
+                {
+                    dynamic tagData = itemPanel.Tag;
+                    if (tagData == null) continue;
+
+                    string fp = tagData.GetType().GetProperty("FilePath")?.GetValue(tagData)?.ToString();
+
+                    if (turnOn)
+                    {
+                        if (fp != null && fp.StartsWith("INTERNAL_BLANK_"))
+                        {
+                            // Spacer Overlay: Faint White/Gray
+                            itemPanel.Background = new SolidColorBrush(System.Windows.Media.Color.FromArgb(40, 255, 255, 255));
+                        }
+                        else
+                        {
+                            // Real Icon Overlay: Faint Blue
+                            itemPanel.Background = new SolidColorBrush(System.Windows.Media.Color.FromArgb(80, 100, 150, 255));
+                        }
+                    }
+                    else
+                    {
+                        // Revert to transparent (but still hit-testable)
+                        itemPanel.Background = System.Windows.Media.Brushes.Transparent;
+                    }
+                }
+            }
+
+            // --- BUG FIX: Native Keyboard Hooks (Replaces the 50ms Timer) ---
+            if (frame.ItemsType?.ToString() != "Portal")
+            {
+                win.PreviewKeyDown += (s, e) =>
+                {
+                    if (e.Key == Key.LeftCtrl || e.Key == Key.RightCtrl)
+                    {
+                        if (win.IsMouseOver) ToggleOverlays(true);
+                    }
+                };
+
+                win.PreviewKeyUp += (s, e) =>
+                {
+                    if (e.Key == Key.LeftCtrl || e.Key == Key.RightCtrl)
+                    {
+                        ToggleOverlays(false);
+                    }
+                };
+            }
+            // ----------------------------------------------------------------
+
+            // --- NEW: Setup Auto Roll Timer ---
+            string frameIdForTimer = frame.Id?.ToString() ?? win.Tag?.ToString();
+            if (!string.IsNullOrEmpty(frameIdForTimer))
+            {
+                // Pull from options if it exists, otherwise strictly default to 2 seconds (hidden setting)
+                int autoRollDelay = 2000;
+                try { if (SettingsManager.AutoRollTime > 0) autoRollDelay = SettingsManager.AutoRollTime * 1000; } catch { }
+
+                var autoRollTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(autoRollDelay) };
+                _autoRollTimers[frameIdForTimer] = autoRollTimer;
+
+                autoRollTimer.Tick += (s, e) =>
+                {
+                    autoRollTimer.Stop();
+
+                    // --- BUG FIX: Prevent rolling up if the mouse is currently resting on the frame ---
+                    if (win.IsMouseOver)
+                    {
+                        // We just abort. The MouseLeave event will restart the timer when they finally move away.
+                        return;
+                    }
+
+                    var currentFrame = FrameDataManager.FrameData.FirstOrDefault(f => f.Id?.ToString() == frameIdForTimer);
+                    if (currentFrame == null) return;
+                    bool isManuallyRolled = currentFrame.IsRolled?.ToString().ToLower() == "true";
+
+                    // Don't auto-roll if it's already rolled manually, or caught in transition
+                    if (isManuallyRolled || _framesInTransition.Contains(frameIdForTimer)) return;
+
+                    _autoRolledFrames.Add(frameIdForTimer);
+                    _framesInTransition.Add(frameIdForTimer);
+
+                    double currentHeight = win.Height;
+                    double targetHeight = 28;
+
+                    var heightAnimation = new DoubleAnimation(currentHeight, targetHeight, TimeSpan.FromSeconds(0.3))
+                    {
+                        EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseInOut }
+                    };
+                    heightAnimation.Completed += (animSender, animArgs) =>
+                    {
+                        var borderNode = win.Content as Border;
+                        if (borderNode?.Child is DockPanel dockNode)
+                        {
+                            var scrollNode = dockNode.Children.OfType<ScrollViewer>().FirstOrDefault();
+                            if (scrollNode?.Content is WrapPanel wpNode) wpNode.Visibility = Visibility.Collapsed;
+                            else if (dockNode.Children.OfType<TextBox>().FirstOrDefault() is TextBox tbNode) tbNode.Visibility = Visibility.Collapsed;
+
+                            // --- NEW: Plugin Pause & Hide ---
+                            if (_activePlugins.TryGetValue(frameIdForTimer, out var plugin))
+                            {
+                                plugin.Pause();
+                                foreach (UIElement child in dockNode.Children)
+                                {
+                                    if (child is FrameworkElement fe && fe.Name == "FrameMenuIcon") continue;
+                                    if (DockPanel.GetDock(child) == Dock.Top) continue;
+                                    child.Visibility = Visibility.Collapsed;
+                                }
+                            }
+                        }
+                        _framesInTransition.Remove(frameIdForTimer);
+                        win.BeginAnimation(Window.HeightProperty, null);
+                        win.Height = targetHeight;
+                    };
+                    win.BeginAnimation(Window.HeightProperty, heightAnimation);
+                };
+
+                // --- BUG FIX: Start timer immediately on startup if Auto Roll is enabled ---
+                var currentFrameSetup = FrameDataManager.FrameData.FirstOrDefault(f => f.Id?.ToString() == frameIdForTimer);
+                if (currentFrameSetup != null)
+                {
+                    bool isAutoRollEnabled = currentFrameSetup.AutoRoll?.ToString().ToLower() == "true";
+                    bool isManuallyRolled = currentFrameSetup.IsRolled?.ToString().ToLower() == "true";
+
+                    if (isAutoRollEnabled && !isManuallyRolled)
+                    {
+                        autoRollTimer.Start();
+                    }
+                }
+            }
+            // ----------------------------------
+
+            win.MouseEnter += (s, e) =>
+            {
+                if (SettingsManager.AutoResetHideTimer) ResetAutoHideTimer();
+
+                // --- NEW: Auto Roll Wake Up ---
+                if (!string.IsNullOrEmpty(frameIdForTimer))
+                {
+                    if (_autoRollTimers.ContainsKey(frameIdForTimer)) _autoRollTimers[frameIdForTimer].Stop();
+
+                    if (_autoRolledFrames.Contains(frameIdForTimer))
+                    {
+                        _autoRolledFrames.Remove(frameIdForTimer);
+                        _framesInTransition.Add(frameIdForTimer);
+
+                        var currentFrame = FrameDataManager.FrameData.FirstOrDefault(f => f.Id?.ToString() == frameIdForTimer);
+                        double unrolledHeight = currentFrame != null ? Convert.ToDouble(currentFrame.UnrolledHeight?.ToString() ?? "130") : 130;
+
+                        // --- UX 優化：展開動畫開始時立即恢復可見，配合邊界遮罩呈現絲滑拉開抽屜的效果 ---
+                        var borderNodePre = win.Content as Border;
+                        if (borderNodePre?.Child is DockPanel dockNodePre)
+                        {
+                            var scrollNodePre = dockNodePre.Children.OfType<ScrollViewer>().FirstOrDefault();
+                            if (scrollNodePre?.Content is WrapPanel wpNodePre)
+                            {
+                                wpNodePre.Visibility = Visibility.Visible;
+                            }
+                            else if (dockNodePre.Children.OfType<TextBox>().FirstOrDefault() is TextBox tbNodePre)
+                            {
+                                tbNodePre.Visibility = Visibility.Visible;
+                            }
+                        }
+
+                        var heightAnimation = new DoubleAnimation(win.Height, unrolledHeight, TimeSpan.FromSeconds(0.3))
+                        {
+                            EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseInOut }
+                        };
+                        heightAnimation.Completed += (animSender, animArgs) =>
+                        {
+                            var borderNode = win.Content as Border;
+                            if (borderNode?.Child is DockPanel dockNode)
+                            {
+                                var scrollNode = dockNode.Children.OfType<ScrollViewer>().FirstOrDefault();
+                                if (scrollNode?.Content is WrapPanel wpNode)
+                                {
+                                    wpNode.Visibility = Visibility.Visible;
+
+                                    // --- MULTI-MONITOR INVISIBLE ICON FIX ---
+                                    wpNode.UpdateLayout();
+                                    wpNode.InvalidateVisual();
+                                    wpNode.Opacity = 0.99;
+                                    wpNode.Dispatcher.BeginInvoke(new Action(() => { wpNode.Opacity = 1.0; }), System.Windows.Threading.DispatcherPriority.Render);
+                                }
+                                else if (dockNode.Children.OfType<TextBox>().FirstOrDefault() is TextBox tbNode)
+                                {
+                                    tbNode.Visibility = Visibility.Visible;
+                                }
+
+                                // --- NEW: Plugin Resume & Show ---
+                                if (_activePlugins.TryGetValue(frameIdForTimer, out var plugin))
+                                {
+                                    foreach (UIElement child in dockNode.Children)
+                                    {
+                                        if (child is FrameworkElement fe && fe.Name == "FrameMenuIcon") continue;
+                                        if (DockPanel.GetDock(child) == Dock.Top) continue;
+                                        child.Visibility = Visibility.Visible;
+                                    }
+                                    plugin.Resume();
+                                }
+                            }
+                            _framesInTransition.Remove(frameIdForTimer);
+                            win.BeginAnimation(Window.HeightProperty, null);
+                            win.Height = unrolledHeight;
+                        };
+                        win.BeginAnimation(Window.HeightProperty, heightAnimation);
+                    }
+                }
+                // ------------------------------
+
+                // --- BUG FIX: Event-Driven Overlay Trigger (Zero Polling) ---
+                if (frame.ItemsType?.ToString() != "Portal")
+                {
+                    bool isCtrl = (Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control;
+                    if (isCtrl) ToggleOverlays(true);
+                }
+            };
+
+            win.MouseLeave += (s, e) =>
+            {
+                if (frame.ItemsType?.ToString() != "Portal")
+                {
+                    ToggleOverlays(false); // Instantly hide if mouse leaves the frame
+                }
+
+                // --- NEW: Auto Roll Trigger ---
+                if (!string.IsNullOrEmpty(frameIdForTimer))
+                {
+                    var currentFrame = FrameDataManager.FrameData.FirstOrDefault(f => f.Id?.ToString() == frameIdForTimer);
+                    if (currentFrame != null)
+                    {
+                        bool isAutoRollEnabled = currentFrame.AutoRoll?.ToString().ToLower() == "true";
+                        bool isManuallyRolled = currentFrame.IsRolled?.ToString().ToLower() == "true";
+
+                        // If Auto Roll is ON, it's not manually rolled up, and not already auto-rolled
+                        if (isAutoRollEnabled && !isManuallyRolled && !_autoRolledFrames.Contains(frameIdForTimer))
+                        {
+                            if (_autoRollTimers.TryGetValue(frameIdForTimer, out var timer))
+                            {
+                                timer.Stop();
+                                timer.Start();
+                            }
+                        }
+                    }
+                }
+                // ------------------------------
+            };
+        }
     }
 }
