@@ -361,5 +361,97 @@ namespace Desktop_Frames
             };
             return lockIcon;
         }
+
+        // 標題列底板：四欄（選單圖示、標題、篩選、鎖頭），先放入選單圖示
+        private static Grid BuildTitleGrid(TextBlock heart)
+        {
+            // Create a Grid for the titlebar - move here to ensure it is created before mouse handler
+            Grid titleGrid = new Grid
+            {
+                Background = GameTheme.Accent
+            };
+            var headerSkin = new GameSkin { Skin = GameSkinKind.Header, IsHitTestVisible = false };
+            Grid.SetColumnSpan(headerSkin, 4);
+            titleGrid.Children.Add(headerSkin);
+            titleGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(30, GridUnitType.Pixel) }); // Col 0: Menu Icon
+            titleGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) }); // Col 1: Title
+            titleGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });                      // Col 2: Filter Icon (Auto width)
+            titleGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(30, GridUnitType.Pixel) }); // Col 3: Lock Icon
+            Grid.SetColumn(heart, 0);
+            titleGrid.Children.Add(heart);
+            return titleGrid;
+        }
+
+        // 標題文字：粗體、顏色、字級依面板設定，放在標題列第 2 欄
+        private static Label BuildTitleLabel(FrameBuildContext ctx, Grid titleGrid)
+        {
+            dynamic frame = ctx.Frame;
+            bool isBoldTitle = false;
+            try
+            {
+                isBoldTitle = frame.BoldTitleText?.ToString().ToLower() == "true";
+            }
+            catch { /* Safe fallback */ }
+            // Get title text color or use default white
+            System.Windows.Media.Brush titleTextBrush = System.Windows.Media.Brushes.White; // Default
+            try
+            {
+                string titleColorName = frame.TitleTextColor?.ToString();
+                if (!string.IsNullOrEmpty(titleColorName))
+                {
+                    var titleColor = Utility.GetColorFromName(titleColorName);
+                    titleTextBrush = new SolidColorBrush(titleColor);
+                }
+            }
+            catch
+            {
+                titleTextBrush = System.Windows.Media.Brushes.White; // Fallback
+            }
+            // Get title text size from frame data
+            double titleFontSize = 12; // Default Medium size
+            try
+            {
+                string titleSizeValue = frame.TitleTextSize?.ToString() ?? "Medium";
+                switch (titleSizeValue)
+                {
+                    case "Small":
+                        titleFontSize = 10;
+                        break;
+                    case "Large":
+                        titleFontSize = 16;
+                        break;
+                    default: // Medium
+                        titleFontSize = 12;
+                        break;
+                }
+            }
+            catch
+            {
+                titleFontSize = 12; // Fallback to Medium
+            }
+            Label titlelabel = new Label
+            {
+                Content = frame.Title.ToString(),
+                Foreground = titleTextBrush, // Changed from hardcoded White
+                HorizontalContentAlignment = HorizontalAlignment.Center,
+                HorizontalAlignment = HorizontalAlignment.Stretch,
+                Cursor = Cursors.SizeAll,
+                FontWeight = isBoldTitle ? FontWeights.Bold : FontWeights.SemiBold,
+                FontSize = titleFontSize, // Apply custom title text size
+                Background = System.Windows.Media.Brushes.Transparent,
+                FontFamily = new System.Windows.Media.FontFamily("Segoe UI, Microsoft JhengHei UI"),
+                Effect = new DropShadowEffect
+                {
+                    Color = System.Windows.Media.Color.FromRgb(11, 35, 20),
+                    BlurRadius = 2.5,
+                    ShadowDepth = 1.2,
+                    Direction = 270,
+                    Opacity = 0.85
+                }
+            };
+            Grid.SetColumn(titlelabel, 1);
+            titleGrid.Children.Add(titlelabel);
+            return titlelabel;
+        }
     }
 }
