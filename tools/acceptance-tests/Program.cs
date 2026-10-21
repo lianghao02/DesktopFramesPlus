@@ -120,6 +120,7 @@ internal static class Program
         Check(hash.SequenceEqual(SHA256.HashData(File.ReadAllBytes(source))), "驗收完成後來源雜湊不變");
         StartupSafetyChecks(checker);
         RoundTwoChecks.Run(checker);
+        FrameManagerHelperChecks.Run();
     }
 
     private static void StartupSafetyChecks(TargetChecker checker)

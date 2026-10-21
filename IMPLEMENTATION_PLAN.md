@@ -85,7 +85,7 @@
 
 啟動診斷補充：沙箱 HKCU 視角與實際使用者環境不同，不把最初讀不到 Run 項目當成故障根因。實際註冊命令已核對；Windows 啟動開關與真實重開機驗證，依使用者要求留待回辦公室後測試。
 
-## FrameManager 重構前的回歸測試網（2026-10-21 起，規劃中）
+## FrameManager 重構前的回歸測試網（2026-10-21 起，進行中）
 
 ### 目標與驗收條件
 在拆分或重構 `FrameManager.cs` 之前，先建立「搬動程式碼若改變行為就會被抓到」的回歸測試網。
@@ -128,8 +128,8 @@
 5. 每階段結束都以「故意改壞」確認測試確實會失敗。
 
 ### 工作清單
-- [ ] **Phase 0 盤點與基準**：逐區塊核對既有檢查，補完上表；記錄目前全部測試的基準結果｜`run-all-tests.ps1` 與收納面板測試全過並寫入驗證紀錄
-- [ ] **Phase 1 純函式特徵化測試**：反射呼叫網址、網路路徑、特殊路徑、UNC、`GetNextDisplayOrder` 等，鎖住現有輸出（含邊界與非法輸入）｜新增檢查全過；至少 3 種改壞被抓到
+- [x] **Phase 0 盤點與基準**：逐區塊核對既有檢查，補完上表；記錄目前全部測試的基準結果｜`run-all-tests.ps1` 與收納面板測試全過並寫入驗證紀錄
+- [x] **Phase 1 純函式特徵化測試**：反射呼叫網址、網路路徑、特殊路徑、UNC、`GetNextDisplayOrder` 等，鎖住現有輸出（含邊界與非法輸入）｜新增檢查全過；至少 3 種改壞被抓到
 - [ ] **Phase 2 資料層**：`UpdateFrameProperty` 屬性寫入（含未知欄位保留、布林字串）、`ResetAllCustomizations`、`MigrateLegacyJson`（以虛構舊格式 `frames.json`）、損毀項目備份、`AdjustFramePositionToScreen`｜向下相容：舊設定可讀、未知欄位不遺失
 - [ ] **Phase 3 視窗層**：選單結構快照（♥、面板右鍵、圖示右鍵，含收納面板與 Data 面板兩種）、鎖定切換、收合展開、重新命名、分頁開關、自動隱藏與喚醒、圖示顯示屬性｜黃金檔建立並可重現；快照差異會使測試失敗
 - [ ] **Phase 4 拖放可行性**：評估以反射建立 `DragEventArgs` 驅動主視窗 `Drop`；可行則補三種手勢（搬移、Ctrl 複製、Alt 捷徑）在兩種面板的測試，不可行則寫入手動驗收清單｜結論與證據寫入驗證紀錄
@@ -144,7 +144,12 @@
 - **汙染正式資料**：沿用 `.acceptance-session` 隔離標記，並禁止寫入正式 `Profiles`、桌面與登錄的正式啟動項。
 
 ### 驗證紀錄
-- （尚未開始；Phase 0 完成後填入基準數字。）
+- **還原點**：工作開始前建立並推送標籤 `restore/2026-10-21-before-framemanager-work`（提交 fff3c44）；任何階段出錯可回到此版本。另 v2.11.0-zh-TW 的 GitHub Release 安裝包為第二層保險。
+- **Phase 0 基準（提交 fff3c44）**：MSBuild Release 0 錯誤（1,277 個既有警告）；`run-all-tests.ps1` 155 項 PASS、0 失敗；`test-managed-storage-fence.ps1` 10 項 PASS。
+- **Phase 0 精確核對**：既有測試直接呼叫 `CreateFrame`（9 處，建立真實視窗）、`AddItemToDataFrame`、`WakeUpFrames`、`ForceHideFrames`、`OnResizingEnded`、`UpdateOptionsAndClickEvents`、`RefreshFrameUsingFormApproach`，並以反射呼叫 `WndProc`、`RemoveDataItem`、`DeleteFrameConfiguration`、`LoadFrameDataFromJson`、`InitializeDefaultFrame`。**完全未呼叫**：♥／面板／圖示右鍵選單建構、`UpdateFrameProperty`、`ResetAllCustomizations`、`MigrateLegacyJson`、`AdjustFramePositionToScreen`、`UpdateLockState`、`LaunchItem` 與網址／路徑判斷。上方覆蓋表與此一致。
+- **Phase 1 結果**：新增 `tools/acceptance-tests/FrameManagerHelperChecks.cs`（21 項，以反射呼叫私有靜態方法）：`IsWebUrl`、`IsValidWebUrl`、`IsSpecialWindowsPath`、`IsUncRoot`、`IsNetworkPath`（直接路徑與捷徑內容掃描）、`ExtractUrlFromUrlFile`、`ExtractUrlFromDropData`（瀏覽器、Firefox、HTML、純文字四種格式）、`GetNextDisplayOrder`。加入後 `run-all-tests.ps1` 176 項 PASS。
+- **Phase 1 改壞驗證**：3 種改壞（`IsWebUrl` 不再認 mailto、拖入網址接受 file、排序值不加一）各自讓對應檢查失敗；`FrameManager.cs` 已以 git 還原並重新建置，全部測試恢復通過。
+- **記錄的現狀（未修正）**：`IsSpecialWindowsPath` 以 `StartsWith("control")` 判斷，`controller-說明.txt` 這類一般檔名也會被當成特殊路徑。已以「現狀」檢查鎖住，是否修正另案評估。
 
 ### 剩餘問題
 - 拖放是否能自動化，Phase 4 前不確定。
