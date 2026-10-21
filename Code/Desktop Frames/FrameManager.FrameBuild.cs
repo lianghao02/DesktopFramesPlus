@@ -2178,5 +2178,285 @@ namespace Desktop_Frames
                 ctx.CommitRename(); // Call shared logic
             };
         }
+
+        // 標題列滑鼠：雙擊捲起／展開、單擊放開進入改名、拖曳移動面板（鎖定時不移動）
+        private static void BindTitleMouseEvents(FrameBuildContext ctx, Grid titleGrid, NonActivatingWindow win)
+        {
+            dynamic frame = ctx.Frame;
+            TextBox titletb = ctx.TitleTextBox;
+            System.Windows.Point? titleMouseDownPoint = null;
+            bool titleIsDraggingWindow = false;
+
+            ctx.TitleLabel.MouseDown += (sender, e) =>
+            {
+                // FIX: Directly call CommitRename logic
+                if (titletb.IsVisible)
+                {
+                    ctx.CommitRename?.Invoke();
+                    return;
+                }
+
+                if (e.ClickCount == 2)
+                {
+                    titleMouseDownPoint = null;
+                    titleIsDraggingWindow = false;
+                    // Roll-up/roll-down logic (swapped from Ctrl+Click)
+                    NonActivatingWindow win = FindVisualParent<NonActivatingWindow>(ctx.TitleLabel);
+                    string frameId = win?.Tag?.ToString();
+                    // DebugLog("IMMEDIATE", frameId ?? "UNKNOWN", $"Ctrl+Click FIRST LINE - win.Height:{win?.Height ?? -1:F1}");
+                    if (string.IsNullOrEmpty(frameId) || win == null)
+                    {
+                        // DebugLog("ERROR", frameId ?? "UNKNOWN", "Missing window or frameId in Ctrl+Click");
+                        return;
+                    }
+              
+                    dynamic currentFrame = FrameDataManager.FrameData.FirstOrDefault(f => f.Id?.ToString() == frameId);
+                    if (currentFrame == null)
+                    {
+                        // DebugLog("ERROR", frameId, "Frame not found in FrameDataManager.FrameData for Ctrl+Click");
+                        return;
+                    }
+                    bool isRolled = currentFrame.IsRolled?.ToString().ToLower() == "true";
+                    // Get frame data height (always accurate from SizeChanged handler)
+                    double frameHeight = Convert.ToDouble(currentFrame.Height?.ToString() ?? "130");
+                    double windowHeight = win.Height;
+                    // DebugLog("SYNC_CHECK", frameId, $"Before sync - frameHeight:{frameHeight:F1} | WindowHeight:{windowHeight:F1} | IsRolled:{isRolled}");
+                    if (!isRolled)
+                    {
+                        // ROLLUP: Use frame data height (always current)
+                        // DebugLog("ACTION", frameId, "Starting ROLLUP");
+                        _framesInTransition.Add(frameId);
+                        // DebugLog("TRANSITION", frameId, "Added to transition state");
+                        // FINAL FIX: Use frame data height which is always accurate from SizeChanged handler
+                        double currentHeight = frameHeight;
+
+                        // --- BUG FIX: The "Stuck at 28" Safeguard ---
+                        // If currentHeight is suspiciously small (like the title bar height), it means the 
+                        // WPF layout data is stale. We reject it and use the last known good UnrolledHeight.
+                        if (currentHeight <= 35)
+                        {
+                            currentHeight = Convert.ToDouble(currentFrame.UnrolledHeight?.ToString() ?? "130");
+                            if (currentHeight <= 35) currentHeight = 130; // Ultimate fallback
+                        }
+
+                        // DebugLog("ROLLUP_HEIGHT_SOURCE", frameId, $"Using frame.Height:{frameHeight:F1} (win.Height was stale:{win.Height:F1})");
+                        // Save current frame height as UnrolledHeight
+                        IDictionary<string, object> frameDict = currentFrame as IDictionary<string, object> ?? ((JObject)currentFrame).ToObject<IDictionary<string, object>>();
+                        frameDict["UnrolledHeight"] = currentHeight;
+                        frameDict["IsRolled"] = "true";
+                        int frameIndex = FrameDataManager.FrameData.FindIndex(f => f.Id?.ToString() == frameId);
+                        if (frameIndex >= 0)
+                        {
+                            FrameDataManager.FrameData[frameIndex] = JObject.FromObject(frameDict);
+                        }
+                        FrameDataManager.SaveFrameData();
+                        // DebugLog("SAVE", frameId, $"Saved ROLLUP state | UnrolledHeight:{currentHeight:F1} | IsRolled:true");
+                        // Roll up animation - starts from current height
+                        double targetHeight = 28;   //rolled height
+                        var heightAnimation = new DoubleAnimation(currentHeight, targetHeight, TimeSpan.FromSeconds(0.3))
+                        {
+                            EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseInOut }
+                        };
+                        heightAnimation.Completed += (animSender, animArgs) =>
+                        {
+                            // DebugLog("ANIMATION", frameId, "ROLLUP animation completed");
+                            // Update WrapPanel visibility
+                            var border = win.Content as Border;
+                            if (border != null)
+                            {
+                                var dockPanel = border.Child as DockPanel;
+                                if (dockPanel != null)
+                                {
+                                    var scrollViewer = dockPanel.Children.OfType<ScrollViewer>().FirstOrDefault();
+                                    if (scrollViewer != null)
+                                    {
+                                        var wpcont = scrollViewer.Content as WrapPanel;
+                                        if (wpcont != null)
+                                        {
+                                            wpcont.Visibility = Visibility.Collapsed;
+                                            // DebugLog("UI", frameId, "Set WrapPanel visibility to Collapsed");
+                                        }
+                                    }
+
+                                    // --- NEW: Plugin Pause & Hide ---
+                                    if (_activePlugins.TryGetValue(frameId, out var plugin))
+                                    {
+                                        plugin.Pause();
+                                        foreach (UIElement child in dockPanel.Children)
+                                        {
+                                            if (child is FrameworkElement fe && fe.Name == "FrameMenuIcon") continue;
+                                            if (DockPanel.GetDock(child) == Dock.Top) continue;
+                                            child.Visibility = Visibility.Collapsed;
+                                        }
+                                    }
+                                }
+                            }
+                            _framesInTransition.Remove(frameId);
+
+                            // FIX: Release animation lock so manual resizes track correctly later
+                            win.BeginAnimation(Window.HeightProperty, null);
+                            win.Height = targetHeight;
+                        };
+                        win.BeginAnimation(Window.HeightProperty, heightAnimation);
+                        // DebugLog("ANIMATION", frameId, $"Started ROLLUP animation from {currentHeight:F1} to height {targetHeight:F1}");
+                    }
+                    else
+                    {
+                        // ROLLDOWN: Roll down to UnrolledHeight
+                        double unrolledHeight = Convert.ToDouble(currentFrame.UnrolledHeight?.ToString() ?? "130");
+                        // // DebugLog("ACTION", frameId, $"Starting ROLLDOWN to {unrolledHeight:F1}");
+                        _framesInTransition.Add(frameId);
+                        // DebugLog("TRANSITION", frameId, "Added to transition state");
+                        IDictionary<string, object> frameDict = currentFrame as IDictionary<string, object> ?? ((JObject)currentFrame).ToObject<IDictionary<string, object>>();
+                        frameDict["IsRolled"] = "false";
+                        int frameIndex = FrameDataManager.FrameData.FindIndex(f => f.Id?.ToString() == frameId);
+                        if (frameIndex >= 0)
+                        {
+                            FrameDataManager.FrameData[frameIndex] = JObject.FromObject(frameDict);
+                        }
+                        FrameDataManager.SaveFrameData();
+                        // DebugLog("SAVE", frameId, $"Saved ROLLDOWN state | IsRolled:false | TargetHeight:{unrolledHeight:F1}");
+                        var heightAnimation = new DoubleAnimation(win.Height, unrolledHeight, TimeSpan.FromSeconds(0.3))
+                        {
+                            EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseInOut }
+                        };
+                        heightAnimation.Completed += (animSender, animArgs) =>
+                        {
+                            // DebugLog("ANIMATION", frameId, "ROLLDOWN animation completed");
+                            // Update WrapPanel visibility
+                            var border = win.Content as Border;
+                            if (border != null)
+                            {
+                                var dockPanel = border.Child as DockPanel;
+                                if (dockPanel != null)
+                                {
+                                    var scrollViewer = dockPanel.Children.OfType<ScrollViewer>().FirstOrDefault();
+                                    if (scrollViewer != null)
+                                    {
+                                        var wpcont = scrollViewer.Content as WrapPanel;
+                                        if (wpcont != null)
+                                        {
+                                            wpcont.Visibility = Visibility.Visible;
+
+                                            // --- MULTI-MONITOR INVISIBLE ICON FIX ---
+                                            wpcont.UpdateLayout();
+                                            wpcont.InvalidateVisual();
+                                            wpcont.Opacity = 0.99;
+                                            wpcont.Dispatcher.BeginInvoke(new Action(() => { wpcont.Opacity = 1.0; }), System.Windows.Threading.DispatcherPriority.Render);
+                                            // DebugLog("UI", frameId, "Set WrapPanel visibility to Visible");
+                                        }
+                                    }
+
+                                    // --- NEW: Plugin Resume & Show ---
+                                    if (_activePlugins.TryGetValue(frameId, out var plugin))
+                                    {
+                                        foreach (UIElement child in dockPanel.Children)
+                                        {
+                                            if (child is FrameworkElement fe && fe.Name == "FrameMenuIcon") continue;
+                                            if (DockPanel.GetDock(child) == Dock.Top) continue;
+                                            child.Visibility = Visibility.Visible;
+                                        }
+                                        plugin.Resume();
+                                    }
+                                }
+                            }
+                            _framesInTransition.Remove(frameId);
+                            // FIX: Release animation lock and force real height so SizeChanged updates the JSON properly
+                            win.BeginAnimation(Window.HeightProperty, null);
+                            win.Height = unrolledHeight;
+                        };
+                        win.BeginAnimation(Window.HeightProperty, heightAnimation);
+                        // DebugLog("ANIMATION", frameId, $"Started ROLLDOWN animation to height {unrolledHeight:F1}");
+                    }
+                    e.Handled = true;
+                }
+                else if (e.LeftButton == MouseButtonState.Pressed)
+                {
+                    if ((Keyboard.Modifiers & ModifierKeys.Control) != 0)
+                    {
+                        titleMouseDownPoint = null;
+                        titleIsDraggingWindow = false;
+                        titletb.Text = ctx.TitleLabel.Content.ToString();
+                        ctx.TitleLabel.Visibility = Visibility.Collapsed;
+                        titletb.Visibility = Visibility.Visible;
+                        win.BeginKeyboardInteractiveEdit(titletb);
+                        titletb.SelectAll();
+                        titletb.Focus();
+                        LogManager.Log(LogManager.LogLevel.Debug, LogManager.LogCategory.FrameCreation, $"Focus set to title textbox for frame: {frame.Title}");
+                        e.Handled = true;
+                    }
+                    else
+                    {
+                        titleMouseDownPoint = e.GetPosition(win);
+                        titleIsDraggingWindow = false;
+                    }
+                }
+            };
+
+            ctx.TitleLabel.MouseMove += (sender, e) =>
+            {
+                if (e.LeftButton == MouseButtonState.Pressed && titleMouseDownPoint.HasValue && !titleIsDraggingWindow)
+                {
+                    System.Windows.Point curPoint = e.GetPosition(win);
+                    if (Math.Abs(curPoint.X - titleMouseDownPoint.Value.X) > 4 || Math.Abs(curPoint.Y - titleMouseDownPoint.Value.Y) > 4)
+                    {
+                        titleIsDraggingWindow = true;
+                        string frameId = win.Tag?.ToString();
+                        dynamic currentFrame = FrameDataManager.FrameData.FirstOrDefault(f => f.Id?.ToString() == frameId);
+                        bool isLockedFrame = currentFrame?.IsLocked?.ToString().ToLower() == "true";
+                        if (!isLockedFrame)
+                        {
+                            SnapManager.StartDrag(win);
+                            try
+                            {
+                                win.DragMove();
+                            }
+                            finally
+                            {
+                                SnapManager.EndDrag(win);
+                            }
+                        }
+                    }
+                }
+            };
+
+            ctx.TitleLabel.MouseLeftButtonUp += (sender, e) =>
+            {
+                if (titleMouseDownPoint.HasValue && !titleIsDraggingWindow && !titletb.IsVisible)
+                {
+                    titletb.Text = ctx.TitleLabel.Content.ToString();
+                    ctx.TitleLabel.Visibility = Visibility.Collapsed;
+                    titletb.Visibility = Visibility.Visible;
+                    win.BeginKeyboardInteractiveEdit(titletb);
+                    titletb.SelectAll();
+                    titletb.Focus();
+                    e.Handled = true;
+                }
+                titleMouseDownPoint = null;
+                titleIsDraggingWindow = false;
+            };
+
+            titleGrid.MouseDown += (sender, e) =>
+            {
+                if (e.LeftButton == MouseButtonState.Pressed && (e.OriginalSource == titleGrid || e.OriginalSource is Border))
+                {
+                    string frameId = win.Tag?.ToString();
+                    dynamic currentFrame = FrameDataManager.FrameData.FirstOrDefault(f => f.Id?.ToString() == frameId);
+                    bool isLockedFrame = currentFrame?.IsLocked?.ToString().ToLower() == "true";
+                    if (!isLockedFrame)
+                    {
+                        SnapManager.StartDrag(win);
+                        try
+                        {
+                            win.DragMove();
+                        }
+                        finally
+                        {
+                            SnapManager.EndDrag(win);
+                        }
+                    }
+                }
+            };
+        }
     }
 }
