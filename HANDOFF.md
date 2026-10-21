@@ -1,5 +1,10 @@
 # HANDOFF
 
+## 2026-10-22 怪現象清單處理（Claude）
+- 已修正 2 項（control 開頭檔名誤判、圖示右鍵「開啟目標所在資料夾」標籤）、移除 1 段無作用程式碼；1 項實測不是問題（保留測試）、1 項為先前誤判已撤銷、1 項維持現狀。詳見 `IMPLEMENTATION_PLAN.md`。
+- 驗證：MSBuild Release 0 錯誤；`run-all-tests.ps1` 220 項 PASS；收納面板 10 項 PASS；繁中 100%；真實桌面預設收納位置無變化。
+- 未升版、未打包、未更新本機 `dist`。
+
 ## 2026-10-21 FrameManager 重構前的回歸測試網（Claude）
 - 還原點標籤：`restore/2026-10-21-before-framemanager-work`（已推送）。
 - 新增特徵化測試 63 項（純函式 21、行為 42）與 5 份選單黃金檔；`run-all-tests.ps1` 218 項全過；13 種改壞驗證 12 種抓到、1 種為等價改動。正式程式碼（含 `FrameManager.cs`）未修改。

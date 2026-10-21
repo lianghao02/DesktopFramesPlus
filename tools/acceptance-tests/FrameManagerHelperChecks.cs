@@ -63,9 +63,12 @@ internal static class FrameManagerHelperChecks
         Check(!Call<bool>("IsSpecialWindowsPath", "https://example.test") && !Call<bool>("IsSpecialWindowsPath", "mailto:a@example.test")
             && !Call<bool>("IsSpecialWindowsPath", @"C:\資料\a.txt") && !Call<bool>("IsSpecialWindowsPath", ""),
             "特徵化：網址、一般本機路徑與空值不視為特殊路徑");
-        // 現狀：以 control 開頭的一般檔名也會被當成特殊路徑（StartsWith 判斷）。改動前需另案評估。
-        Check(Call<bool>("IsSpecialWindowsPath", "controller-說明.txt"),
-            "現狀：以 control 開頭的檔名也被判為特殊路徑");
+        // 怪現象 1 已修正：只有控制台指令本身（可接參數）才算特殊路徑，以 control 開頭的一般檔名不算。
+        Check(Call<bool>("IsSpecialWindowsPath", "control") && Call<bool>("IsSpecialWindowsPath", "control.exe")
+            && Call<bool>("IsSpecialWindowsPath", "control /name Microsoft.Mouse") && Call<bool>("IsSpecialWindowsPath", "CONTROL.EXE desk.cpl"),
+            "控制台指令（含參數）視為特殊路徑");
+        Check(!Call<bool>("IsSpecialWindowsPath", "controller-說明.txt") && !Call<bool>("IsSpecialWindowsPath", "controlpanel-備忘.docx"),
+            "以 control 開頭的一般檔名不視為特殊路徑");
     }
 
     private static void UncAndNetworkChecks()

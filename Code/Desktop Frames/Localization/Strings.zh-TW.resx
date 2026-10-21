@@ -971,6 +971,9 @@
     <value>開啟面板所在資料夾</value>
   </data>
   <data name="MenuOpenTargetFolder" xml:space="preserve">
+    <value>開啟目標所在資料夾</value>
+  </data>
+  <data name="MenuOpenStorageFolder" xml:space="preserve">
     <value>開啟收納資料夾</value>
   </data>
   <data name="MenuOpenWith" xml:space="preserve">

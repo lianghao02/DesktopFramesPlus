@@ -46,6 +46,7 @@ internal static class FrameManagerBehaviorChecks
         await MenuSnapshotChecks(checker, root);
         await LockRenameTabsIconChecks(checker, root);
         await DropChecks(checker, root);
+        await FitToContentChecks(checker, root);
         await ResetCustomizationChecks();
         var realEntriesAfter = Directory.Exists(realStorageRoot) ? Directory.GetFileSystemEntries(realStorageRoot).OrderBy(x => x).ToArray() : Array.Empty<string>();
         Check(Directory.Exists(realStorageRoot) == realRootExisted && realEntriesBefore.SequenceEqual(realEntriesAfter),
@@ -494,6 +495,32 @@ internal static class FrameManagerBehaviorChecks
         Check(rejected.Effects == DragDropEffects.None, "拖放：舊版資料夾面板在介面層就明確拒絕（拖放效果為 None）");
         legacyWin.Close();
         FrameDataManager.FrameData.RemoveAll(f => f.Id?.ToString() == legacyId);
+        FrameDataManager.SaveFrameData();
+    }
+
+    // ---------- 怪現象 3：調整至最適大小須存檔（含剛從檔案讀入的面板） ----------
+    private static async Task FitToContentChecks(TargetChecker checker, string root)
+    {
+        string source = Path.Combine(root, "最適大小 來源");
+        Directory.CreateDirectory(source);
+        string file = Path.Combine(source, "最適大小.txt");
+        File.WriteAllText(file, "合成", Utf8);
+        dynamic created = FrameDataManager.CreateNewFrame("最適大小驗證", "Data", 360, 240, width: 360, height: 520);
+        string id = created.Id.ToString();
+        Framemanager.AddItemToDataFrame(Live(id), file);
+        FrameDataManager.SaveFrameData();
+        FrameDataManager.LoadFrameData(checker); // 重新讀檔：模擬使用者重開程式後的面板資料
+        NonActivatingWindow win = await Open(Live(id), checker);
+        var menu = win.ContextMenu!;
+        menu.RaiseEvent(new RoutedEventArgs(ContextMenu.OpenedEvent, menu));
+        var fit = menu.Items.OfType<MenuItem>().First(m => TextOf(m.Header).Trim() == "調整至最適大小");
+        fit.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent, fit));
+        await Task.Delay(500);
+        double saved = (double)Saved(id)["Height"]!;
+        Check(saved < 520 && Math.Abs(saved - win.Height) < 1,
+            $"調整至最適大小會把新高度寫回 frames.json（剛讀檔的面板也一樣；存檔 {saved}、視窗 {win.Height}）");
+        win.Close();
+        FrameDataManager.FrameData.RemoveAll(f => f.Id?.ToString() == id);
         FrameDataManager.SaveFrameData();
     }
 

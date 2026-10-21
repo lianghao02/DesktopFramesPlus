@@ -972,6 +972,9 @@ Desktop Frames + is maintained by Nikos Georgousis (Hand Water Pump), has been e
   <data name="MenuOpenTargetFolder" xml:space="preserve">
     <value>Open target folder...</value>
   </data>
+  <data name="MenuOpenStorageFolder" xml:space="preserve">
+    <value>Open storage folder</value>
+  </data>
   <data name="MenuOpenWith" xml:space="preserve">
     <value>Open with...</value>
   </data>

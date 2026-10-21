@@ -2648,24 +2648,8 @@ namespace Desktop_Frames
                             }
                         }
 
-                        // Update context menu checkmarks
-                        if (win.ContextMenu != null)
-                        {
-                            var customizeMenu = win.ContextMenu.Items.OfType<MenuItem>().FirstOrDefault(m => m.Header.ToString() == "Customize");
-                            if (customizeMenu != null)
-                            {
-                                var submenu = propertyName == "CustomColor"
-                                    ? customizeMenu.Items.OfType<MenuItem>().FirstOrDefault(m => m.Header.ToString() == "Color")
-                                    : customizeMenu.Items.OfType<MenuItem>().FirstOrDefault(m => m.Header.ToString() == "Launch Effect");
-                                if (submenu != null)
-                                {
-                                    foreach (MenuItem item in submenu.Items)
-                                    {
-                                        item.IsChecked = item.Tag?.ToString() == value || (value == null && item.Header.ToString() == "Default");
-                                    }
-                                }
-                            }
-                        }
+                        // 已移除：原本依英文標題 "Customize"／"Color"／"Launch Effect" 更新子選單勾選。
+                        // 目前任何語言的面板選單都沒有這些子選單（外觀改由「自訂外觀…」對話框設定），該段程式不會執行。
                     }
                     else
                     {
@@ -5551,7 +5535,7 @@ namespace Desktop_Frames
                         }
                     };
 
-                    miOpenStorageFolder = new MenuItem { Header = Strings.MenuOpenTargetFolder };
+                    miOpenStorageFolder = new MenuItem { Header = Strings.Get("MenuOpenStorageFolder", "開啟收納資料夾") };
                     miOpenStorageFolder.Click += (s, e) =>
                     {
                         try
@@ -10284,7 +10268,23 @@ namespace Desktop_Frames
                    path.StartsWith("ms-settings:", StringComparison.OrdinalIgnoreCase) ||
                    path.StartsWith("ms-", StringComparison.OrdinalIgnoreCase) ||
                    path.Contains("::") ||
-                   path.StartsWith("control", StringComparison.OrdinalIgnoreCase);
+                   IsControlPanelCommand(path);
+        }
+
+        // 控制台指令：control、control.exe，或其後接參數（例如 control /name Microsoft.Mouse）。
+        // 以 control 開頭的一般檔名（例如 controller-說明.txt）不算，否則會跳過「目標是否存在」的檢查。
+        private static bool IsControlPanelCommand(string path)
+        {
+            string trimmed = path.Trim();
+            foreach (string command in new[] { "control.exe", "control" })
+            {
+                if (trimmed.Equals(command, StringComparison.OrdinalIgnoreCase) ||
+                    trimmed.StartsWith(command + " ", StringComparison.OrdinalIgnoreCase))
+                {
+                    return true;
+                }
+            }
+            return false;
         }
 
 
