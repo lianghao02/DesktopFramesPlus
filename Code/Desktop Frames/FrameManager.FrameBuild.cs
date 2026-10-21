@@ -42,6 +42,8 @@ namespace Desktop_Frames
             public TextBox TitleTextBox;
             // 重新命名的提交動作：在 CreateFrame 後段才指定，♥、鎖頭與標題的點擊事件在觸發當下讀取
             public Action CommitRename;
+            // 標題文字：在 CreateFrame 中段才建立，面板選單「重新命名」等事件在觸發當下讀取
+            public Label TitleLabel;
         }
 
         // 外框：邊框顏色與粗細、Q 版面板底、尺寸變化時的內距、雙擊開啟搜尋

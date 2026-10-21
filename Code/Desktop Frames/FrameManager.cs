@@ -166,7 +166,6 @@ namespace Desktop_Frames
 
             // --- NEW: Declare Commit Action for robust saving ---
             var ctx = new FrameBuildContext { Frame = frame, TargetChecker = targetChecker, TitleTextBox = titletb };
-            Label titlelabel = null;
             // ---------------------------------------------------
 
             // Check for valid Portal Frame target folder
@@ -478,10 +477,10 @@ namespace Desktop_Frames
             MenuItem miRename = new MenuItem { Header = Strings.MenuRenameFrame };
             miRename.Click += (s, e) =>
             {
-                if (titlelabel != null && titletb != null)
+                if (ctx.TitleLabel != null && titletb != null)
                 {
-                    titletb.Text = titlelabel.Content?.ToString() ?? "";
-                    titlelabel.Visibility = Visibility.Collapsed;
+                    titletb.Text = ctx.TitleLabel.Content?.ToString() ?? "";
+                    ctx.TitleLabel.Visibility = Visibility.Collapsed;
                     titletb.Visibility = Visibility.Visible;
                     win.BeginKeyboardInteractiveEdit(titletb);
                     titletb.Focus();
@@ -1040,7 +1039,7 @@ namespace Desktop_Frames
         $"Frame '{frame.Title}' successfully created and displayed");
   
 
-            titlelabel = BuildTitleLabel(ctx, titleGrid);
+            ctx.TitleLabel = BuildTitleLabel(ctx, titleGrid);
 
             // --- DYNAMIC STATE UPDATES (ON MENU OPEN) ---
             MenuItem miExportAllToDesktop = null;
@@ -1462,7 +1461,7 @@ namespace Desktop_Frames
                                         if (shouldAutoRenameTitle)
                                         {
                                             frame.Title = newFolderName;
-                                            titlelabel.Content = newFolderName;
+                                            ctx.TitleLabel.Content = newFolderName;
                                             win.Title = newFolderName;
                                             titletb.Text = newFolderName;
                                         }
@@ -1520,7 +1519,7 @@ namespace Desktop_Frames
                             }
 
                             // 2. Update UI
-                            titlelabel.Content = targetPath;
+                            ctx.TitleLabel.Content = targetPath;
                             win.Title = targetPath;
                             titletb.Text = targetPath; // Update hidden textbox too
 
@@ -1867,10 +1866,10 @@ namespace Desktop_Frames
                 }
 
                 // Update UI
-                titlelabel.Content = finalTitle;
+                ctx.TitleLabel.Content = finalTitle;
                 win.Title = finalTitle;
                 titletb.Visibility = Visibility.Collapsed;
-                titlelabel.Visibility = Visibility.Visible;
+                ctx.TitleLabel.Visibility = Visibility.Visible;
 
                 // Save
                 FrameDataManager.SaveFrameData();
@@ -1891,7 +1890,7 @@ namespace Desktop_Frames
                     // Cancel Logic
                     titletb.Text = frame.Title.ToString();
                     titletb.Visibility = Visibility.Collapsed;
-                    titlelabel.Visibility = Visibility.Visible;
+                    ctx.TitleLabel.Visibility = Visibility.Visible;
                     win.EndKeyboardInteractiveEdit();
                     e.Handled = true;
                 }
@@ -2019,7 +2018,7 @@ namespace Desktop_Frames
             System.Windows.Point? titleMouseDownPoint = null;
             bool titleIsDraggingWindow = false;
 
-            titlelabel.MouseDown += (sender, e) =>
+            ctx.TitleLabel.MouseDown += (sender, e) =>
             {
                 // FIX: Directly call CommitRename logic
                 if (titletb.IsVisible)
@@ -2033,7 +2032,7 @@ namespace Desktop_Frames
                     titleMouseDownPoint = null;
                     titleIsDraggingWindow = false;
                     // Roll-up/roll-down logic (swapped from Ctrl+Click)
-                    NonActivatingWindow win = FindVisualParent<NonActivatingWindow>(titlelabel);
+                    NonActivatingWindow win = FindVisualParent<NonActivatingWindow>(ctx.TitleLabel);
                     string frameId = win?.Tag?.ToString();
                     // DebugLog("IMMEDIATE", frameId ?? "UNKNOWN", $"Ctrl+Click FIRST LINE - win.Height:{win?.Height ?? -1:F1}");
                     if (string.IsNullOrEmpty(frameId) || win == null)
@@ -2208,8 +2207,8 @@ namespace Desktop_Frames
                     {
                         titleMouseDownPoint = null;
                         titleIsDraggingWindow = false;
-                        titletb.Text = titlelabel.Content.ToString();
-                        titlelabel.Visibility = Visibility.Collapsed;
+                        titletb.Text = ctx.TitleLabel.Content.ToString();
+                        ctx.TitleLabel.Visibility = Visibility.Collapsed;
                         titletb.Visibility = Visibility.Visible;
                         win.BeginKeyboardInteractiveEdit(titletb);
                         titletb.SelectAll();
@@ -2225,7 +2224,7 @@ namespace Desktop_Frames
                 }
             };
 
-            titlelabel.MouseMove += (sender, e) =>
+            ctx.TitleLabel.MouseMove += (sender, e) =>
             {
                 if (e.LeftButton == MouseButtonState.Pressed && titleMouseDownPoint.HasValue && !titleIsDraggingWindow)
                 {
@@ -2252,12 +2251,12 @@ namespace Desktop_Frames
                 }
             };
 
-            titlelabel.MouseLeftButtonUp += (sender, e) =>
+            ctx.TitleLabel.MouseLeftButtonUp += (sender, e) =>
             {
                 if (titleMouseDownPoint.HasValue && !titleIsDraggingWindow && !titletb.IsVisible)
                 {
-                    titletb.Text = titlelabel.Content.ToString();
-                    titlelabel.Visibility = Visibility.Collapsed;
+                    titletb.Text = ctx.TitleLabel.Content.ToString();
+                    ctx.TitleLabel.Visibility = Visibility.Collapsed;
                     titletb.Visibility = Visibility.Visible;
                     win.BeginKeyboardInteractiveEdit(titletb);
                     titletb.SelectAll();
