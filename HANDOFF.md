@@ -24,7 +24,7 @@
 
 ## 2026-10-21 選單、設定與用詞整理（Claude，未建置）
 - 範圍：resx 用詞（`Strings.zh-TW.resx`，新增 `MenuMore`、`SecAdvancedGroup`）、`FrameManager.cs`（♥ 選單與面板右鍵選單加「更多」）、`OptionsFormManager.cs`（`AddAdvancedSection`：提示聲音、自動隱藏／淡出收進預設收合的 Expander）。
-- **尚未編譯、尚未測試、尚未打包**（使用者指示等通知再建置）。下一步：用 Visual Studio MSBuild 建置，執行 `tools/run-all-tests.ps1 -BinaryDir` 與 `tools/verify-localization.ps1`，再開啟設定視窗與兩個選單目視確認。
+- **已驗證（2026-10-21）**：MSBuild Release 0 錯誤；`tools/run-all-tests.ps1 -BinaryDir "Code/Desktop Frames/bin/Release/net8.0-windows7.0"` 152 PASS、0 FAIL；`tools/verify-localization.ps1` 繁中 100% 覆蓋；驗收程式實際渲染設定視窗，「進階（少用）」區預設收合。**尚未打包、未覆蓋 `dist/`**；♥ 選單與面板右鍵選單的「更多」尚未在真實桌面上目視確認。
 - 注意：`FrameManager.cs` 有 `using Color = System.Drawing.Color` 別名，新增的紅字用 `System.Windows.Media.Color`。
 - 未做：設定頁籤合併（便箋、快捷鍵併入情境）、自訂外觀對話框精簡；有需要再評估。
 
