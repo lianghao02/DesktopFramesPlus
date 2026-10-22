@@ -101,10 +101,11 @@ namespace Desktop_Frames
                         {
                             LogManager.Log(LogManager.LogLevel.Debug, LogManager.LogCategory.General, $"Frame '{jsonTitle}' is marked HIDDEN in JSON. Searching for window...");
 
-                            // D. Find Window
+                            // D. Find Window（以面板 Id 對應；同名面板不可互相影響）
+                            string jsonId = data.Id?.ToString();
                             var frameWindow = System.Windows.Application.Current.Windows
                                 .OfType<NonActivatingWindow>()
-                                .FirstOrDefault(w => w.Title != null && w.Title.Trim() == jsonTitle);
+                                .FirstOrDefault(w => !string.IsNullOrEmpty(jsonId) && w.Tag?.ToString() == jsonId);
 
                             if (frameWindow != null)
                             {
@@ -512,6 +513,8 @@ namespace Desktop_Frames
 
                 foreach (var frame in portalFramesToRemove)
                 {
+                    // 比照全部重新載入與刪除面板：先停止舊的資料夾監看器與延遲計時器，再移除
+                    try { _portalFrames[frame].Dispose(); } catch { }
                     _portalFrames.Remove(frame);
                 }
 

@@ -30,6 +30,13 @@ internal static class Program
         app.Run();
     }
 
+    // 等待條件成立（最多 timeoutMs）。動畫依賴畫面影格，電腦鎖定或遠端連線時會被節流，不能用固定等待時間
+    private static async Task Until(Func<bool> condition, int timeoutMs = 5000)
+    {
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        while (!condition() && sw.ElapsedMilliseconds < timeoutMs) await Task.Delay(50);
+    }
+
     private static void Check(bool value, string message)
     {
         if (!value) throw new InvalidOperationException(message);
@@ -249,9 +256,9 @@ internal static class Program
             var window = Application.Current.Windows.Cast<Window>().Single(w => w.Tag?.ToString() == aId);
             string before = File.ReadAllText(FrameDataManager.JsonFilePath);
             SettingsManager.HideDesktopElementsOnAllFramesHide = false;
-            Framemanager.ForceHideFrames(); await Task.Delay(400);
+            Framemanager.ForceHideFrames(); await Until(() => !window.IsVisible);
             Check(!window.IsVisible, "隱藏全部 Data 面板");
-            Framemanager.WakeUpFrames(); await Task.Delay(400);
+            Framemanager.WakeUpFrames(); await Until(() => window.IsVisible && window.Opacity >= 0.99);
             Check(window.IsVisible && before == File.ReadAllText(FrameDataManager.JsonFilePath), "顯示全部後配置不變");
             // 移出最後一筆時，驗證來源的視覺樹與版面同步，不以存檔正確代替畫面驗收。
             var panelBorder = (System.Windows.Controls.Border)window.Content;

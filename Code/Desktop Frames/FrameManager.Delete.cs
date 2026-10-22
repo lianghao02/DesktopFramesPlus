@@ -142,7 +142,7 @@ namespace Desktop_Frames
             var targetWin = windows?.FirstOrDefault(w => string.Equals(w.Tag?.ToString(), frameIdStr, StringComparison.OrdinalIgnoreCase)) ?? (parentWindow as NonActivatingWindow);
 
             // 從系統列托盤的隱藏清單徹底清除
-            TrayManager.RemoveHiddenFrame(targetWin, frameTitle);
+            TrayManager.RemoveHiddenFrame(targetWin, frameIdStr);
 
             if (targetWin != null)
             {

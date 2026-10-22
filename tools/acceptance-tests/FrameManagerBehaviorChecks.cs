@@ -25,6 +25,13 @@ internal static class FrameManagerBehaviorChecks
     private static readonly UTF8Encoding Utf8 = new(false);
     private const BindingFlags AnyStatic = BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Static;
 
+    // 等待條件成立（最多 timeoutMs）。動畫依賴畫面影格，電腦鎖定或遠端連線時會被節流，不能用固定等待時間
+    private static async Task Until(Func<bool> condition, int timeoutMs = 5000)
+    {
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        while (!condition() && sw.ElapsedMilliseconds < timeoutMs) await Task.Delay(50);
+    }
+
     private static void Check(bool value, string message)
     {
         if (!value) throw new InvalidOperationException(message);
@@ -48,6 +55,7 @@ internal static class FrameManagerBehaviorChecks
         await TitleBarChecks(checker);
         await PanelMenuClickChecks(checker);
         await WindowBehaviorChecks(checker, root);
+        await HiddenAndReloadChecks(checker, root);
         await DropChecks(checker, root);
         await FitToContentChecks(checker, root);
         await ResetCustomizationChecks();
@@ -543,11 +551,11 @@ internal static class FrameManagerBehaviorChecks
         // 標題：雙擊捲起，再雙擊展開（單擊進入改名需讀取實體滑鼠按鍵狀態，無法模擬，列入手動驗收）
         var label = GameThemeChecks.Children<Label>(openWin).First(l => l.Content?.ToString() == "載入展開");
         ClickTitle(label, 2);
-        await Task.Delay(700);
+        await Until(() => Math.Abs(openWin.Height - 28) < 0.5 && IconArea(openWin).Visibility == Visibility.Collapsed);
         Check(Saved(openId)["IsRolled"]?.ToString() == "true" && Math.Abs(openWin.Height - 28) < 0.5 && IconArea(openWin).Visibility == Visibility.Collapsed,
             "特徵化：雙擊標題捲起面板並寫入狀態");
         ClickTitle(label, 2);
-        await Task.Delay(700);
+        await Until(() => Math.Abs(openWin.Height - 360) < 0.5 && IconArea(openWin).Visibility == Visibility.Visible);
         Check(Saved(openId)["IsRolled"]?.ToString() == "false" && Math.Abs(openWin.Height - 360) < 0.5 && IconArea(openWin).Visibility == Visibility.Visible,
             "特徵化：再雙擊標題展開回原高度");
         Remove(openId, openWin);
@@ -567,12 +575,12 @@ internal static class FrameManagerBehaviorChecks
         var rolledSet = Field<HashSet<string>>("_autoRolledFrames")!;
         Check(timers.TryGetValue(autoId, out var autoTimer) && autoTimer.IsEnabled, "特徵化：啟用自動捲起的面板建立後立即啟動計時器");
         autoTimer!.Interval = TimeSpan.FromMilliseconds(50);
-        await Task.Delay(800);
+        await Until(() => Math.Abs(autoWin.Height - 28) < 0.5 && IconArea(autoWin).Visibility == Visibility.Collapsed);
         Check(rolledSet.Contains(autoId) && Math.Abs(autoWin.Height - 28) < 0.5 && IconArea(autoWin).Visibility == Visibility.Collapsed
             && Saved(autoId)["IsRolled"]?.ToString() != "true",
             "特徵化：自動捲起到期後捲起，但不寫入手動捲起狀態");
         autoWin.RaiseEvent(new MouseEventArgs(Mouse.PrimaryDevice, Environment.TickCount) { RoutedEvent = Mouse.MouseEnterEvent });
-        await Task.Delay(800);
+        await Until(() => Math.Abs(autoWin.Height - 200) < 0.5 && IconArea(autoWin).Visibility == Visibility.Visible);
         Check(!rolledSet.Contains(autoId) && Math.Abs(autoWin.Height - 200) < 0.5 && IconArea(autoWin).Visibility == Visibility.Visible,
             "特徵化：滑鼠移入自動捲起的面板時展開回展開高度");
         autoWin.RaiseEvent(new MouseEventArgs(Mouse.PrimaryDevice, Environment.TickCount) { RoutedEvent = Mouse.MouseLeaveEvent });
@@ -594,6 +602,73 @@ internal static class FrameManagerBehaviorChecks
         NonActivatingWindow fenceWin = await Open(Live(fenceId), checker);
         Golden("fence-window-tree", WindowTree(fenceWin));
         Remove(fenceId, fenceWin);
+    }
+
+    // 系統匣隱藏清單中屬於指定視窗的項目（HiddenFrames 為私有清單，以反射讀取）
+    private static List<Window> HiddenWindows()
+    {
+        var list = (System.Collections.IEnumerable)typeof(TrayManager).GetField("HiddenFrames", AnyStatic)!.GetValue(null)!;
+        return list.Cast<object>().Select(e => (Window)e.GetType().GetProperty("Window")!.GetValue(e)!).ToList();
+    }
+
+    // 同名面板的隱藏與還原（改以面板 Id 辨識），以及局部重建時釋放舊的資料夾監看器
+    private static async Task HiddenAndReloadChecks(TargetChecker checker, string root)
+    {
+        async Task<(string id, NonActivatingWindow win)> OpenData(string title)
+        {
+            dynamic created = FrameDataManager.CreateNewFrame(title, "Data", 360, 340, width: 360, height: 220);
+            string id = created.Id.ToString();
+            FrameDataManager.SaveFrameData();
+            NonActivatingWindow w = await Open(Live(id), checker);
+            return (id, w);
+        }
+
+        var (aId, aWin) = await OpenData("同名面板");
+        var (bId, bWin) = await OpenData("同名面板");
+        foreach (var (id, w) in new[] { (aId, aWin), (bId, bWin) })
+        {
+            Framemanager.UpdateFrameProperty(Live(id), "IsHidden", "true", "驗證");
+            TrayManager.AddHiddenFrame(w);
+        }
+        Check(HiddenWindows().Count(w => w == aWin || w == bWin) == 2,
+            "同名面板：兩個都列入系統匣隱藏清單（修正：原本以標題去重，只留一個）");
+
+        typeof(TrayManager).GetMethod("ShowHiddenFrame", AnyStatic)!.Invoke(null, new object[] { bId });
+        NonActivatingWindow shownB = await WaitWindow(bId);
+        await Task.Delay(300);
+        Check(Saved(bId)["IsHidden"]?.ToString() == "false" && Saved(aId)["IsHidden"]?.ToString() == "true"
+            && HiddenWindows().Contains(aWin) && !HiddenWindows().Contains(bWin) && shownB.Visibility == Visibility.Visible
+            && aWin.Visibility == Visibility.Hidden,
+            "同名面板：還原指定的那一個，另一個維持隱藏（修正：原本依標題取第一個）");
+
+        TrayManager.RemoveHiddenFrame(aWin);
+        foreach (var w in new Window[] { aWin, shownB }) w.Close();
+        FrameDataManager.FrameData.RemoveAll(f => f.Id?.ToString() == aId || f.Id?.ToString() == bId);
+        FrameDataManager.SaveFrameData();
+
+        // 局部重建收納面板：舊的資料夾監看器與延遲計時器必須停止
+        string fenceDir = Path.Combine(root, "重建 收納夾");
+        Directory.CreateDirectory(fenceDir);
+        // 一律明確指定隔離目錄；未指定時程式會使用真實桌面的預設收納位置。
+        dynamic fence = FrameDataManager.CreateNewFrame("重建收納", "Portal", 380, 360, width: 360, height: 240,
+            portalPath: fenceDir, isManagedStorage: true, storageRootPath: root);
+        string fenceId = fence.Id.ToString();
+        FrameDataManager.SaveFrameData();
+        await Open(Live(fenceId), checker);
+        var portals = (System.Collections.IDictionary)Field<object>("_portalFrames")!;
+        object OldManager() => portals.Keys.Cast<object>().Where(k => ((dynamic)k).Id?.ToString() == fenceId).Select(k => portals[k]!).Single();
+        object oldManager = OldManager();
+        var watcher = (FileSystemWatcher)oldManager.GetType().GetField("_watcher", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(oldManager)!;
+        var debounce = (DispatcherTimer)oldManager.GetType().GetField("_debounceTimer", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(oldManager)!;
+        Check(watcher.EnableRaisingEvents, "收納面板建立後資料夾監看器啟用");
+        Framemanager.ReloadSpecificFrames(Live(fenceId), null);
+        NonActivatingWindow rebuilt = await WaitWindow(fenceId);
+        await Task.Delay(300);
+        Check(!ReferenceEquals(OldManager(), oldManager) && !watcher.EnableRaisingEvents && !debounce.IsEnabled,
+            "局部重建收納面板時釋放舊的監看器與計時器（修正：原本只從清單移除，未呼叫 Dispose）");
+        rebuilt.Close();
+        FrameDataManager.FrameData.RemoveAll(f => f.Id?.ToString() == fenceId);
+        FrameDataManager.SaveFrameData();
     }
 
     private static async Task LockRenameTabsIconChecks(TargetChecker checker, string root)

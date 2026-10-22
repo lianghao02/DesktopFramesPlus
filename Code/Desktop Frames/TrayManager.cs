@@ -51,8 +51,10 @@ namespace Desktop_Frames
         private ToolStripMenuItem _automationMenuItem; //
         private ToolStripMenuItem _autoOrganizeMenuItem; // NEW
 
+        // 隱藏清單以面板 Id 辨識（同名面板各自獨立），標題只用於選單顯示
         private class HiddenFrame
         {
+            public string Id { get; set; }
             public string Title { get; set; }
             public NonActivatingWindow Window { get; set; }
         }
@@ -480,9 +482,10 @@ namespace Desktop_Frames
 				frame.Visibility = Visibility.Hidden;
             });
 
-            if (!HiddenFrames.Any(f => f.Title == frame.Title))
+            string frameId = frame.Tag?.ToString() ?? frame.Title;
+            if (!HiddenFrames.Any(f => f.Id == frameId))
             {
-                HiddenFrames.Add(new HiddenFrame { Title = frame.Title, Window = frame });
+                HiddenFrames.Add(new HiddenFrame { Id = frameId, Title = frame.Title, Window = frame });
 				frame.Visibility = System.Windows.Visibility.Hidden;
                 LogManager.Log(LogManager.LogLevel.Debug, LogManager.LogCategory.UI, $"Added frame '{frame.Title}' to hidden list");
                 Instance?.UpdateHiddenFramesMenu();
@@ -490,17 +493,18 @@ namespace Desktop_Frames
             }
         }
 
-        public static void ShowHiddenFrame(string title)
+        public static void ShowHiddenFrame(string frameId)
         {
+            string title = HiddenFrames.FirstOrDefault(f => f.Id == frameId)?.Title ?? frameId;
             // 1. Find the target frame data and update its visibility state immediately
-            var FrameData = Framemanager.GetFrameData().FirstOrDefault(f => f.Title == title);
+            var FrameData = Framemanager.GetFrameData().FirstOrDefault(f => f.Id?.ToString() == frameId);
             if (FrameData != null)
             {
                 Framemanager.UpdateFrameProperty(FrameData, "IsHidden", "false", $"Unhiding frame '{title}'");
             }
 
             // 2. Clean up the Tray menu's internal tracking list
-            var HiddenFrame = HiddenFrames.FirstOrDefault(f => f.Title == title);
+            var HiddenFrame = HiddenFrames.FirstOrDefault(f => f.Id == frameId);
             if (HiddenFrame != null)
             {
                 HiddenFrames.Remove(HiddenFrame);
@@ -521,11 +525,11 @@ namespace Desktop_Frames
             Instance?.UpdateTrayIcon();
         }
 
-        public static void RemoveHiddenFrame(NonActivatingWindow win, string title = null)
+        public static void RemoveHiddenFrame(NonActivatingWindow win, string frameId = null)
         {
             try
             {
-                HiddenFrames.RemoveAll(f => (win != null && f.Window == win) || (!string.IsNullOrEmpty(title) && f.Title == title));
+                HiddenFrames.RemoveAll(f => (win != null && f.Window == win) || (!string.IsNullOrEmpty(frameId) && f.Id == frameId));
                 Instance?.UpdateHiddenFramesMenu();
                 Instance?.UpdateTrayIcon();
             }
@@ -542,7 +546,7 @@ namespace Desktop_Frames
             foreach (var frame in HiddenFrames)
             {
                 var menuItem = new ToolStripMenuItem(frame.Title);
-                menuItem.Click += (s, e) => ShowHiddenFrame(frame.Title);
+                menuItem.Click += (s, e) => ShowHiddenFrame(frame.Id);
                 _showHiddenFramesItem.DropDownItems.Add(menuItem);
             }
         }
