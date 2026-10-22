@@ -8,9 +8,9 @@
 		<Nullable>enable</Nullable>
 		<UseWPF>true</UseWPF>
 		<UseWindowsForms>True</UseWindowsForms>
-		<AssemblyVersion>2.11.0.0</AssemblyVersion>
-		<FileVersion>2.11.0.0</FileVersion>
-		<Version>2.11.0</Version>
+		<AssemblyVersion>2.11.1.0</AssemblyVersion>
+		<FileVersion>2.11.1.0</FileVersion>
+		<Version>2.11.1</Version>
 		<ApplicationIcon>Resources\logo2.ico</ApplicationIcon>
 	</PropertyGroup>
 
