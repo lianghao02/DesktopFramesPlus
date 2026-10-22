@@ -107,7 +107,22 @@ namespace Desktop_Frames
                     e.Handled = true;
                 }
             };
+            ApplyFrameBorderAccent(cborder, (object)frame);
             return cborder;
+        }
+
+        // 自訂外框顏色與粗細：Q 版木框以點陣圖繪製，原生邊框維持 0，改由 GameSkin 在木框內緣畫描邊。
+        // 未設定顏色或粗細為 0 時不畫（外觀與預設相同）。建立面板與「自訂外觀」即時修改共用。
+        internal static void ApplyFrameBorderAccent(Border frameBorder, object frame)
+        {
+            if (frameBorder is not GameSkin skin) return;
+            string colorName = GetSafeProperty(frame, "FrameBorderColor");
+            if (!int.TryParse(GetSafeProperty(frame, "FrameBorderThickness"), out int thickness)) thickness = 2;
+            skin.BorderThickness = new Thickness(0);
+            skin.AccentThickness = Math.Max(0, thickness);
+            skin.AccentBrush = !string.IsNullOrEmpty(colorName) && thickness > 0
+                ? new SolidColorBrush(Utility.GetColorFromName(colorName))
+                : null;
         }
 
         // 標題列左側的選單圖示（♥）：外觀、滑鼠移入移出淡入淡出、點擊開啟 ♥ 選單（按住 Ctrl 為延伸選單）

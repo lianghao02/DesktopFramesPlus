@@ -281,6 +281,9 @@ namespace Desktop_Frames
             try
             {
                 if (obj is JObject jObj && jObj[propName] != null) return jObj[propName].ToString();
+                // 執行中新建的面板是 DynamicFrameData（字典），沒有同名的 CLR 屬性；不處理會一律回傳空字串
+                if (obj is IDictionary<string, object> dict)
+                    return dict.TryGetValue(propName, out object value) ? value?.ToString() ?? "" : "";
                 return obj.GetType().GetProperty(propName)?.GetValue(obj, null)?.ToString() ?? "";
             }
             catch { return ""; }

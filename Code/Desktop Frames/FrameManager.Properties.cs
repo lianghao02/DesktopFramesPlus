@@ -358,27 +358,13 @@ namespace Desktop_Frames
                         {
                             LogManager.Log(LogManager.LogLevel.Info, LogManager.LogCategory.FrameUpdate, $"Set UnrolledHeight to {value} for frame '{actualFrame.Title}'");
                         }
-                        else if (propertyName == "FrameBorderThickness")
+                        else if (propertyName == "FrameBorderThickness" || propertyName == "FrameBorderColor")
                         {
+                            // 與建立面板時相同：原生邊框維持 0，改畫木框內緣描邊（原本只在當次執行顯示原生邊框，重開後又消失）
                             if (win.Content is Border frameBorder)
                             {
-                                int thickness = 2;
-                                int.TryParse(value, out thickness);
-                                frameBorder.BorderThickness = new Thickness(thickness);
-
-                                if (thickness > 0 && frameBorder.BorderBrush == null)
-                                {
-                                    string borderColorName = actualFrame.FrameBorderColor?.ToString();
-                                    if (!string.IsNullOrEmpty(borderColorName))
-                                        frameBorder.BorderBrush = new SolidColorBrush(Utility.GetColorFromName(borderColorName));
-                                    else
-                                        frameBorder.BorderBrush = new SolidColorBrush(System.Windows.Media.Colors.Gray);
-                                }
-                                else if (thickness == 0)
-                                {
-                                    frameBorder.BorderBrush = null;
-                                }
-                                LogManager.Log(LogManager.LogLevel.Info, LogManager.LogCategory.FrameUpdate, $"Set runtime FrameBorderThickness to {thickness} for frame '{actualFrame.Title}'");
+                                ApplyFrameBorderAccent(frameBorder, (object)actualFrame);
+                                LogManager.Log(LogManager.LogLevel.Info, LogManager.LogCategory.FrameUpdate, $"Set runtime {propertyName} to '{value}' for frame '{actualFrame.Title}'");
                             }
                         }
 

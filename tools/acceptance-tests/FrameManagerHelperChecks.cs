@@ -35,6 +35,21 @@ internal static class FrameManagerHelperChecks
         UrlFileChecks();
         DropDataChecks();
         DisplayOrderChecks();
+        SafePropertyChecks();
+    }
+
+    // 第 2 項：GetSafeProperty 須同時支援設定檔讀入的 JObject 與執行中新建的 DynamicFrameData
+    private static void SafePropertyChecks()
+    {
+        dynamic created = new DynamicFrameData();
+        created["IconSize"] = "Large";
+        created["ItemsType"] = "Data";
+        var loaded = JObject.Parse("{\"IconSize\":\"Small\",\"ItemsType\":\"Portal\"}");
+        Check(Call<string>("GetSafeProperty", (object)created, "IconSize") == "Large" && Call<string>("GetSafeProperty", (object)created, "ItemsType") == "Data",
+            "GetSafeProperty 讀得到執行中新建面板（DynamicFrameData）的設定（修正：原本一律回傳空字串）");
+        Check(Call<string>("GetSafeProperty", loaded, "IconSize") == "Small" && Call<string>("GetSafeProperty", loaded, "缺少的欄位") == ""
+            && Call<string>("GetSafeProperty", (object)created, "缺少的欄位") == "",
+            "GetSafeProperty 讀取設定檔面板（JObject）不變，缺少欄位回傳空字串");
     }
 
     private static void WebUrlChecks()

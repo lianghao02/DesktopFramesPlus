@@ -561,7 +561,11 @@ namespace Desktop_Frames
                     }
                 }), System.Windows.Threading.DispatcherPriority.Loaded);
             }
-            win.Show();
+            // 設定為隱藏的面板：第一次 Show() 觸發的 Loaded 已將它隱藏並加入系統匣清單，這裡不可再顯示
+            if (GetSafeProperty((object)frame, "IsHidden").ToLower() != "true")
+            {
+                win.Show();
+            }
 
 
             // Check for persistent Legendary Mode (Nikos or >:)

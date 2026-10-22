@@ -171,12 +171,33 @@ namespace Desktop_Frames
                     context.DrawImage(pieces[row * 3 + col], new Rect(xs[col], ys[row], Math.Max(0, xs[col + 1] - xs[col]), Math.Max(0, ys[row + 1] - ys[row])));
         }
 
+        // 面板自訂外框顏色：木框是點陣圖，原生 BorderBrush 看不到，改在木框內緣畫一圈描邊
+        public static readonly DependencyProperty AccentBrushProperty = DependencyProperty.Register(nameof(AccentBrush),
+            typeof(Brush), typeof(GameSkin), new FrameworkPropertyMetadata(null, FrameworkPropertyMetadataOptions.AffectsRender));
+        public Brush AccentBrush { get => (Brush)GetValue(AccentBrushProperty); set => SetValue(AccentBrushProperty, value); }
+
+        public static readonly DependencyProperty AccentThicknessProperty = DependencyProperty.Register(nameof(AccentThickness),
+            typeof(double), typeof(GameSkin), new FrameworkPropertyMetadata(0.0, FrameworkPropertyMetadataOptions.AffectsRender));
+        public double AccentThickness { get => (double)GetValue(AccentThicknessProperty); set => SetValue(AccentThicknessProperty, value); }
+
         protected override void OnRender(DrawingContext context)
         {
             base.OnRender(context);
             Draw(context, Skin, RenderSize);
             if (Skin == GameSkinKind.Paper)
                 context.DrawRoundedRectangle(null, new Pen(GameTheme.Outline, 1), new Rect(RenderSize), 5, 5);
+            if (Skin == GameSkinKind.Panel && AccentBrush != null && AccentThickness > 0)
+                DrawAccent(context, RenderSize, AccentBrush, AccentThickness);
+        }
+
+        // 描邊位置對齊 DrawPanel 的角飾尺寸：木紋內緣約在角飾邊長的 0.6 處
+        private static void DrawAccent(DrawingContext context, Size size, Brush brush, double thickness)
+        {
+            double c = Math.Min(Math.Round(100 * 0.34), Math.Min(size.Width, size.Height) / 2);
+            double inset = c * 0.6 - thickness / 2;
+            var rect = new Rect(inset, inset, size.Width - 2 * inset, size.Height - 2 * inset);
+            if (rect.Width <= 0 || rect.Height <= 0) return;
+            context.DrawRoundedRectangle(null, new Pen(brush, thickness), rect, c * 0.25, c * 0.25);
         }
     }
 }

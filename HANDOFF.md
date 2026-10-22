@@ -1,5 +1,9 @@
 # HANDOFF
 
+## 2026-10-22 修正三項既有問題（Claude）
+- 隱藏面板啟動時仍顯示、新建面板讀不到設定（`GetSafeProperty` 不支援 `DynamicFrameData`）、自訂外框顏色無效（改為木框內緣描邊）。先改測試確認失敗再修，247＋10 項全過，繁中 100%。
+- 未做：桌面手動驗收（清單在 `IMPLEMENTATION_PLAN.md`）；本機 `dist` 未更新；未升版（CHANGELOG 已記在「未發布」）。
+
 ## 2026-10-22 FrameManager 拆檔第二階段完成（Claude）
 - `CreateFrame` 由約 3,715 行降為約 200 行，依序呼叫 18 個建構方法，分在 `FrameManager.FrameBuild*.cs` 4 個檔案；核心 `FrameManager.cs` 971 行。建構順序與規則見 `docs/specs/FRAMEMANAGER_MAP.md`。
 - 測試 241 項＋收納面板 10 項，每個提交都全過；整體比對原有程式只改 30 行（皆為預期）；故意改壞 6/6 有效變異抓到。

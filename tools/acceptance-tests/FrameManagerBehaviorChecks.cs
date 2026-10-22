@@ -371,10 +371,18 @@ internal static class FrameManagerBehaviorChecks
         Check(label.Foreground is SolidColorBrush { } fg && fg.Color == Utility.GetColorFromName("Red")
             && label.FontSize == 16 && label.FontWeight == FontWeights.Bold,
             "特徵化：標題文字的顏色、字級（Large=16）與粗體取自面板設定");
-        // 現狀：面板設定的外框顏色最後會被 Q 版主題的輪廓色蓋掉，且粗細為 0，外框顏色設定在畫面上沒有作用（另案評估）。
-        Check(win.Content is GameSkin { Skin: GameSkinKind.Panel } panel && panel.BorderBrush == GameTheme.Outline
-            && panel.BorderThickness == new Thickness(0),
-            "特徵化：外框為 Q 版面板，筆刷為主題輪廓色、粗細 0（現狀：自訂外框顏色不生效）");
+        var panel = (GameSkin)win.Content;
+        Check(panel.Skin == GameSkinKind.Panel && panel.BorderThickness == new Thickness(0)
+            && Accent(panel) is (SolidColorBrush { } ab, 3) && ab.Color == Utility.GetColorFromName("Blue"),
+            "外框顏色：建立面板時在 Q 版木框內緣畫出自訂顏色描邊（粗細取自外框粗細），不使用原生邊框");
+        GameThemeChecks.Render(win, "border-accent-blue-3");
+        Framemanager.UpdateFrameProperty(Live(id), "FrameBorderColor", "Red", "驗證");
+        Framemanager.UpdateFrameProperty(Live(id), "FrameBorderThickness", "5", "驗證");
+        Check(Accent(panel) is (SolidColorBrush { } rb, 5) && rb.Color == Utility.GetColorFromName("Red") && panel.BorderThickness == new Thickness(0),
+            "外框顏色：自訂外觀即時修改顏色與粗細時同步更新描邊，原生邊框維持 0");
+        Framemanager.UpdateFrameProperty(Live(id), "FrameBorderThickness", "0", "驗證");
+        Check(Accent(panel).brush == null && panel.BorderThickness == new Thickness(0), "外框顏色：粗細設為 0 時不畫描邊");
+        Framemanager.UpdateFrameProperty(Live(id), "FrameBorderThickness", "3", "驗證");
 
         var titleBox = ((Panel)VisualTreeHelper.GetParent(label)).Children.OfType<TextBox>().First();
         var heart = GameThemeChecks.Children<TextBlock>(win).First(t => t.Name == "FrameMenuIcon");
@@ -479,6 +487,15 @@ internal static class FrameManagerBehaviorChecks
         return sb.ToString();
     }
 
+    // GameSkin 的描邊（以反射讀取，避免測試與實作名稱綁太緊時無法編譯）
+    private static (Brush? brush, double thickness) Accent(GameSkin skin)
+    {
+        var t = typeof(GameSkin);
+        var brush = (Brush?)t.GetProperty("AccentBrush")?.GetValue(skin);
+        var thickness = (double?)t.GetProperty("AccentThickness")?.GetValue(skin) ?? 0;
+        return (brush, thickness);
+    }
+
     private static T? Field<T>(string name) => (T?)typeof(Framemanager).GetField(name, AnyStatic)!.GetValue(null);
 
     private static void ClickTitle(Label label, int clickCount)
@@ -536,9 +553,12 @@ internal static class FrameManagerBehaviorChecks
         Remove(openId, openWin);
 
         var (hiddenId, hiddenWin) = await OpenWith("載入隱藏", f => { f["IsHidden"] = "true"; });
-        // 現狀：載入時會先隱藏，但 CreateFrame 結尾的第二次 Show() 又把視窗顯示出來；面板資料仍維持 IsHidden=true（另案評估）
-        Check(hiddenWin.IsLoaded && hiddenWin.Visibility == Visibility.Visible && Saved(hiddenId)["IsHidden"]?.ToString() == "true",
-            "特徵化：設定為隱藏的面板建立後（現狀）仍為可見，設定值保持隱藏");
+        await Task.Delay(200);
+        Check(hiddenWin.IsLoaded && hiddenWin.Visibility == Visibility.Hidden && Saved(hiddenId)["IsHidden"]?.ToString() == "true",
+            "設定為隱藏的面板建立後保持隱藏（修正：原本結尾第二次 Show() 會再顯示）");
+        var (shownId, shownWin) = await OpenWith("載入顯示", _ => { });
+        Check(shownWin.Visibility == Visibility.Visible, "未隱藏的面板建立後正常顯示");
+        Remove(shownId, shownWin);
         Remove(hiddenId, hiddenWin);
 
         // 自動捲起：計時器到期且滑鼠不在面板上時捲起；滑鼠移入時展開
