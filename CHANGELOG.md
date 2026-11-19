@@ -5,6 +5,13 @@
 
 （目前沒有未發布的修改。）
 
+## 🏆 [2.11.2] - 2026-11-19 - 健檢缺陷修訂、獨立維護清理與建置測試強化
+
+### 修正與強化
+- **資源與生命週期修復**：`AboutFormManager` 補齊 `using` 釋放圖示與嵌入圖片串流並設定 `BitmapCacheOption.OnLoad`／`Freeze()`；修訂 `FrameManager.AutoHide`、`FrameManager.Delete`、`FrameManager.Icons`、`FrameManager.Loading`、`DesktopMouseHook`、`GlobalHotkeyManager` 與 `LazyIconLoader` 等健檢缺陷。
+- **獨立維護整理**：清理舊版贊助圖片（`donate.png`、`paypal.png`）與獨立維護連結，補齊 `Strings.resx` / `Strings.zh-TW.resx` 在地化資源鍵值。
+- **建置與測試強化**：強化 `scripts/build_and_sync.ps1`、`tools/package-release.ps1`、`tools/run-all-tests.ps1`、`tools/test-release-entry.ps1` 與 `tools/verify-localization.ps1`（改為嚴格檢查與統一發行版號驗證）。
+
 ## 🏆 [2.11.1] - 2026-10-22 - 面板穩定性修正與 FrameManager 拆檔
 
 > 修正 7 項既有問題（皆由這次補上的回歸測試與外部審查找出），並在不改變行為的前提下把 10,900 行的 FrameManager 拆成 18 個檔案。

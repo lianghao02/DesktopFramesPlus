@@ -3,15 +3,15 @@
 ## 核心元資料 (Metadata)
 - **Repository**：lianghao02/DesktopFramesPlus
 - **Branch**：main
-- **Commit SHA**：0cf2ef47613e2e80c5edcad411f4375682d7127e（v2.11.1-zh-TW 發布提交；本檔整理前基準）
-- **Skill Version**：lianghao-development v1.0.0；全域憲法 v8.5
-- **Task Type**：HANDOFF
+- **Commit SHA**：v2.11.2-zh-TW 發布提交（以 `git rev-parse HEAD` 與 annotated tag `v2.11.2-zh-TW` 為準）
+- **Skill Version**：lianghao-development v1.0.0；全域憲法 v8.6
+- **Task Type**：RELEASE
 - **Local Path Hint**：19_DesktopFramesPlus
 
 ---
 
 ## 目前狀態
-- 2026-10-22 已發布 `v2.11.1-zh-TW`（GitHub Release 為最新版），本機與遠端一致，工作目錄乾淨。
+- 2026-11-19 已發布 `v2.11.2-zh-TW`（整合健檢缺陷修訂、獨立維護清理與建置測試腳本強化，重新執行 MSBuild 自包含發布、自動化測試與免安裝包打包驗證，並取代舊版 `v2.11.1-zh-TW` GitHub Release）。
 - 本版內容：`FrameManager` 拆成 `partial class` 多檔（含 `CreateFrame` 由約 3,715 行降為約 200 行）、修正隱藏面板啟動仍顯示／新建面板讀不到設定／自訂外框顏色無效、同名面板改以面板 Id 辨識並釋放舊監看器。
 - 自動化驗證：測試 251 項＋收納面板 10 項全過、繁中資源 100%；拆檔前後逐行比對只差預期處，故意改壞抽查 6/6 被測試抓到。細節見 `CHANGELOG.md`、`docs/releases/`、`IMPLEMENTATION_PLAN.md`，更早的逐日紀錄請用 `git log`。
 - 自包含發布 ZIP：480 檔、88,020,640 bytes、SHA256 `BC2B6BD385BA821166A4131CEDCB0F24DDE3A10695EA78891A979938A8CD8199`。打包輸出在暫存區；本機 `dist/DesktopFramesPlus` 以關閉、同步、重開方式更新過（保留 Profiles）。
