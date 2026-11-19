@@ -57,8 +57,12 @@ namespace DesktopFrames
         [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
         private static extern IntPtr GetModuleHandle(string lpModuleName);
 
-        [DllImport("user32.dll", CharSet = CharSet.Auto)]
-        private static extern IntPtr SendMessage(IntPtr hWnd, uint Msg, IntPtr wParam, IntPtr lParam);
+        [DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = true)]
+        private static extern IntPtr SendMessageTimeout(
+            IntPtr hWnd, uint Msg, IntPtr wParam, IntPtr lParam,
+            uint fuFlags, uint uTimeout, out IntPtr lpdwResult);
+
+        private const uint SMTO_ABORTIFHUNG = 0x0002;
 
         // ── State ────────────────────────────────────────────────────────────
         private static IntPtr _hookHandle = IntPtr.Zero;
@@ -162,11 +166,13 @@ namespace DesktopFrames
             var sb = new System.Text.StringBuilder(256);
             GetClassName(hWnd, sb, sb.Capacity);
 
-            // We only query the list view itself
+            // We only query the list view itself with a short timeout so an unresponsive Explorer never stalls mouse input
             if (sb.ToString() == "SysListView32")
             {
-                int selectedCount = (int)SendMessage(hWnd, LVM_GETSELECTEDCOUNT, IntPtr.Zero, IntPtr.Zero);
-                return selectedCount > 0;
+                IntPtr result = SendMessageTimeout(
+                    hWnd, LVM_GETSELECTEDCOUNT, IntPtr.Zero, IntPtr.Zero,
+                    SMTO_ABORTIFHUNG, 50, out IntPtr selectedCount);
+                return result != IntPtr.Zero && selectedCount.ToInt64() > 0;
             }
 
             return false;

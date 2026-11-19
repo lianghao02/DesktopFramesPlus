@@ -2048,4 +2048,19 @@ This cannot be undone.</value>
   <data name="MenuRefreshContents" xml:space="preserve"><value>Refresh contents</value></data>
   <data name="MenuMore" xml:space="preserve"><value>More</value></data>
   <data name="SecAdvancedGroup" xml:space="preserve"><value>Advanced</value></data>
+  <data name="DragHintCreateShortcut" xml:space="preserve"><value>Create shortcut in storage frame</value></data>
+  <data name="DragHintCopyToStorage" xml:space="preserve"><value>Copy to storage frame</value></data>
+  <data name="DragHintCopyPublicShortcut" xml:space="preserve"><value>Copy shortcut from Public Desktop</value></data>
+  <data name="DragHintMoveToStorage" xml:space="preserve"><value>Move into storage frame</value></data>
+  <data name="MsgStorageDropPartialFailedTitle" xml:space="preserve"><value>Storage Incomplete</value></data>
+  <data name="MsgStorageDropPartialFailed" xml:space="preserve"><value>Some items could not be moved into storage:&#10;&#10;{0}</value></data>
+  <data name="DlgDismantleStorageTitle" xml:space="preserve"><value>Dismantle Storage Frame</value></data>
+  <data name="MsgDismantleStorageConfirm" xml:space="preserve"><value>Dismantle storage frame '{0}' and move its {1} items back to the desktop?&#10;&#10;(Existing desktop items with the same name will be renamed automatically without overwriting; if any item is locked or in use, the folder and unfinished files will be kept safely.)</value></data>
+  <data name="DlgDismantleDoneTitle" xml:space="preserve"><value>Dismantle Complete</value></data>
+  <data name="MsgDismantleDone" xml:space="preserve"><value>Storage frame dismantled. {0} item(s) moved back to desktop.</value></data>
+  <data name="DlgDismantleIncompleteTitle" xml:space="preserve"><value>Dismantle Incomplete (Files Preserved)</value></data>
+  <data name="MsgDismantleIncomplete" xml:space="preserve"><value>The storage folder was not completely emptied. Dismantle aborted and original items remain safe:&#10;&#10;{0}&#10;&#10;Moved to desktop: {1}&#10;Pending/Needs attention: {2}&#10;&#10;Please close any open files or unlock items, then try again.</value></data>
+  <data name="MsgCreateFrameFailed" xml:space="preserve"><value>Failed to create frame: {0}</value></data>
+  <data name="MsgCreateStorageFenceFailed" xml:space="preserve"><value>Failed to create storage frame: {0}</value></data>
+  <data name="DlgSelectPortalFolder" xml:space="preserve"><value>Select the folder to monitor for this Portal Frame</value></data>
 </root>

@@ -249,11 +249,21 @@ namespace Desktop_Frames
 
                     if (_isWindowsKeyPressed && _isDKeyPressed && !_winDDetected)
                     {
-                        _winDDetected = true;
-                        System.Windows.Application.Current?.Dispatcher.BeginInvoke(new Action(() =>
+                        // 防止因 UAC 安全桌面或焦點切換漏接 KEYUP 造成 Win 鍵狀態卡在按下
+                        bool isActualWinDown = (GetAsyncKeyState(VK_LWIN) & 0x8000) != 0 || (GetAsyncKeyState(VK_RWIN) & 0x8000) != 0;
+                        if (!isActualWinDown)
                         {
-                            WindowsPlusDDetected?.Invoke(null, EventArgs.Empty);
-                        }));
+                            _isWindowsKeyPressed = false;
+                            _winDDetected = false;
+                        }
+                        else
+                        {
+                            _winDDetected = true;
+                            System.Windows.Application.Current?.Dispatcher.BeginInvoke(new Action(() =>
+                            {
+                                WindowsPlusDDetected?.Invoke(null, EventArgs.Empty);
+                            }));
+                        }
                     }
 
                     // ============================================================

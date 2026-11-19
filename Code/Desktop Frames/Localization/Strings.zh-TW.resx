@@ -2061,4 +2061,19 @@
   <data name="MenuRefreshContents" xml:space="preserve"><value>重新整理內容</value></data>
   <data name="MenuMore" xml:space="preserve"><value>更多</value></data>
   <data name="SecAdvancedGroup" xml:space="preserve"><value>進階（少用）</value></data>
+  <data name="DragHintCreateShortcut" xml:space="preserve"><value>在收納面板建立捷徑</value></data>
+  <data name="DragHintCopyToStorage" xml:space="preserve"><value>複製到收納面板</value></data>
+  <data name="DragHintCopyPublicShortcut" xml:space="preserve"><value>從公用桌面複製捷徑</value></data>
+  <data name="DragHintMoveToStorage" xml:space="preserve"><value>搬進收納面板</value></data>
+  <data name="MsgStorageDropPartialFailedTitle" xml:space="preserve"><value>收納未完成</value></data>
+  <data name="MsgStorageDropPartialFailed" xml:space="preserve"><value>部分項目收納未完成：&#10;&#10;{0}</value></data>
+  <data name="DlgDismantleStorageTitle" xml:space="preserve"><value>拆除收納面板</value></data>
+  <data name="MsgDismantleStorageConfirm" xml:space="preserve"><value>要拆除收納面板「{0}」，並把裡面的 {1} 個項目移回桌面嗎？&#10;&#10;（若桌面已有同名項目將自動加上編號，不會覆寫原檔；若有項目因開啟中或系統攔截無法移動，將安全保留柵欄與未完成檔案現場）</value></data>
+  <data name="DlgDismantleDoneTitle" xml:space="preserve"><value>拆除完成</value></data>
+  <data name="MsgDismantleDone" xml:space="preserve"><value>已拆除收納面板，{0} 個項目已移回桌面。</value></data>
+  <data name="DlgDismantleIncompleteTitle" xml:space="preserve"><value>拆除未完成（現場已保留）</value></data>
+  <data name="MsgDismantleIncomplete" xml:space="preserve"><value>收納面板沒有完全清空，已停止拆除，原本的內容都保留：&#10;&#10;{0}&#10;&#10;已移至桌面：{1} 項&#10;未完成/需確認：{2} 項&#10;&#10;請關閉可能開啟中的檔案或解除鎖定後，再執行一次拆除。</value></data>
+  <data name="MsgCreateFrameFailed" xml:space="preserve"><value>建立面板失敗：{0}</value></data>
+  <data name="MsgCreateStorageFenceFailed" xml:space="preserve"><value>建立收納面板失敗：{0}</value></data>
+  <data name="DlgSelectPortalFolder" xml:space="preserve"><value>選擇此資料夾面板要監看的資料夾</value></data>
 </root>

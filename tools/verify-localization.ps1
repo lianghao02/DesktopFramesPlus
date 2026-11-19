@@ -84,3 +84,6 @@ if ($extraInZh.Count -gt 0) {
 }
 
 Write-Host "==========================================" -ForegroundColor Cyan
+if ($missingInZh.Count -gt 0) {
+    exit 1
+}

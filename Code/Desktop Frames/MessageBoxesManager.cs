@@ -691,27 +691,31 @@ namespace Desktop_Frames
                 try
                 {
                     var assembly = System.Reflection.Assembly.GetExecutingAssembly();
-                    var resourceStream = assembly.GetManifestResourceStream("Desktop_Frames.Resources.logo1.png");
+                    using var resourceStream = assembly.GetManifestResourceStream("Desktop_Frames.Resources.logo1.png");
                     if (resourceStream != null)
                     {
                         var bitmap = new BitmapImage();
                         bitmap.BeginInit();
+                        bitmap.CacheOption = BitmapCacheOption.OnLoad;
                         bitmap.StreamSource = resourceStream;
                         bitmap.EndInit();
+                        bitmap.Freeze();
                         logoImage.Source = bitmap;
                     }
                     else
                     {
-                        string exePath = System.Reflection.Assembly.GetEntryAssembly().Location;
-                        logoImage.Source = Utility.ToImageSource(System.Drawing.Icon.ExtractAssociatedIcon(exePath));
+                        string exePath = System.Reflection.Assembly.GetEntryAssembly()?.Location ?? System.Diagnostics.Process.GetCurrentProcess().MainModule?.FileName;
+                        using var icon = !string.IsNullOrEmpty(exePath) ? System.Drawing.Icon.ExtractAssociatedIcon(exePath) : null;
+                        if (icon != null) logoImage.Source = Utility.ToImageSource(icon);
                     }
                 }
                 catch
                 {
                     try
                     {
-                        string exePath = System.Reflection.Assembly.GetEntryAssembly().Location;
-                        logoImage.Source = Utility.ToImageSource(System.Drawing.Icon.ExtractAssociatedIcon(exePath));
+                        string exePath = System.Reflection.Assembly.GetEntryAssembly()?.Location ?? System.Diagnostics.Process.GetCurrentProcess().MainModule?.FileName;
+                        using var icon = !string.IsNullOrEmpty(exePath) ? System.Drawing.Icon.ExtractAssociatedIcon(exePath) : null;
+                        if (icon != null) logoImage.Source = Utility.ToImageSource(icon);
                     }
                     catch
                     {

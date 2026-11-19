@@ -40,7 +40,7 @@ namespace Desktop_Frames
 
             if (Desktop_Frames.Services.StorageFenceService.IsManagedStorage(frame))
             {
-                string frameTitle = frame.Title?.ToString() ?? "收納面板";
+                string frameTitle = frame.Title?.ToString() ?? Strings.Get("DefaultFrameTitle");
                 string folderPath = frame.Path?.ToString() ?? string.Empty;
                 int itemCount = 0;
                 try
@@ -52,8 +52,8 @@ namespace Desktop_Frames
                 }
                 catch { }
 
-                string confirmMsg = $"要拆除收納面板「{frameTitle}」，並把裡面的 {itemCount} 個項目移回桌面嗎？\n\n（若桌面已有同名項目將自動加上編號，不會覆寫原檔；若有項目因開啟中或系統攔截無法移動，將安全保留柵欄與未完成檔案現場）";
-                if (!MessageBoxesManager.ShowCustomYesNoMessageBox(confirmMsg, "拆除收納面板"))
+                string confirmMsg = Strings.Get("MsgDismantleStorageConfirm", frameTitle, itemCount);
+                if (!MessageBoxesManager.ShowCustomYesNoMessageBox(confirmMsg, Strings.Get("DlgDismantleStorageTitle")))
                 {
                     return;
                 }
@@ -63,7 +63,7 @@ namespace Desktop_Frames
                 {
                     DeleteFrameConfiguration(frame, parentWindow);
                     Services.FenceInventoryManager.RefreshDesktopShell();
-                    MessageBoxesManager.ShowOKOnlyMessageBoxForm($"已拆除收納面板，{report.CompletedCount} 個項目已移回桌面。", "拆除完成");
+                    MessageBoxesManager.ShowOKOnlyMessageBoxForm(Strings.Get("MsgDismantleDone", report.CompletedCount), Strings.Get("DlgDismantleDoneTitle"));
                 }
                 else
                 {
@@ -82,8 +82,8 @@ namespace Desktop_Frames
                         errDetails += "\n" + string.Join("\n", issues);
                     }
 
-                    string alertMsg = $"收納面板沒有完全清空，已停止拆除，原本的內容都保留：\n\n{errDetails}\n\n已移至桌面：{report.CompletedCount} 項\n未完成/需確認：{report.FailedCount + report.ConflictCount} 項\n\n請關閉可能開啟中的檔案或解除鎖定後，再執行一次拆除。";
-                    MessageBoxesManager.ShowOKOnlyMessageBoxForm(alertMsg, "拆除未完成（現場已保留）");
+                    string alertMsg = Strings.Get("MsgDismantleIncomplete", errDetails, report.CompletedCount, report.FailedCount + report.ConflictCount);
+                    MessageBoxesManager.ShowOKOnlyMessageBoxForm(alertMsg, Strings.Get("DlgDismantleIncompleteTitle"));
                 }
                 return;
             }
@@ -132,6 +132,23 @@ namespace Desktop_Frames
             {
                 targetPortal.Value.Dispose();
                 _portalFrames.Remove(targetPortal.Key);
+            }
+
+            if (!string.IsNullOrEmpty(frameIdStr))
+            {
+                if (_autoRollTimers.TryGetValue(frameIdStr, out var autoRollTimer))
+                {
+                    autoRollTimer?.Stop();
+                    _autoRollTimers.Remove(frameIdStr);
+                }
+                _autoRolledFrames.Remove(frameIdStr);
+                _framesInTransition.Remove(frameIdStr);
+
+                if (_activePlugins.TryGetValue(frameIdStr, out var plugin))
+                {
+                    try { plugin?.Cleanup(); } catch { }
+                    _activePlugins.Remove(frameIdStr);
+                }
             }
 
             // 立即落盤儲存 frames.json

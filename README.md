@@ -99,16 +99,16 @@ Farm Fences、Portal 與嵌入式 Note 曾出現在先前版本；現行新建�
 
 原始碼開發可使用 [Run-Latest.bat](Run-Latest.bat)，其呼叫 [tools/run-app.ps1](tools/run-app.ps1)。專案含 Windows COM 參照，建置需使用 Visual Studio 的 MSBuild；單靠 dotnet build 可能出現 MSB4803。既有成品與重新編譯的版本需分別驗證。
 
-入口依真正來源與 DLL 時間判斷是否需要建置，排除 bin／obj 生成檔案；建置失敗不會啟動舊成品。若已有程式在執行且需要建置，請先正常結束程式，再使用入口；入口不會強制關閉現有程序。
+入口依真正來源與 DLL 時間判斷是否需要建置，排除 bin／obj 生成檔案；建置失敗不會啟動舊成品。若已有程式在執行，入口會先嘗試正常結束該程序（逾時 1.5 秒則強制結束），再執行重建與同步 `dist/DesktopFramesPlus`。
 
 版本由 csproj 的 `Version` 統一維護；打包預設採 `v<Version>-zh-TW`，並檢查組件／檔案版號，拒絕把舊成品標為新版。只檢查而不啟動、建置或打包：
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File tools/run-app.ps1 -ValidateOnly
-powershell -NoProfile -ExecutionPolicy Bypass -File tools/package-release.ps1 -CheckOnly
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/run-app.ps1 -ValidateOnly
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/package-release.ps1 -CheckOnly
 ```
 
-獨立建置可為打包檢查指定 `-BinaryDir <目錄>`；入口／版本回歸可執行 `tools/test-release-entry.ps1 -BinaryDir <目錄> -PowerShellHost powershell.exe`。測試只在暫存副本檢查假 EXE 與實際 DLL，不操作個人 Profiles。
+獨立建置可為打包檢查指定 `-BinaryDir <目錄>`；入口／版本回歸可執行 `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/test-release-entry.ps1 -BinaryDir <目錄>`。測試只在暫存副本檢查假 EXE 與實際 DLL，不操作個人 Profiles。
 
 內含 Runtime 的 Windows x64 成品使用 `Properties/PublishProfiles/Portable-win-x64.pubxml`：以 Visual Studio MSBuild 執行 `/restore /t:Publish /p:PublishProfile=Portable-win-x64 /p:RuntimeIdentifier=win-x64 /p:SelfContained=true`。輸出為 `Code/Desktop Frames/bin/PortablePublish/win-x64`；打包指定此目錄並加上 `-RequireSelfContained`，會檢查 Runtime 設定及 WPF 必要元件。一般開發建置方式不變。
 
@@ -123,7 +123,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File tools/package-release.ps1 -C
 
 歷史修正包含 DLR 動態資料包裝、便箋讀取防覆寫與選項版面整理。既有修正不等於所有舊發布包已更新；v2.9.4-zh-TW 已整合本輪拖曳殘影修正、舊 Portal 唯讀退場與內含 Runtime 打包，沒有更動個人配置。詳見 [發布驗收報告](docs/releases/v2.9.4-zh-TW.md)。
 
-本機新版套用與代表性功能驗收見 [成品驗收報告](../00_Dev-Control-Center/docs/new-build-acceptance/RESULTS.md)。日常使用執行 `dist/DesktopFramesPlus/Desktop Frames.exe`；`Run-Latest.bat` 是原始碼開發入口，使用 Code 下的獨立 Profiles，勿把它當作既有 dist 配置的更新入口。重跑隔離功能檢查可使用 `tools/test-representative-functions.ps1 -BinaryDir <成品目錄>`，僅建立合成測試面板與便箋。
+本機新版套用與代表性功能驗收見 [成品驗收報告](../00_Dev-Control-Center/docs/new-build-acceptance/RESULTS.md)。日常使用執行 `dist/DesktopFramesPlus/Desktop Frames.exe`；`Run-Latest.bat` 為原始碼編譯並同步至 `dist/DesktopFramesPlus` 後啟動的開發入口（保留既有 `dist` 下的 Profiles）。重跑隔離功能檢查可使用 `tools/test-representative-functions.ps1 -BinaryDir <成品目錄>`，僅建立合成測試面板與便箋。
 
 ### 問題回報
 

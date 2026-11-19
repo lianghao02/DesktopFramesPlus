@@ -33,12 +33,26 @@ namespace Desktop_Frames
     // FrameManager 分檔：CreateFrame 拆出的建構步驟－拖放（自 FrameManager.FrameBuild.cs 原樣搬移；using 區塊必須與 FrameManager.cs 一致）
     public static partial class Framemanager
     {
+        private static void RestoreFrameBorderVisual(Border cborder, dynamic fallbackFrame)
+        {
+            string frameId = null;
+            try { frameId = fallbackFrame?.Id?.ToString(); } catch { }
+            object liveFrame = !string.IsNullOrEmpty(frameId)
+                ? (GetFrameData().FirstOrDefault(f => f.Id?.ToString() == frameId) ?? (object)fallbackFrame)
+                : (object)fallbackFrame;
+
+            string borderColorName = GetSafeProperty(liveFrame, "FrameBorderColor");
+            cborder.BorderBrush = string.IsNullOrEmpty(borderColorName)
+                ? GameTheme.Outline
+                : new SolidColorBrush(Utility.GetColorFromName(borderColorName));
+            ApplyFrameBorderAccent(cborder, liveFrame);
+        }
+
         // 拖放：拖入時外框提示與手勢判斷、離開還原、放下時依面板類型搬移／複製／建立捷徑或網址
         private static void BindDragDrop(FrameBuildContext ctx, Border cborder, NonActivatingWindow win, WrapPanel wpcont)
         {
             dynamic frame = ctx.Frame;
             TargetChecker targetChecker = ctx.TargetChecker;
-            System.Windows.Media.Brush defaultFrameBorderBrush = cborder.BorderBrush;
             win.DragOver += (sender, e) =>
             {
                 if (!e.Data.GetDataPresent(DataFormats.FileDrop))
@@ -69,22 +83,22 @@ namespace Desktop_Frames
                     if ((Keyboard.Modifiers & ModifierKeys.Alt) == ModifierKeys.Alt)
                     {
                         e.Effects = DragDropEffects.Link;
-                        gestureHint = "在收納面板建立捷徑";
+                        gestureHint = Strings.Get("DragHintCreateShortcut");
                     }
                     else if ((Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control)
                     {
                         e.Effects = DragDropEffects.Copy;
-                        gestureHint = "複製到收納面板";
+                        gestureHint = Strings.Get("DragHintCopyToStorage");
                     }
                     else if (isAllCommonDesktop)
                     {
                         e.Effects = DragDropEffects.Copy;
-                        gestureHint = "從公用桌面複製捷徑";
+                        gestureHint = Strings.Get("DragHintCopyPublicShortcut");
                     }
                     else
                     {
                         e.Effects = DragDropEffects.Move;
-                        gestureHint = "搬進收納面板";
+                        gestureHint = Strings.Get("DragHintMoveToStorage");
                     }
 
                     cborder.BorderBrush = new SolidColorBrush(System.Windows.Media.Color.FromArgb(220, 0, 150, 255));
@@ -115,13 +129,13 @@ namespace Desktop_Frames
 
             win.DragLeave += (sender, e) =>
             {
-                cborder.BorderBrush = defaultFrameBorderBrush;
+                RestoreFrameBorderVisual(cborder, frame);
                 win.ToolTip = null;
             };
 
             win.Drop += (sender, e) =>
             {
-                cborder.BorderBrush = defaultFrameBorderBrush;
+                RestoreFrameBorderVisual(cborder, frame);
                 win.ToolTip = null;
                 e.Handled = true;
                 if (e.Data.GetDataPresent(DataFormats.FileDrop))
@@ -190,8 +204,8 @@ namespace Desktop_Frames
 
                         if (failedItems.Count > 0)
                         {
-                            string alert = $"部分項目收納未完成：\n\n" + string.Join("\n", failedItems.Take(5));
-                            MessageBoxesManager.ShowOKOnlyMessageBoxForm(alert, "收納未完成");
+                            string alert = Strings.Get("MsgStorageDropPartialFailed", string.Join("\n", failedItems.Take(5)));
+                            MessageBoxesManager.ShowOKOnlyMessageBoxForm(alert, Strings.Get("MsgStorageDropPartialFailedTitle"));
                         }
                         return;
                     }

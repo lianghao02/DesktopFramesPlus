@@ -1,4 +1,4 @@
-param(
+﻿param(
     [string]$BinaryDir = (Join-Path $PSScriptRoot 'bin\Debug\net8.0-windows7.0')
 )
 

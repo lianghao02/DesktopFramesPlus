@@ -129,86 +129,107 @@ namespace Desktop_Frames
 
         private static async void ExecuteAutoHideSequence()
         {
-            _masterAutoHideTimer.Stop();
-            if (_areFramesAutoHidden) return;
-
-            int currentSequence = ++_hideSequenceId;
-
-            bool isDialogOpen = System.Windows.Application.Current.Windows
-                .OfType<System.Windows.Window>()
-                .Any(w => w.Visibility == Visibility.Visible
-                       && !(w is NonActivatingWindow)
-                       && w.Width > 0
-                       && !string.IsNullOrWhiteSpace(w.Title));
-
-            if (isDialogOpen)
+            try
             {
-                ResetAutoHideTimer();
-                return;
-            }
+                _masterAutoHideTimer.Stop();
+                if (_areFramesAutoHidden) return;
 
-            var visibleFrames = System.Windows.Application.Current.Windows.OfType<NonActivatingWindow>()
-                .Where(w => w.Visibility == Visibility.Visible)
-                .ToList();
+                int currentSequence = ++_hideSequenceId;
 
-            if (visibleFrames.Count == 0) return;
-            LogManager.Log(LogManager.LogLevel.Info, LogManager.LogCategory.UI, "Auto-Hide: Executing hide sequence.");
+                var app = System.Windows.Application.Current;
+                if (app == null) return;
 
-            // --- BUG FIX: Clear Held Animations ---
-            // Because the Wake-Up fade-in natively holds at 1.0, we MUST release the 
-            // animation lock before manually toggling local Opacity values. Otherwise, 
-            // the animation engine fights the flash effect, causing visual residue.
-            foreach (var win in visibleFrames)
-            {
-                win.BeginAnimation(System.Windows.UIElement.OpacityProperty, null);
-                win.Opacity = 1.0;
-            }
+                bool isDialogOpen = app.Windows
+                    .OfType<System.Windows.Window>()
+                    .Any(w => w.Visibility == Visibility.Visible
+                           && !(w is NonActivatingWindow)
+                           && w.Width > 0
+                           && !string.IsNullOrWhiteSpace(w.Title));
 
-            if (SettingsManager.HideFlashEffect)
-            {
-                for (int i = 0; i < 5; i++)
+                if (isDialogOpen)
                 {
-                    foreach (var win in visibleFrames) win.Opacity = 0.3;
-                    await Task.Delay(30);
-                    if (currentSequence != _hideSequenceId) return;
+                    ResetAutoHideTimer();
+                    return;
+                }
 
-                    foreach (var win in visibleFrames) win.Opacity = 1.0;
-                    await Task.Delay(30);
-                    if (currentSequence != _hideSequenceId) return;
+                var visibleFrames = app.Windows.OfType<NonActivatingWindow>()
+                    .Where(w => w.Visibility == Visibility.Visible)
+                    .ToList();
+
+                if (visibleFrames.Count == 0) return;
+                LogManager.Log(LogManager.LogLevel.Info, LogManager.LogCategory.UI, "Auto-Hide: Executing hide sequence.");
+
+                // --- BUG FIX: Clear Held Animations ---
+                // Because the Wake-Up fade-in natively holds at 1.0, we MUST release the
+                // animation lock before manually toggling local Opacity values. Otherwise,
+                // the animation engine fights the flash effect, causing visual residue.
+                foreach (var win in visibleFrames)
+                {
+                    if (!win.IsLoaded) continue;
+                    win.BeginAnimation(System.Windows.UIElement.OpacityProperty, null);
+                    win.Opacity = 1.0;
+                }
+
+                if (SettingsManager.HideFlashEffect)
+                {
+                    for (int i = 0; i < 5; i++)
+                    {
+                        foreach (var win in visibleFrames)
+                        {
+                            if (win.IsLoaded && app.Windows.OfType<NonActivatingWindow>().Contains(win)) win.Opacity = 0.3;
+                        }
+                        await Task.Delay(30);
+                        if (currentSequence != _hideSequenceId) return;
+
+                        foreach (var win in visibleFrames)
+                        {
+                            if (win.IsLoaded && app.Windows.OfType<NonActivatingWindow>().Contains(win)) win.Opacity = 1.0;
+                        }
+                        await Task.Delay(30);
+                        if (currentSequence != _hideSequenceId) return;
+                    }
+                }
+
+                var fadeOutAnim = new System.Windows.Media.Animation.DoubleAnimation
+                {
+                    From = 1.0,
+                    To = 0.0,
+                    Duration = new System.Windows.Duration(TimeSpan.FromMilliseconds(200))
+                };
+
+                foreach (var win in visibleFrames)
+                {
+                    if (win.IsLoaded && app.Windows.OfType<NonActivatingWindow>().Contains(win))
+                    {
+                        win.BeginAnimation(System.Windows.UIElement.OpacityProperty, fadeOutAnim);
+                    }
+                }
+
+                await Task.Delay(200);
+
+                if (currentSequence != _hideSequenceId) return;
+
+                foreach (var win in visibleFrames)
+                {
+                    if (!win.IsLoaded || !app.Windows.OfType<NonActivatingWindow>().Contains(win)) continue;
+                    // --- WPF 1-FRAME FLASH FIX ---
+                    // Must hard-set to 0.0 BEFORE removing the animation precedence!
+                    win.Opacity = 0.0;
+                    win.BeginAnimation(System.Windows.UIElement.OpacityProperty, null);
+                    win.Visibility = Visibility.Hidden;
+                }
+
+                _areFramesAutoHidden = true;
+
+                // --- NEW: Hide Native Desktop Icons if synced ---
+                if (SettingsManager.HideDesktopElementsOnAllFramesHide)
+                {
+                    DesktopIconManager.SetDesktopIconsVisible(false);
                 }
             }
-
-            var fadeOutAnim = new System.Windows.Media.Animation.DoubleAnimation
+            catch (Exception ex)
             {
-                From = 1.0,
-                To = 0.0,
-                Duration = new System.Windows.Duration(TimeSpan.FromMilliseconds(200))
-            };
-
-            foreach (var win in visibleFrames)
-            {
-                win.BeginAnimation(System.Windows.UIElement.OpacityProperty, fadeOutAnim);
-            }
-
-            await Task.Delay(200);
-
-            if (currentSequence != _hideSequenceId) return;
-
-            foreach (var win in visibleFrames)
-            {
-                // --- WPF 1-FRAME FLASH FIX ---
-                // Must hard-set to 0.0 BEFORE removing the animation precedence!
-                win.Opacity = 0.0;
-                win.BeginAnimation(System.Windows.UIElement.OpacityProperty, null);
-                win.Visibility = Visibility.Hidden;
-            }
-
-            _areFramesAutoHidden = true;
-
-            // --- NEW: Hide Native Desktop Icons if synced ---
-            if (SettingsManager.HideDesktopElementsOnAllFramesHide)
-            {
-                DesktopIconManager.SetDesktopIconsVisible(false);
+                LogManager.Log(LogManager.LogLevel.Error, LogManager.LogCategory.UI, $"ExecuteAutoHideSequence error: {ex.Message}");
             }
         }
 
@@ -302,6 +323,7 @@ namespace Desktop_Frames
         // --- NEW: Unified Manual Hide (Used by Tray Icon) ---
         public static void ForceHideFrames()
         {
+            int hideSequence = ++_hideSequenceId;
             _areFramesAutoHidden = true;
 
             // --- NEW: Hide Native Desktop Icons if synced ---
@@ -325,9 +347,10 @@ namespace Desktop_Frames
                     Duration = TimeSpan.FromMilliseconds(250)
                 };
 
-                // When the animation finishes, physically hide the window
+                // When the animation finishes, physically hide the window (unless WakeUpFrames invalidated this sequence)
                 fadeOut.Completed += (s, e) =>
                 {
+                    if (hideSequence != _hideSequenceId) return;
                     // --- DWM CACHE FIX ---
                     // DO NOT strip the animation here! Let WPF's FillBehavior.HoldEnd keep it firmly at 0.0.
                     // Stripping the animation here is what causes Windows DWM to snapshot the window at 1.0 opacity.

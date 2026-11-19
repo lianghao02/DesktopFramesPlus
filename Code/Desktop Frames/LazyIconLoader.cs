@@ -5,7 +5,6 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
-using System.Windows.Media.Imaging;
 
 namespace Desktop_Frames
 {
@@ -24,21 +23,38 @@ namespace Desktop_Frames
     public static class LazyIconLoader
     {
         private static readonly ConcurrentQueue<IconLoadRequest> _loadQueue = new ConcurrentQueue<IconLoadRequest>();
+        private static readonly object _lifecycleLock = new object();
         private static CancellationTokenSource _cts;
         private static Task _loaderTask;
         private static bool _isRunning = false;
 
         public static void Start()
         {
-            if (_isRunning) return;
-            _isRunning = true;
-            _cts = new CancellationTokenSource();
-            _loaderTask = Task.Run(() => ProcessLoadQueue(_cts.Token));
+            lock (_lifecycleLock)
+            {
+                if (_isRunning) return;
+                _isRunning = true;
+                _cts = new CancellationTokenSource();
+                _loaderTask = Task.Run(() => ProcessLoadQueue(_cts.Token));
+            }
+        }
+
+        public static void Stop()
+        {
+            lock (_lifecycleLock)
+            {
+                if (!_isRunning) return;
+                _isRunning = false;
+                try { _cts?.Cancel(); } catch { }
+                try { _cts?.Dispose(); } catch { }
+                _cts = null;
+                _loaderTask = null;
+            }
         }
 
         public static void RequestIcon(IconLoadRequest request)
         {
-            if (string.IsNullOrEmpty(request.FilePath) || request.TargetImage == null) return;
+            if (request == null || string.IsNullOrEmpty(request.FilePath) || request.TargetImage == null) return;
             _loadQueue.Enqueue(request);
         }
 
@@ -54,32 +70,61 @@ namespace Desktop_Frames
                     {
                         if (token.IsCancellationRequested) break;
 
-                        ImageSource icon = null;
-                        lock (IconManager.IconCache)
+                        try
                         {
-                            if (IconManager.IconCache.TryGetValue(request.FilePath, out var cached))
-                                icon = cached;
-                        }
-
-                        if (icon == null)
-                        {
-                            icon = IconManager.GetIconForFile(request.TargetPath, request.FilePath, request.IsFolder, request.IsLink, request.IsShortcut, request.IconDict);
-                            if (icon != null && icon.CanFreeze && !icon.IsFrozen) icon.Freeze();
-                        }
-
-                        if (icon != null)
-                        {
-                            await Application.Current.Dispatcher.InvokeAsync(() =>
+                            ImageSource icon = null;
+                            lock (IconManager.IconCache)
                             {
-                                request.TargetImage.Source = icon;
-                                request.OnLoaded?.Invoke();
-                            }, System.Windows.Threading.DispatcherPriority.Background);
+                                if (IconManager.IconCache.TryGetValue(request.FilePath, out var cached))
+                                    icon = cached;
+                            }
+
+                            if (icon == null)
+                            {
+                                icon = IconManager.GetIconForFile(request.TargetPath, request.FilePath, request.IsFolder, request.IsLink, request.IsShortcut, request.IconDict);
+                                if (icon != null && icon.CanFreeze && !icon.IsFrozen) icon.Freeze();
+                            }
+
+                            if (icon != null)
+                            {
+                                var dispatcher = Application.Current?.Dispatcher;
+                                if (dispatcher == null || dispatcher.HasShutdownStarted || dispatcher.HasShutdownFinished)
+                                {
+                                    return;
+                                }
+
+                                await dispatcher.InvokeAsync(() =>
+                                {
+                                    request.TargetImage.Source = icon;
+                                    request.OnLoaded?.Invoke();
+                                }, System.Windows.Threading.DispatcherPriority.Background);
+                            }
                         }
+                        catch (OperationCanceledException)
+                        {
+                            return;
+                        }
+                        catch (Exception itemEx)
+                        {
+                            LogManager.Log(LogManager.LogLevel.Warn, LogManager.LogCategory.IconHandling,
+                                $"LazyIconLoader: 略過圖示載入失敗項目 '{request?.FilePath}': {itemEx.Message}");
+                        }
+
                         processed++;
                     }
+
                     await Task.Delay(processed > 0 ? 30 : 100, token);
                 }
-                catch { break; }
+                catch (OperationCanceledException)
+                {
+                    break;
+                }
+                catch (Exception loopEx)
+                {
+                    LogManager.Log(LogManager.LogLevel.Warn, LogManager.LogCategory.IconHandling,
+                        $"LazyIconLoader 迴圈異常: {loopEx.Message}");
+                    try { await Task.Delay(200, token); } catch { break; }
+                }
             }
         }
     }

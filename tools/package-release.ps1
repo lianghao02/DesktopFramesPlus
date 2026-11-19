@@ -80,23 +80,19 @@ try {
     Compress-Archive -Path "$tempPackDir\*" -DestinationPath $zipPath
     Write-Host "打包成功 (純淨發布包): $zipPath" -ForegroundColor Green
 
-    # 3. 安全同步至本機 distDir（供本機測試，略過鎖定檔案與保護 Profiles）
+    # 3. 安全同步至本機 distDir（供本機測試，保護 Profiles，不允許新舊檔案混雜）
+    $runningApp = Get-Process -Name "Desktop Frames" -ErrorAction SilentlyContinue
+    if ($runningApp) {
+        throw "偵測到 Desktop Frames 正在執行中 (PID: $($runningApp.Id -join ', '))，請先結束程式後再同步至 $distDir，避免新舊檔案混雜。"
+    }
     if (-not (Test-Path $distDir)) {
         New-Item -ItemType Directory -Path $distDir -Force | Out-Null
     }
     Get-ChildItem -Path $tempPackDir -File | ForEach-Object {
-        try {
-            Copy-Item -Path $_.FullName -Destination $distDir -Force -ErrorAction Stop
-        } catch {
-            Write-Host "注意: $($_.Name) 目前被執行中行程鎖定，略過就地更新" -ForegroundColor Yellow
-        }
+        Copy-Item -Path $_.FullName -Destination $distDir -Force -ErrorAction Stop
     }
     Get-ChildItem -Path $tempPackDir -Directory | ForEach-Object {
-        try {
-            Copy-Item -Path $_.FullName -Destination $distDir -Recurse -Force -ErrorAction Stop
-        } catch {
-            # 略過子目錄鎖定
-        }
+        Copy-Item -Path $_.FullName -Destination $distDir -Recurse -Force -ErrorAction Stop
     }
 }
 finally {

@@ -437,7 +437,10 @@ namespace Desktop_Frames
 
             // 2. NOW load the new fences (which will re-populate the list correctly)
             Framemanager.ReloadFrames();
-            Desktop_Frames.FarmFences.FarmFenceHost.Start();
+            if (File.Exists(Path.Combine(CurrentProfileDir, "farm-fences.json")))
+            {
+                Desktop_Frames.FarmFences.FarmFenceHost.Start();
+            }
             try
             {
                 Desktop_Frames.Notes.Services.NoteManager.Initialize();

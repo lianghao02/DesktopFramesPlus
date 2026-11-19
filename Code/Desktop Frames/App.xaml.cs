@@ -19,6 +19,10 @@ namespace Desktop_Frames
         public static bool IsPrimaryInstance { get; private set; } = false;
         private const string UNIQUE_APP_NAME = "Global\\DesktopFramesPlus_Mutex_UniqueId_v2";
 
+        private static bool _isShowingUnhandledDialog = false;
+        private static int _rapidUnhandledCount = 0;
+        private static DateTime _lastUnhandledUtc = DateTime.MinValue;
+
         public App()
         {
             // 常駐系統匣與桌面工具：必須以明確關閉為準，防止視窗所有權交由桌面 Progman 後被 WPF 自動關閉
@@ -36,13 +40,42 @@ namespace Desktop_Frames
                 }
                 catch { }
 
-                MessageBox.Show(
-                    $"應用程式發生未攔截的錯誤：\n{e.Exception.Message}\n\n詳細資訊已記錄至 crash.log。",
-                    "Desktop Frames 執行期錯誤",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Error);
+                var now = DateTime.UtcNow;
+                if ((now - _lastUnhandledUtc).TotalSeconds <= 3)
+                {
+                    _rapidUnhandledCount++;
+                }
+                else
+                {
+                    _rapidUnhandledCount = 1;
+                }
+                _lastUnhandledUtc = now;
 
-                e.Handled = true; // 阻斷進一步拋出，防止應用程式直接閃退
+                // 若短時間連環發生異常，避免無限彈窗死鎖並允許安全退出
+                if (_rapidUnhandledCount > 5)
+                {
+                    e.Handled = false;
+                    return;
+                }
+
+                if (!_isShowingUnhandledDialog && _rapidUnhandledCount <= 2)
+                {
+                    _isShowingUnhandledDialog = true;
+                    try
+                    {
+                        MessageBox.Show(
+                            $"應用程式發生未攔截的錯誤：\n{e.Exception.Message}\n\n詳細資訊已記錄至 crash.log。",
+                            "Desktop Frames 執行期錯誤",
+                            MessageBoxButton.OK,
+                            MessageBoxImage.Error);
+                    }
+                    finally
+                    {
+                        _isShowingUnhandledDialog = false;
+                    }
+                }
+
+                e.Handled = true; // 阻斷單次非致命錯誤直接閃退
             };
 
             AppDomain.CurrentDomain.UnhandledException += (s, e) =>
@@ -287,6 +320,8 @@ namespace Desktop_Frames
             }
 
             InterCore.Cleanup();
+            try { LazyIconLoader.Stop(); } catch { }
+            try { Framemanager.CleanupOnExit(); } catch { }
             try
             {
                 GlobalHotkeyManager.StopMonitoring();

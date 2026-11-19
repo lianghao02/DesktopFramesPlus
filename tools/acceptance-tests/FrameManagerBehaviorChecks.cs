@@ -538,10 +538,10 @@ internal static class FrameManagerBehaviorChecks
             "特徵化：已捲起的面板載入時高度 28、圖示區收合");
         Remove(rolledId, rolledWin);
 
-        // 現狀：視窗第一次排版的 SizeChanged 會先把 UnrolledHeight 改成 Height，載入時因此以 Height 為準
+        // 首次 Show() 尚未 Loaded 前的排版不得覆蓋 UnrolledHeight；未捲起的面板應依 UnrolledHeight 展開
         var (openId, openWin) = await OpenWith("載入展開", f => { f["UnrolledHeight"] = 333; });
-        Check(Math.Abs(openWin.Height - 200) < 0.5 && IconArea(openWin).Visibility == Visibility.Visible && (double)Saved(openId)["UnrolledHeight"]! == 200,
-            "特徵化：未捲起的面板載入時以 Height 為準（現狀：UnrolledHeight 在首次排版時被改成 Height）");
+        Check(Math.Abs(openWin.Height - 333) < 0.5 && IconArea(openWin).Visibility == Visibility.Visible && (double)Saved(openId)["UnrolledHeight"]! == 333,
+            "特徵化：未捲起的面板載入時保留 UnrolledHeight 並依該高度展開");
         openWin.Height = 360;
         openWin.Width = 410;
         await Task.Delay(100);

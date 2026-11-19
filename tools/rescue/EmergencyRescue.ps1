@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     農場圍籬（Desktop Frames+）獨立冪等災難急救工具
 .DESCRIPTION
@@ -24,25 +24,30 @@ Write-Host "  Desktop Frames+ 農場圍籬災難急救還原工具" -ForegroundC
 Write-Host "==========================================================" -ForegroundColor Cyan
 Write-Host ""
 
-# 尋找庫存清單路徑（優先搜尋程式自帶目錄）
-$candidates = @(
+# 尋找所有存在的庫存清單路徑（支援正式發行目錄 dist 與多工作區 Profiles）
+$searchPatterns = @(
     (Join-Path $PSScriptRoot "fence_inventory.json"),
+    (Join-Path $PSScriptRoot "..\..\dist\DesktopFramesPlus\Profiles\*\fence_inventory.json"),
+    (Join-Path $PSScriptRoot "..\..\dist\DesktopFramesPlus\fence_inventory.json"),
+    (Join-Path $PSScriptRoot "..\..\Code\Desktop Frames\bin\Release\net8.0-windows7.0\Profiles\*\fence_inventory.json"),
     (Join-Path $PSScriptRoot "..\..\Code\Desktop Frames\bin\Release\net8.0-windows7.0\fence_inventory.json"),
-    (Join-Path $PSScriptRoot "..\..\Code\Desktop Frames\bin\Release\net8.0-windows7.0\Profiles\Default\fence_inventory.json"),
-    (Join-Path $PSScriptRoot "..\..\Profiles\Default\fence_inventory.json"),
+    (Join-Path $PSScriptRoot "..\..\Profiles\*\fence_inventory.json"),
     (Join-Path $PSScriptRoot "..\..\fence_inventory.json"),
     (Join-Path $env:LOCALAPPDATA "DesktopFramesPlus\Inventory\fence_inventory.json")
 )
 
-$inventoryPath = $null
-foreach ($path in $candidates) {
-    if (Test-Path -LiteralPath $path) {
-        $inventoryPath = (Resolve-Path -LiteralPath $path).Path
-        break
+$inventoryPaths = New-Object System.Collections.Generic.List[string]
+$seen = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+foreach ($pattern in $searchPatterns) {
+    $matched = @(Get-Item -Path $pattern -ErrorAction SilentlyContinue)
+    foreach ($m in $matched) {
+        if ($seen.Add($m.FullName)) {
+            $inventoryPaths.Add($m.FullName)
+        }
     }
 }
 
-if (-not $inventoryPath) {
+if ($inventoryPaths.Count -eq 0) {
     Write-Host "[資訊] 在標準儲存位置均未找到庫存清單 (fence_inventory.json)。" -ForegroundColor Yellow
     Write-Host "這通常表示目前沒有任何桌面項目處於託管狀態，或者尚未接管任何檔案。" -ForegroundColor Gray
     Write-Host ""
@@ -50,18 +55,23 @@ if (-not $inventoryPath) {
     exit 0
 }
 
-Write-Host "[1/3] 成功載入庫存清單：$inventoryPath" -ForegroundColor Green
-
-try {
-    $rawJson = Get-Content -LiteralPath $inventoryPath -Raw -Encoding UTF8
-    $inventory = $rawJson | ConvertFrom-Json
-} catch {
-    Write-Host "[錯誤] 解析庫存清單 JSON 失敗：$($_.Exception.Message)" -ForegroundColor Red
-    exit 1
+$allItems = New-Object System.Collections.Generic.List[object]
+foreach ($inventoryPath in $inventoryPaths) {
+    Write-Host "[1/3] 成功載入庫存清單：$inventoryPath" -ForegroundColor Green
+    try {
+        $rawJson = Get-Content -LiteralPath $inventoryPath -Raw -Encoding UTF8
+        $inventory = $rawJson | ConvertFrom-Json
+        if ($inventory.Items) {
+            foreach ($it in $inventory.Items) { $allItems.Add($it) }
+        }
+    } catch {
+        Write-Host "[錯誤] 解析庫存清單 JSON 失敗 ($inventoryPath)：$($_.Exception.Message)" -ForegroundColor Red
+        exit 1
+    }
 }
 
-$items = $inventory.Items
-if (-not $items -or $items.Count -eq 0) {
+$items = $allItems
+if ($items.Count -eq 0) {
     Write-Host "[資訊] 庫存清單中無任何託管項目。" -ForegroundColor Yellow
     exit 0
 }

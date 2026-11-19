@@ -8,7 +8,7 @@ labels: report
 ---
 
 **⚠️ IMPORTANT:**
-For general questions or feature requests, please DO NOT open an issue. Use [Discussions](https://github.com/limbo666/DesktopFramesPlus/discussions) instead.
+For general questions or feature requests, please check existing [Issues](https://github.com/lianghao02/DesktopFramesPlus/issues) before opening a new report.
 
 ---
 

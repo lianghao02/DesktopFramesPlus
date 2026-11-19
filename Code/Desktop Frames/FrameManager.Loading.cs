@@ -504,64 +504,23 @@ namespace Desktop_Frames
             overlay.Show();
         }
 
+        private static TargetChecker EnsureTargetChecker() => _currentTargetChecker ??= new TargetChecker(1000);
+
         public static void CreateFrameFromDraw(Rect r)
         {
-            try
-            {
-                string defaultName = CoreUtilities.GenerateUniqueFrameName();
-
-                var dialog = new DrawFrameConfirmDialog(r, defaultName);
-                dialog.ShowDialog();
-
-                if (!dialog.Confirmed) return;
-
-                string name = dialog.FrameTitle;
-                string storagePath = dialog.StoragePath;
-                if (!Directory.Exists(storagePath))
-                {
-                    Directory.CreateDirectory(storagePath);
-                }
-
-                var frame = FrameDataManager.CreateNewFrame(
-                    name,
-                    "Portal",
-                    r.X,
-                    r.Y,
-                    width: r.Width,
-                    height: r.Height,
-                    portalPath: storagePath,
-                    isManagedStorage: true,
-                    storageRootPath: SettingsManager.DefaultPortalStorageRoot);
-
-                var frameDict = frame as System.Collections.Generic.IDictionary<string, object>;
-                if (frameDict != null)
-                {
-                    frameDict["Width"] = r.Width;
-                    frameDict["Height"] = r.Height;
-                    frameDict["Title"] = name;
-                    frameDict["Path"] = storagePath;
-                    frameDict["IsManagedStorage"] = "true";
-                    frameDict["StorageRootPath"] = SettingsManager.DefaultPortalStorageRoot;
-                    FrameDataManager.SaveFrameData();
-                }
-
-                // 建立專用收納柵欄
-                CreateFrame(frame, _currentTargetChecker ?? new TargetChecker(1000));
-                UpdateAllHeartContextMenus();
-            }
-            catch (Exception ex)
-            {
-                LogManager.Log(LogManager.LogLevel.Error, LogManager.LogCategory.UI, $"CreateFrameFromDraw failed: {ex}");
-                MessageBox.Show($"建立面板失敗：{ex.Message}", Strings.DlgError, MessageBoxButton.OK, MessageBoxImage.Error);
-            }
+            CreateManagedStorageFenceCore(r, "MsgCreateFrameFailed");
         }
 
         public static void CreateManagedStorageFence(double x = 40, double y = 40)
         {
+            CreateManagedStorageFenceCore(new Rect(x, y, 360, 260), "MsgCreateStorageFenceFailed");
+        }
+
+        private static void CreateManagedStorageFenceCore(Rect r, string errorStringKey)
+        {
             try
             {
                 string defaultName = CoreUtilities.GenerateUniqueFrameName();
-                Rect r = new Rect(x, y, 360, 260);
 
                 var dialog = new DrawFrameConfirmDialog(r, defaultName);
                 dialog.ShowDialog();
@@ -598,13 +557,14 @@ namespace Desktop_Frames
                     FrameDataManager.SaveFrameData();
                 }
 
-                CreateFrame(frame, _currentTargetChecker ?? new TargetChecker(1000));
+                // 建立專用收納柵欄（共用 TargetChecker 避免每次新建洩漏背景計時器）
+                CreateFrame(frame, EnsureTargetChecker());
                 UpdateAllHeartContextMenus();
             }
             catch (Exception ex)
             {
-                LogManager.Log(LogManager.LogLevel.Error, LogManager.LogCategory.UI, $"CreateManagedStorageFence failed: {ex}");
-                MessageBox.Show($"建立收納面板失敗：{ex.Message}", Strings.DlgError, MessageBoxButton.OK, MessageBoxImage.Error);
+                LogManager.Log(LogManager.LogLevel.Error, LogManager.LogCategory.UI, $"CreateManagedStorageFenceCore failed: {ex}");
+                MessageBox.Show(Strings.Get(errorStringKey, ex.Message), Strings.DlgError, MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
@@ -821,7 +781,7 @@ namespace Desktop_Frames
                     IsRolled = "false",
                     AutoRoll = "false", // --- NEW: Auto Roll ---
                     AlwaysOnTop = "false", // --- NEW ---
-                    UnrolledHeight = 130.0,
+                    UnrolledHeight = 180.0,
                     TabsEnabled = "false",
                     CurrentTab = 0,
                     Tabs = new JArray(),
@@ -899,7 +859,7 @@ namespace Desktop_Frames
             {
                 using (var dialog = new System.Windows.Forms.FolderBrowserDialog())
                 {
-                    dialog.Description = "Select the folder to monitor for this Portal Frame";
+                    dialog.Description = Strings.Get("DlgSelectPortalFolder");
                     if (dialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
                     {
                         selectedPath = dialog.SelectedPath;
@@ -933,7 +893,7 @@ namespace Desktop_Frames
                 {
                     FrameDataManager.SaveFrameData();
                 }
-                CreateFrame(newFrame, new TargetChecker(1000));
+                CreateFrame(newFrame, EnsureTargetChecker());
             }
         }
     }

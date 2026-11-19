@@ -60,6 +60,8 @@ namespace Desktop_Frames
                 _heartTextBlocks.Clear();
                 foreach (var portal in _portalFrames.Values) try { portal.Dispose(); } catch { }
                 _portalFrames.Clear();
+                foreach (var plugin in _activePlugins.Values) try { plugin?.Cleanup(); } catch { }
+                _activePlugins.Clear();
                 FrameDataManager.FrameData?.Clear();
                 _currentTargetChecker?.Stop();
 

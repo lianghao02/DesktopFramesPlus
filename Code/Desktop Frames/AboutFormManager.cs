@@ -40,11 +40,15 @@ namespace Desktop_Frames
                 // Set icon from executable
                 try
                 {
-                    aboutWindow.Icon = System.Windows.Interop.Imaging.CreateBitmapSourceFromHIcon(
-                        System.Drawing.Icon.ExtractAssociatedIcon(Process.GetCurrentProcess().MainModule.FileName).Handle,
-                        Int32Rect.Empty,
-                        BitmapSizeOptions.FromEmptyOptions()
-                    );
+                    using var appIcon = System.Drawing.Icon.ExtractAssociatedIcon(Process.GetCurrentProcess().MainModule.FileName);
+                    if (appIcon != null)
+                    {
+                        aboutWindow.Icon = System.Windows.Interop.Imaging.CreateBitmapSourceFromHIcon(
+                            appIcon.Handle,
+                            Int32Rect.Empty,
+                            BitmapSizeOptions.FromEmptyOptions()
+                        );
+                    }
                 }
                 catch { } // Ignore icon loading errors
 
@@ -112,14 +116,16 @@ namespace Desktop_Frames
                 try
                 {
                     var assembly = Assembly.GetExecutingAssembly();
-                    var resourceStream = assembly.GetManifestResourceStream("Desktop_Frames.Resources.avtr.png")
-                                      ?? assembly.GetManifestResourceStream("Desktop_Frames.avtr.png");
+                    using var resourceStream = assembly.GetManifestResourceStream("Desktop_Frames.Resources.avtr.png")
+                                            ?? assembly.GetManifestResourceStream("Desktop_Frames.avtr.png");
                     if (resourceStream != null)
                     {
                         BitmapImage bitmap = new BitmapImage();
                         bitmap.BeginInit();
+                        bitmap.CacheOption = BitmapCacheOption.OnLoad;
                         bitmap.StreamSource = resourceStream;
                         bitmap.EndInit();
+                        bitmap.Freeze();
                         avatarOverlay.Source = bitmap;
                     }
                 }
@@ -257,14 +263,15 @@ namespace Desktop_Frames
             try
             {
                 var assembly = Assembly.GetExecutingAssembly();
-                var resourceStream = assembly.GetManifestResourceStream("Desktop_Frames.Resources.logo1.png");
-             //   var resourceStream = assembly.GetManifestResourceStream("Desktop_Frames.avtr.png");
+                using var resourceStream = assembly.GetManifestResourceStream("Desktop_Frames.Resources.logo1.png");
                 if (resourceStream != null)
                 {
                     BitmapImage bitmap = new BitmapImage();
                     bitmap.BeginInit();
+                    bitmap.CacheOption = BitmapCacheOption.OnLoad;
                     bitmap.StreamSource = resourceStream;
                     bitmap.EndInit();
+                    bitmap.Freeze();
 
                     Image logoImage = new Image
                     {
@@ -365,6 +372,8 @@ namespace Desktop_Frames
             // Credits Section
             CreateSection(contentStack, Strings.AboutSectionCredits, null,
                 Strings.AboutCreditsBody, 20);
+            // Project Link Section
+            CreateProjectLinkSection(contentStack);
             // MIT License Section
             CreateLicenseSection(contentStack);
 
@@ -422,64 +431,17 @@ namespace Desktop_Frames
             parent.Children.Add(section);
         }
 
-        private static void CreateSupportSection(StackPanel parent)
+        private static void CreateProjectLinkSection(StackPanel parent)
         {
             StackPanel section = new StackPanel
             {
                 Margin = new Thickness(0, 0, 0, 20)
             };
 
-            // Title
-            TextBlock titleBlock = new TextBlock
-            {
-                Text = Strings.AboutSupportDevelopment,
-                FontFamily = new FontFamily("Segoe UI"),
-                FontSize = 18, // Your improved font size
-                FontWeight = FontWeights.Bold,
-                Foreground = new SolidColorBrush(Color.FromRgb(32, 33, 36)),
-                Margin = new Thickness(0, 0, 0, 12)
-            };
-            section.Children.Add(titleBlock);
-
-            // Buttons container
             StackPanel buttonsPanel = new StackPanel
             {
                 Orientation = Orientation.Horizontal,
-                Margin = new Thickness(0, 8, 0, 0)
-            };
-
-            // Donate Button
-            Button donateButton = new Button
-            {
-                Content = Strings.BtnDonate,
-                Height = 36,
-                Padding = new Thickness(16, 0, 16, 0),
-                FontFamily = new FontFamily("Segoe UI"),
-                FontSize = 14, // Your improved font size
-                FontWeight = FontWeights.Bold,
-                Foreground = Brushes.White,
-                Background = new SolidColorBrush(Color.FromRgb(255, 102, 51)), // Orange
-                BorderThickness = new Thickness(0),
-                Cursor = Cursors.Hand,
-                Margin = new Thickness(0, 0, 12, 0)
-            };
-
-            donateButton.MouseEnter += (s, e) => donateButton.Background = new SolidColorBrush(Color.FromRgb(230, 90, 40));
-            donateButton.MouseLeave += (s, e) => donateButton.Background = new SolidColorBrush(Color.FromRgb(255, 102, 51));
-            donateButton.Click += (s, e) =>
-            {
-                try
-                {
-                    Process.Start(new ProcessStartInfo
-                    {
-                        FileName = "https://www.paypal.com/donate/?hosted_button_id=PPLWC66UC8Q42",
-                        UseShellExecute = true
-                    });
-                }
-                catch (Exception ex)
-                {
-                    LogManager.Log(LogManager.LogLevel.Error, LogManager.LogCategory.UI, $"Error opening PayPal link: {ex.Message}");
-                }
+                Margin = new Thickness(0, 4, 0, 0)
             };
 
             // GitHub Button
@@ -489,7 +451,7 @@ namespace Desktop_Frames
                 Height = 36,
                 Padding = new Thickness(16, 0, 16, 0),
                 FontFamily = new FontFamily("Segoe UI"),
-                FontSize = 14, // Your improved font size
+                FontSize = 14,
                 FontWeight = FontWeights.Bold,
                 Foreground = Brushes.White,
                 Background = new SolidColorBrush(Color.FromRgb(138, 43, 226)), // Purple
@@ -515,7 +477,6 @@ namespace Desktop_Frames
                 }
             };
 
-            buttonsPanel.Children.Add(donateButton);
             buttonsPanel.Children.Add(githubButton);
             section.Children.Add(buttonsPanel);
             parent.Children.Add(section);
@@ -686,13 +647,15 @@ namespace Desktop_Frames
                 try
                 {
                     var assembly = Assembly.GetExecutingAssembly();
-                    var resourceStream = assembly.GetManifestResourceStream("Desktop_Frames.Resources.Feed.png");
+                    using var resourceStream = assembly.GetManifestResourceStream("Desktop_Frames.Resources.Feed.png");
                     if (resourceStream != null)
                     {
                         BitmapImage bitmap = new BitmapImage();
                         bitmap.BeginInit();
+                        bitmap.CacheOption = BitmapCacheOption.OnLoad;
                         bitmap.StreamSource = resourceStream;
                         bitmap.EndInit();
+                        bitmap.Freeze();
                         mainImage.Source = bitmap;
                     }
                 }
@@ -722,9 +685,9 @@ namespace Desktop_Frames
                     Padding = new Thickness(20, 15, 20, 15)
                 };
 
-                Button donateButton = new Button
+                Button actionButton = new Button
                 {
-                    Content = Strings.AboutDonateBig,
+                    Content = Strings.BtnClose,
                     Height = 40, 
                     MinWidth = 160,
                     FontFamily = new FontFamily("Segoe UI"),
@@ -744,12 +707,12 @@ namespace Desktop_Frames
                     Padding = new Thickness(16, 8, 16, 8) // Proper padding
                 };
 
-                donateButton.Click += (s, e) =>
+                actionButton.Click += (s, e) =>
                 {
                     easterWindow.Close();
                 };
 
-                footerBorder.Child = donateButton;
+                footerBorder.Child = actionButton;
 
                 
                 closeButton.Click += async (s, e) =>
@@ -770,14 +733,14 @@ namespace Desktop_Frames
                         messageText.Text = Strings.AboutThinkAgain;
 
                     
-                        donateButton.Content = Strings.AboutPleaseDonate;
-                        donateButton.Background = new SolidColorBrush(Color.FromRgb(220, 20, 60)); // Crimson
+                        actionButton.Content = Strings.BtnClose;
+                        actionButton.Background = new SolidColorBrush(Color.FromRgb(220, 20, 60)); // Crimson
 
                    
                         try
                         {
                             var assembly = Assembly.GetExecutingAssembly();
-                            var resourceStream = assembly.GetManifestResourceStream("Desktop_Frames.Resources.dragon.png");
+                            using var resourceStream = assembly.GetManifestResourceStream("Desktop_Frames.Resources.dragon.png");
                             if (resourceStream != null)
                             {
                                 // Fade out current image
@@ -789,8 +752,10 @@ namespace Desktop_Frames
                                 // Load dragon image
                                 BitmapImage dragonBitmap = new BitmapImage();
                                 dragonBitmap.BeginInit();
+                                dragonBitmap.CacheOption = BitmapCacheOption.OnLoad;
                                 dragonBitmap.StreamSource = resourceStream;
                                 dragonBitmap.EndInit();
+                                dragonBitmap.Freeze();
                                 mainImage.Source = dragonBitmap;
 
                                 // Fade in dragon image
@@ -819,12 +784,12 @@ namespace Desktop_Frames
                         easterWindow.Left = originalLeft;
                         easterWindow.Top = originalTop;
 
-                        var originalButtonBrush = donateButton.Background;
+                        var originalButtonBrush = actionButton.Background;
                         for (int i = 0; i < 4; i++)
                         {
-                            donateButton.Background = new SolidColorBrush(Color.FromRgb(255, 255, 100)); // Bright yellow flash
+                            actionButton.Background = new SolidColorBrush(Color.FromRgb(255, 255, 100)); // Bright yellow flash
                             await System.Threading.Tasks.Task.Delay(150);
-                            donateButton.Background = originalButtonBrush;
+                            actionButton.Background = originalButtonBrush;
                             await System.Threading.Tasks.Task.Delay(150);
                         }
 

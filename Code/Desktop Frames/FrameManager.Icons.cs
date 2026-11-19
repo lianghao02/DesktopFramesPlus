@@ -1162,12 +1162,20 @@ namespace Desktop_Frames
                     {
                         if (Utility.IsStoreAppShortcut(filePath))
                         {
-                            try { newIcon = System.Drawing.Icon.ExtractAssociatedIcon(filePath).ToImageSource(); }
+                            try
+                            {
+                                using var associatedIcon = System.Drawing.Icon.ExtractAssociatedIcon(filePath);
+                                newIcon = associatedIcon?.ToImageSource();
+                            }
                             catch { newIcon = Utility.GetShellIcon(filePath, isFolder); }
                         }
                         else
                         {
-                            try { newIcon = System.Drawing.Icon.ExtractAssociatedIcon(filePath).ToImageSource(); }
+                            try
+                            {
+                                using var associatedIcon = System.Drawing.Icon.ExtractAssociatedIcon(filePath);
+                                newIcon = associatedIcon?.ToImageSource();
+                            }
                             catch { }
 
                             if (newIcon == null)
@@ -1189,19 +1197,17 @@ namespace Desktop_Frames
                     newIcon = new BitmapImage(new Uri("pack://application:,,,/Resources/file-WhiteX.png"));
                 }
                 // CASE E: STANDARD FILES
-                //else
-                //{
-                //    try { newIcon = System.Drawing.Icon.ExtractAssociatedIcon(filePath).ToImageSource(); }
-                //    catch { newIcon = new BitmapImage(new Uri("pack://application:,,,/Resources/file-WhiteX.png")); }
-                //}
-                // CASE E: STANDARD FILES
                 else
                 {
                     // 優先使用系統 Shell 高清圖示（Jumbo 256x256 或 ExtraLarge 48x48）
                     newIcon = Utility.GetShellIcon(filePath, false);
                     if (newIcon == null)
                     {
-                        try { newIcon = System.Drawing.Icon.ExtractAssociatedIcon(filePath).ToImageSource(); }
+                        try
+                        {
+                            using var associatedIcon = System.Drawing.Icon.ExtractAssociatedIcon(filePath);
+                            newIcon = associatedIcon?.ToImageSource();
+                        }
                         catch
                         {
                             newIcon = new BitmapImage(new Uri("pack://application:,,,/Resources/file-WhiteX.png"));
@@ -1214,9 +1220,12 @@ namespace Desktop_Frames
                 if (ico.Source != newIcon && newIcon != null)
                 {
                     ico.Source = newIcon;
-                    if (IconManager.IconCache.ContainsKey(filePath))
+                    lock (IconManager.IconCache)
                     {
-                        IconManager.IconCache[filePath] = newIcon;
+                        if (IconManager.IconCache.ContainsKey(filePath))
+                        {
+                            IconManager.IconCache[filePath] = newIcon;
+                        }
                     }
                 }
             });

@@ -151,6 +151,12 @@ namespace Desktop_Frames
             // Handle manual resize to update both Height and UnrolledHeight
             win.SizeChanged += (s, e) =>
             {
+                // 首次 Show() 尚未完成 Loaded 前，忽略排版事件以免覆蓋原設定的 UnrolledHeight
+                if (!win.IsLoaded)
+                {
+                    return;
+                }
+
                 // Get current frame reference by ID to avoid stale references
                 string frameId = win.Tag?.ToString();
                 if (string.IsNullOrEmpty(frameId))

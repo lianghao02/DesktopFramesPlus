@@ -1,4 +1,4 @@
-[CmdletBinding()]
+﻿[CmdletBinding()]
 param(
     [switch]$SkipBuild
 )
@@ -8,20 +8,33 @@ $repoRoot = Split-Path -Parent $PSScriptRoot
 $codeProj = Join-Path $repoRoot "Code\Desktop Frames\Desktop Frames.csproj"
 $portableBin = Join-Path $repoRoot "Code\Desktop Frames\bin\PortablePublish\win-x64"
 $distTarget = Join-Path $repoRoot "dist\DesktopFramesPlus"
-$msbuildPath = "C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\MSBuild\Current\Bin\amd64\MSBuild.exe"
+$msbuildPath = $null
+$vswherePath = Join-Path ${env:ProgramFiles(x86)} "Microsoft Visual Studio\Installer\vswhere.exe"
+if (Test-Path -LiteralPath $vswherePath) {
+    $discovered = & $vswherePath -latest -products * -requires Microsoft.Component.MSBuild -find "MSBuild\**\Bin\amd64\MSBuild.exe" 2>$null | Select-Object -First 1
+    if ($discovered -and (Test-Path -LiteralPath $discovered)) {
+        $msbuildPath = $discovered
+    }
+}
 
-if (-not (Test-Path $msbuildPath)) {
+if (-not $msbuildPath) {
     $candidates = @(
+        "C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\MSBuild\Current\Bin\amd64\MSBuild.exe",
         "C:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Current\Bin\amd64\MSBuild.exe",
         "C:\Program Files\Microsoft Visual Studio\2022\Professional\MSBuild\Current\Bin\amd64\MSBuild.exe",
         "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\MSBuild\Current\Bin\amd64\MSBuild.exe"
     )
     foreach ($cand in $candidates) {
-        if (Test-Path $cand) {
+        if (Test-Path -LiteralPath $cand) {
             $msbuildPath = $cand
             break
         }
     }
+}
+
+if (-not $msbuildPath -or -not (Test-Path -LiteralPath $msbuildPath)) {
+    Write-Error "找不到 Visual Studio MSBuild.exe，請確認已安裝 Visual Studio 或 Build Tools。"
+    exit 1
 }
 
 if (-not $SkipBuild) {
